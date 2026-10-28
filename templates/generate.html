@@ -1,0 +1,35 @@
+{% extends "index.html" %}
+
+{% block title %}Voice Generator{% endblock %}
+{% block heading %}Voice Generator{% endblock %}
+
+{% block side_extra %}
+<section class="generate" aria-label="Generate speech">
+  <h2>Make this voice say something new</h2>
+  <p class="hint" id="reference-note">Pick a clip on the left. It becomes the reference voice.</p>
+
+  <form id="generate-form" autocomplete="off">
+    <label>Text to speak
+      <textarea id="target" rows="3" maxlength="600">I can't believe we actually pulled that off. It was incredible.</textarea>
+    </label>
+    <label>Voice name <span class="hint">(output folder; blank = the speaker's id)</span>
+      <input id="voice-name" type="text" placeholder="e.g. p247">
+    </label>
+    <button type="submit" id="generate" disabled>Generate</button>
+  </form>
+
+  <p class="status" id="status" role="status" aria-live="polite" hidden></p>
+
+  <div id="result" hidden>
+    <p class="meta" id="result-meta"></p>
+    <audio id="result-audio" controls preload="auto"></audio>
+  </div>
+
+  <h3>Recent</h3>
+  <ul class="recent" id="recent"></ul>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='generate.js') }}"></script>
+{% endblock %}

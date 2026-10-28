@@ -1,0 +1,121 @@
+/* Layout: a clip list on the left, a sticky player on the right; one column on a phone. */
+:root {
+  --bg: #f5f6f7;
+  --surface: #ffffff;
+  --ink: #14191d;
+  --muted: #5d6870;
+  --rule: #dce0e3;
+  --band: #eceff1;
+  --accent: #0e6b82;
+  --accent-ink: #ffffff;
+  --accent-soft: #d9ebf0;
+  --font-body: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "Cascadia Mono", Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101417; --surface: #171d21; --ink: #e6eaec; --muted: #94a1aa; --rule: #2a343b;
+    --band: #1c2429; --accent: #5cb8cf; --accent-ink: #0b1316; --accent-soft: #163640;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.5 var(--font-body);
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+}
+
+header, main { max-width: 1200px; margin: 0 auto; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px 28px; padding-block: 20px 12px; }
+h1 { margin: 0; font-size: 1.35rem; font-weight: 650; }
+
+.tabs { display: flex; gap: 4px; }
+.tabs button {
+  border: 0; background: none; color: var(--muted); padding: 6px 12px; border-radius: 6px;
+  font: inherit; cursor: pointer;
+}
+.tabs button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; padding-bottom: 48px; align-items: start; }
+@media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); } .side { order: -1; position: static; } }
+
+.side { position: sticky; top: 16px; display: grid; gap: 16px; min-width: 0; max-height: calc(100vh - 32px); overflow-y: auto; }
+
+.filters { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; margin-bottom: 8px; }
+.filters label { display: grid; gap: 3px; font-size: 0.8rem; color: var(--muted); }
+.detail-filters { display: contents; }
+
+select, input {
+  font: inherit; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--rule); border-radius: 6px; padding: 6px 8px; min-width: 130px;
+}
+select:focus-visible, input:focus-visible, button:focus-visible, audio:focus-visible, tr:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+}
+
+button {
+  font: inherit; cursor: pointer; border-radius: 6px; padding: 6px 14px;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+}
+button.quiet { background: none; color: var(--accent); border-color: var(--rule); }
+button:disabled { opacity: 0.4; cursor: default; }
+
+.count { margin: 4px 0 8px; color: var(--muted); font-size: 0.85rem; }
+
+.table-wrap { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: var(--band); font-weight: 600; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--band); }
+tbody tr[aria-selected="true"] { background: var(--accent-soft); }
+tbody tr:last-child td { border-bottom: 0; }
+td.speaker { font-family: var(--font-mono); font-size: 0.85rem; white-space: nowrap; }
+td.details { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+td.empty { text-align: center; color: var(--muted); padding: 28px; cursor: default; }
+
+.pager { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 12px; color: var(--muted); font-size: 0.9rem; }
+
+.player, .generate {
+  background: var(--surface); border: 1px solid var(--rule);
+  border-radius: 8px; padding: 18px; min-width: 0;
+}
+.placeholder { margin: 0; color: var(--muted); }
+.meta { margin: 0 0 8px; font-size: 0.8rem; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+blockquote { margin: 0 0 14px; font-size: 1.15rem; line-height: 1.4; text-wrap: balance; }
+audio { width: 100%; }
+.actions { display: flex; gap: 8px; margin: 12px 0; }
+dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 14px; font-size: 0.88rem; }
+dt { color: var(--muted); }
+dd { margin: 0; }
+.path-label { margin: 0 0 4px; font-size: 0.75rem; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+.path-row { display: flex; gap: 8px; align-items: center; }
+.path-row code { flex: 1; min-width: 0; overflow-wrap: anywhere; font: 0.78rem/1.4 var(--font-mono); background: var(--band); padding: 6px 8px; border-radius: 6px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  button, tbody tr { transition: background-color 0.12s; }
+}
+
+/* Generate panel (Voice_model_example_UI.py) */
+.generate h2 { margin: 0 0 6px; font-size: 1.05rem; font-weight: 650; }
+.generate h3 { margin: 18px 0 6px; font-size: 0.8rem; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; }
+.hint { color: var(--muted); font-size: 0.85rem; font-weight: 400; }
+.generate form { display: grid; gap: 10px; margin: 12px 0; }
+.generate label { display: grid; gap: 4px; font-size: 0.85rem; color: var(--muted); }
+.generate textarea, .generate input { width: 100%; min-width: 0; resize: vertical; font: inherit; color: var(--ink); }
+textarea { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 8px; }
+textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.status { margin: 0 0 10px; padding: 8px 10px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-size: 0.9rem; }
+.status.error { background: #f9e1df; color: #9c2b22; }
+@media (prefers-color-scheme: dark) { .status.error { background: #3a1c1a; color: #f08a80; } }
+.recent { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 0.85rem; }
+.recent li { display: flex; gap: 10px; align-items: baseline; }
+.recent li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.recent button { padding: 2px 10px; flex: none; }
+.recent .empty { color: var(--muted); }

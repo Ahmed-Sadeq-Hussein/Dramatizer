@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Voice Library{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>{% block heading %}Voice Library{% endblock %}</h1>
+    <div class="tabs" id="tabs" role="tablist" aria-label="Dataset"></div>
+  </header>
+
+  <main>
+    <section class="browser" aria-label="Clips">
+      <form id="filters" class="filters" autocomplete="off">
+        <label>Speaker
+          <select id="speaker"><option value="">All speakers</option></select>
+        </label>
+        <label>Script contains
+          <input id="text" type="search" placeholder="e.g. jacket">
+        </label>
+        <span id="detail-filters" class="detail-filters"></span>
+        <button type="button" id="reset" class="quiet">Clear</button>
+      </form>
+
+      <p id="count" class="count" aria-live="polite"></p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Speaker</th><th>Details</th><th>Script</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+      <nav class="pager" aria-label="Pages">
+        <button type="button" id="prev" class="quiet">Previous</button>
+        <span id="page-label"></span>
+        <button type="button" id="next" class="quiet">Next</button>
+      </nav>
+    </section>
+
+    <div class="side">
+    <aside class="player" id="player" aria-label="Player">
+      <p class="placeholder" id="placeholder">Pick a clip to hear it and read its script.</p>
+      <div id="now" hidden>
+        <p class="meta" id="now-meta"></p>
+        <blockquote id="now-script"></blockquote>
+        <audio id="audio" controls preload="auto"></audio>
+        <div class="actions">
+          <button type="button" id="replay">Replay</button>
+          <button type="button" id="play-next" class="quiet">Next clip</button>
+        </div>
+        <dl id="now-details"></dl>
+        <p class="path-label">File on disk</p>
+        <div class="path-row">
+          <code id="now-file"></code>
+          <button type="button" id="copy" class="quiet">Copy</button>
+        </div>
+      </div>
+    </aside>
+    {% block side_extra %}{% endblock %}
+    </div>
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

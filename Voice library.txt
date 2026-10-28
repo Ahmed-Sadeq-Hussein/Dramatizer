@@ -1,0 +1,93 @@
+VOICE LIBRARY
+=============
+
+The speech datasets Dramatizer 2 uses as example voices, and where to get them.
+
+Every dataset here allows both academic and commercial use. The two that are
+downloaded share no speakers: each was recorded by a different group of people.
+
+Local copy (this machine): D:/Voices library/<folder>
+Downloaded: 26 October 2026
+
+
+DOWNLOADED
+==========
+
+1. VCTK (version 0.92)
+----------------------
+Folder:     D:/Voices library/VCTK
+Licence:    CC BY 4.0 (free for any use; credit the dataset)
+Speakers:   109 English speakers with many accents (English, Scottish, Irish,
+            American, Canadian, Indian, South African, ...). VCTK has 110,
+            but speaker p315 has no transcripts and is not in this copy
+Clips:      88,156 (44,078 sentences, each from two microphones)
+Speech:     Every speaker reads the same sentences, studio quality, two
+            microphones per sentence
+Size:       about 18 GB (parquet files)
+Download:   https://huggingface.co/datasets/jspaulsen/vctk
+            (a copy with leading and trailing silence trimmed)
+Original:   https://datashare.ed.ac.uk/handle/10283/3443
+            (University of Edinburgh DataShare, not GitHub or Hugging Face)
+
+2. CREMA-D
+----------
+Folder:     D:/Voices library/CREMA-D
+Licence:    Open Database License (ODbL): free for any use; credit the
+            dataset, and share changed versions of the dataset itself under
+            the same licence
+Speakers:   91 actors (48 male, 43 female), ages 20 to 74, varied ethnicities
+Speech:     12 sentences acted in 6 emotions (anger, disgust, fear, happy,
+            neutral, sad) at several intensities. 7,442 clips, 16 kHz
+Size:       about 0.5 GB; the clips are unpacked in CREMA-D/audio
+Download:   https://huggingface.co/datasets/myleslinder/crema-d
+Original:   https://github.com/CheyneyComputerScience/CREMA-D
+
+
+NOT DOWNLOADED (also free for academic and commercial use)
+==========================================================
+
+GLOBE (version 2)      CC0. 23,519 speakers with worldwide English accents,
+                       about 76 GB.
+                       https://huggingface.co/datasets/MushanW/GLOBE_V2
+LibriTTS-R             CC BY 4.0. 2,456 audiobook readers, about 101 GB.
+                       https://huggingface.co/datasets/mythicinfinity/libritts_r
+Mozilla Common Voice   CC0. Tens of thousands of speakers, 100+ languages.
+                       No longer on Hugging Face: download it from
+                       https://datacollective.mozillafoundation.org
+                       Shares speakers with GLOBE, which was built from it.
+LibriVox               Public domain audiobooks. Not a dataset on GitHub or
+                       Hugging Face: https://librivox.org
+                       Shares speakers with LibriTTS-R, which was built from it.
+HiFi-TTS               CC BY 4.0. 10 LibriVox readers, so they may also be in
+                       LibriTTS-R. https://huggingface.co/datasets/MikhailT/hifi-tts
+
+Take at most one from each overlapping pair (GLOBE or Common Voice; LibriTTS-R,
+LibriVox or HiFi-TTS) to keep every voice in one dataset only.
+
+
+LEFT OUT
+========
+
+EARS, Expresso,        Non-commercial licences (CC BY-NC).
+L2-ARCTIC, RAVDESS
+VoxCeleb, TV shows,    Not openly licensed, and the voices belong to real,
+films, games           recognisable people.
+
+
+CREDITS TO GIVE
+===============
+
+CC BY 4.0 and ODbL datasets must be credited wherever they are used (a
+README, a paper, a product). For the downloaded datasets:
+
+    This project uses VCTK (Yamagishi et al., University of Edinburgh, 2019,
+    CC BY 4.0) and CREMA-D (Cao et al., 2014, ODbL).
+
+
+A NOTE ON USING THESE VOICES
+============================
+
+The licences cover the recordings. The speakers agreed to speech research
+and speech technology, not to having a product imitate them personally.
+Use these voices to develop and test; clone only voices whose owners have
+given explicit consent for anything you publish or sell.

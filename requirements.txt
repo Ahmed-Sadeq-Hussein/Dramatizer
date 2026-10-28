@@ -1,0 +1,125 @@
+# requirements.txt | Every Python package Dramatizer 2 needs, with exact versions.
+#
+# Exact versions (==) make every machine install the same thing, so the
+# project behaves the same for everyone. Change a version on purpose, test,
+# then update it here. Setup instructions are at the end of this file.
+#
+# Python 3.10 is required: CosyVoice 3 is built and tested for it.
+
+# PyTorch with GPU support (CUDA 12.1) comes from PyTorch's own index;
+# the plain PyPI version on Windows only runs on the CPU
+--extra-index-url https://download.pytorch.org/whl/cu121
+
+# --- Dramatizer 2 ---------------------------------------------------------
+python-dotenv==1.2.4        # reads the settings in .env
+flask==3.1.3                # the browser interfaces (Voice_Importer_UI.py, Voice_model_example_UI.py)
+pyarrow==18.1.0             # reads the VCTK parquet files (Voice_Importer.py)
+
+# --- Measuring a recording (Similarity.py, WER.py, PERQ.py) ----------------
+jiwer==4.0.0                # word error rate (WER.py)
+webrtcvad-wheels==2.0.14.post1   # voice activity detection, needed by Resemblyzer
+# Resemblyzer (speaker similarity) is installed in step 3b below. Whisper
+# (above, in the CosyVoice group) and torchaudio's SQUIM (quality) need nothing more.
+
+# --- Voice model: CosyVoice 3 (Fun-CosyVoice3-0.5B-2512) ------------------
+# CosyVoice's code is not on PyPI: it is a checkout (VOICE_MODEL_DIR in .env).
+# These are the packages that code needs, copied from its requirements.txt.
+torch==2.3.1
+torchaudio==2.3.1
+numpy==1.26.4
+soundfile==0.12.1
+librosa==0.10.2
+conformer==0.3.2
+diffusers==0.29.0
+hydra-core==1.3.2
+HyperPyYAML==1.2.3
+omegaconf==2.3.0
+inflect==7.3.1
+lightning==2.2.4
+transformers==4.51.3
+x-transformers==2.11.24
+modelscope==1.20.0
+onnx==1.16.0
+onnxruntime==1.18.0; sys_platform == 'darwin' or sys_platform == 'win32'
+onnxruntime-gpu==1.18.0; sys_platform == 'linux'
+openai-whisper==20231117    # see step 3 below: it needs an old setuptools to build
+protobuf==4.25
+pydantic==2.7.0
+pyworld==0.3.4
+networkx==3.1
+matplotlib==3.7.5
+rich==13.7.1
+wetext==0.0.4
+gdown==5.1.0
+wget==3.2
+grpcio==1.57.0
+grpcio-tools==1.57.0
+tensorboard==2.14.0
+fastapi==0.115.6
+fastapi-cli==0.0.4
+uvicorn==0.30.0
+gradio==5.4.0
+deepspeed==0.15.1; sys_platform == 'linux'
+tensorrt-cu12==10.13.3.9; sys_platform == 'linux'
+tensorrt-cu12-bindings==10.13.3.9; sys_platform == 'linux'
+tensorrt-cu12-libs==10.13.3.9; sys_platform == 'linux'
+
+# --- Build tools ----------------------------------------------------------
+# setuptools 81 and newer removed pkg_resources, which openai-whisper and
+# lightning still use. Without this pin CosyVoice fails to load.
+setuptools<81
+wheel
+
+# ===========================================================================
+# Setting up the conda environment
+# ===========================================================================
+#
+# Run these in a terminal (Anaconda Prompt, or any terminal where conda works),
+# from this project's folder.
+#
+# 1. Create the environment, named "dramatizer", with Python 3.10:
+#
+#        conda create -n dramatizer python=3.10 -y
+#
+#    To keep it on another drive, give a path instead of a name:
+#
+#        conda create -p D:/envs/dramatizer python=3.10 -y
+#
+# 2. Step into the environment. Your prompt now starts with (dramatizer),
+#    and "python" and "pip" mean this environment's copies:
+#
+#        conda activate dramatizer
+#        conda activate D:/envs/dramatizer        (if you created it with -p)
+#
+# 3. Install the one package that will not build on its own. openai-whisper
+#    needs the old setuptools while it builds, so install that first and
+#    build whisper with it:
+#
+#        pip install "setuptools<81" wheel
+#        pip install --no-build-isolation openai-whisper==20231117
+#
+# 3b. Resemblyzer asks for "webrtcvad", which needs a C++ compiler to build
+#    on Windows. Install it without its dependencies, because
+#    webrtcvad-wheels (in this file) already provides what it needs:
+#
+#        pip install --no-deps resemblyzer==0.1.4
+#
+# 4. Install everything else:
+#
+#        pip install -r requirements.txt
+#
+# 5. Check that the GPU is visible (should print True):
+#
+#        python -c "import torch; print(torch.cuda.is_available())"
+#
+# 6. Step out of the environment when you are done:
+#
+#        conda deactivate
+#
+# Other useful commands:
+#
+#        conda env list                       every environment on this machine
+#        conda env remove -n dramatizer       delete the environment, to start over
+#
+# The CosyVoice checkout and the model weights are not Python packages and are
+# not installed by pip. See README.md and set their paths in .env.

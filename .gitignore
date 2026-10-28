@@ -1,0 +1,106 @@
+# .gitignore | Things that must never be committed or pushed.
+#
+# Once a file is pushed it is on the server for good, even if it is deleted
+# later. Keep this file up to date BEFORE adding new kinds of files.
+
+# --- Secrets and personal settings ----------------------------------------
+# .env holds this machine's paths and any keys. Others copy .env.example.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*secret*
+*credentials*
+*token*.txt
+
+# --- Voices and audio -----------------------------------------------------
+# Recordings of real people: licences, consent and privacy. Cloned audio of a
+# real person must not be published. Datasets are downloaded, not stored here.
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.m4a
+*.aac
+*.opus
+*.wma
+*.aiff
+*.parquet
+*.tar
+*.tar.gz
+*.zip
+*.7z
+
+# --- Datasets and voice libraries -----------------------------------------
+Voices/
+Voices library/
+voice_library/
+voice data/
+datasets/
+imported_voices/
+
+# --- Generated results ----------------------------------------------------
+# Runs, ratings and history contain cloned audio, local paths and listener
+# ratings. Share results through a deliberate export, not through git.
+/output/
+/outputs/
+/runs/
+/history/
+ratings.json
+/plots/
+*.csv
+
+# --- Models and weights ---------------------------------------------------
+# Several GB each, with their own licences. Downloaded by the README steps.
+CosyVoice/
+CosyVoice3/
+pretrained_models/
+# A leading / means "only in the project root", so a future source package
+# called models/ inside the code is not hidden by accident
+/models/
+/checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.bin
+*.npy
+*.npz
+
+# --- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# --- Environments ---------------------------------------------------------
+.venv/
+venv/
+env/
+envs/
+.conda/
+
+# --- Caches and logs ------------------------------------------------------
+.cache/
+*.log
+*.tmp
+*.bak
+
+# --- Editors, tools and operating system ----------------------------------
+.vscode/
+.idea/
+.claude/
+.DS_Store
+Thumbs.db
+desktop.ini

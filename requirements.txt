@@ -18,6 +18,9 @@ pyarrow==18.1.0             # reads the VCTK parquet files (Voice_Importer.py)
 # --- Measuring a recording (Similarity.py, WER.py, PERQ.py) ----------------
 jiwer==4.0.0                # word error rate (WER.py)
 webrtcvad-wheels==2.0.14.post1   # voice activity detection, needed by Resemblyzer
+noisereduce==3.0.3          # spectral noise removal (Clean_Audio_Distortion.py)
+appdirs==1.4.4              # needed by DeepFilterNet (installed in step 3c)
+loguru==0.7.3               # needed by DeepFilterNet (installed in step 3c)
 # Resemblyzer (speaker similarity) is installed in step 3b below. Whisper
 # (above, in the CosyVoice group) and torchaudio's SQUIM (quality) need nothing more.
 
@@ -103,6 +106,12 @@ wheel
 #    webrtcvad-wheels (in this file) already provides what it needs:
 #
 #        pip install --no-deps resemblyzer==0.1.4
+#
+# 3c. DeepFilterNet (background noise removal, Clean_Audio_Distortion.py)
+#    pins an older "packaging" than CosyVoice needs. Install it without its
+#    dependencies; the ones it really uses are in this file:
+#
+#        pip install --no-deps deepfilternet==0.5.6 deepfilterlib==0.5.6
 #
 # 4. Install everything else:
 #

@@ -8,6 +8,7 @@ Other files never load a model themselves. They ask this file:
     whisper_model = model.recogniser()     # turns speech into text (for WER)
     encoder = model.speaker_encoder()      # turns a voice into numbers (similarity)
     squim = model.quality_model()          # estimates how clean a recording is
+    deepfilter = model.denoiser()          # removes background noise from speech
 
 Why one file: to change a model (a bigger Whisper, another speaker encoder, a
 new TTS model) you edit .env, or the one loader below, and nothing else.
@@ -25,6 +26,7 @@ Settings, from .env (a missing one falls back to the default shown):
     WER_MODEL             whisper-base   (whisper-tiny, whisper-small, ...)
     SIMILARITY_MODEL      resemblyzer
     PERQ_MODEL            squim
+    DENOISE_MODEL         deepfilternet3
 """
 import logging
 import os
@@ -79,7 +81,7 @@ def _load_once(key, loader):
 
 
 def is_loaded(key):
-    """True once the model is in memory. Keys: voice, recogniser, speaker, quality."""
+    """True once the model is in memory. Keys: voice, recogniser, speaker, quality, denoiser."""
     return key in _loaded
 
 
@@ -184,3 +186,42 @@ def quality_model():
         return SQUIM_OBJECTIVE.get_model().to(device()).eval()
 
     return _load_once("quality", load)
+
+
+# --------------------------------------------------------------------------- #
+# The denoiser: DeepFilterNet 3 (for Clean_Audio_Distortion.py)
+# --------------------------------------------------------------------------- #
+
+
+def denoiser():
+    """
+    DeepFilterNet 3: removes background noise from speech, at 48 kHz.
+    Returns (network, df_state); Clean_Audio_Distortion.py is the way to use them.
+    The weights (about 8 MB) are downloaded from the DeepFilterNet GitHub
+    releases the first time and cached.
+    """
+
+    def load():
+        name = setting("DENOISE_MODEL", "deepfilternet3").lower()
+
+        if name != "deepfilternet3":
+            raise ValueError(f"Unknown DENOISE_MODEL {name!r}. Supported: deepfilternet3.")
+
+        import warnings
+
+        # DeepFilterNet imports a torchaudio path that moved; it still works
+        warnings.filterwarnings("ignore", message=".*AudioMetaData.*")
+        try:
+            from df.enhance import init_df
+        except ImportError as error:
+            raise ImportError(
+                "DeepFilterNet is not installed in this environment. Run: "
+                "pip install --no-deps deepfilternet==0.5.6 deepfilterlib==0.5.6 "
+                "and pip install appdirs==1.4.4 loguru==0.7.3 (step 3c in requirements.txt)"
+            ) from error
+
+        print("Loading the denoiser (DeepFilterNet 3)...")
+        network, df_state, _ = init_df(model_base_dir="DeepFilterNet3", log_level="WARNING", log_file=None)
+        return network, df_state
+
+    return _load_once("denoiser", load)

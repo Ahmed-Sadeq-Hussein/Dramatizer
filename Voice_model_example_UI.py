@@ -68,15 +68,11 @@ def run_job(job_id, clip, target_text, voice_name):
 
         path = Voice_model.generate_speech(reference_audio, reference_text, target_text, voice_name)
 
-        record = {
-            "target_text": target_text,
-            "reference_clip": f"{clip.dataset}/{clip.clip_id}",
-            "reference_text": reference_text,
-            "voice_name": path.parent.name,
-            "seconds": round(time.time() - started, 1),
-            "created": time.strftime("%Y-%m-%d %H:%M:%S"),
-        }
-        path.with_suffix(".json").write_text(json.dumps(record, indent=2), encoding="utf-8")
+            # generate_speech has written the record; add which library clip was used
+        info_file = path.with_suffix(".json")
+        record = json.loads(info_file.read_text(encoding="utf-8"))
+        record["reference_clip"] = f"{clip.dataset}/{clip.clip_id}"
+        info_file.write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
 
         set_job(job_id, status="done", result=generated_json(path))
 

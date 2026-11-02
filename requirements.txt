@@ -70,6 +70,12 @@ tensorrt-cu12-libs==10.13.3.9; sys_platform == 'linux'
 setuptools<81
 wheel
 
+# Only for the MCP server in mcp_server/. Install it in its own environment:
+#   conda create -n dramatizer-mcp python=3.10 -y
+#   pip install -r mcp_server/requirements.txt
+mcp==1.30.0
+networkx==3.4.2
+
 # ===========================================================================
 # Setting up the conda environment
 # ===========================================================================

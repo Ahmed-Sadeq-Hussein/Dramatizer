@@ -1,15 +1,12 @@
 # mcp_server/build_graph.py
 """build_graph.py | Build the knowledge graph from the generated clips.
 
-Reads every output/<voice>/<clip>.json written by Voice_model.generate_speech
-and saves the graph to history/graph.json:
-
+Reads output/<voice>/<clip>.json and its .wav file and makes a graph:
     voice   a reference voice                    (kind="voice")
     output  a generated clip, with the text said (kind="output")
 
-Run it again after each new generation to update the graph.
-
-    python mcp_server/build_graph.py
+The server rebuilds the graph by itself when it is out of date.
+You can also run it by hand:  python mcp_server/build_graph.py
 """
 import json
 from pathlib import Path
@@ -21,10 +18,10 @@ OUTPUT_DIR = PROJECT / "output"
 GRAPH_PATH = PROJECT / "history" / "graph.json"
 
 
-def build():
+def build(output_dir=OUTPUT_DIR, project=PROJECT):
     g = nx.Graph()
 
-    for info_file in sorted(OUTPUT_DIR.glob("*/*.json")):
+    for info_file in sorted(Path(output_dir).glob("*/*.json")):
         wav = info_file.with_suffix(".wav")
         if not wav.exists():
             continue  # a record without its audio is skipped
@@ -38,7 +35,7 @@ def build():
             output,
             kind="output",
             voice=voice,
-            file=wav.relative_to(PROJECT).as_posix(),
+            file=wav.relative_to(project).as_posix(),
             text=record["target_text"],
             seconds=record.get("seconds"),
             created=record.get("created"),
@@ -48,10 +45,11 @@ def build():
     return g
 
 
-def save(g):
-    GRAPH_PATH.parent.mkdir(parents=True, exist_ok=True)
+def save(g, path=GRAPH_PATH):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
     data = nx.node_link_data(g, edges="links")
-    GRAPH_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 if __name__ == "__main__":

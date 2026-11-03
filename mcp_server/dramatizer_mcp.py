@@ -1,6 +1,9 @@
 # mcp_server/dramatizer_mcp.py
 """dramatizer_mcp.py | An MCP server that lets an assistant ask the knowledge graph questions.
 
+Read-only: the tools never generate audio. The only write is the graph file
+itself, rebuilt when a new generation has been added since it was saved.
+
 Start it with:  python mcp_server/dramatizer_mcp.py
 """
 import json
@@ -9,15 +12,27 @@ from pathlib import Path
 import networkx as nx
 from mcp.server.fastmcp import FastMCP
 
-GRAPH_PATH = Path(__file__).resolve().parent.parent / "history" / "graph.json"
+import build_graph
+
+PROJECT = Path(__file__).resolve().parent.parent
+GRAPH_PATH = PROJECT / "history" / "graph.json"
+OUTPUT_DIR = PROJECT / "output"
 
 mcp = FastMCP("dramatizer")
 
 
-def load_graph():
-    """The graph saved by build_graph.py. Empty if it has not been built yet."""
+def is_stale():
+    """True if the graph is missing or older than the newest generated record."""
     if not GRAPH_PATH.exists():
-        return nx.Graph()
+        return True
+    newest = max((p.stat().st_mtime for p in OUTPUT_DIR.glob("*/*.json")), default=0)
+    return newest > GRAPH_PATH.stat().st_mtime
+
+
+def load_graph():
+    """The graph, rebuilt first if it is out of date."""
+    if is_stale():
+        build_graph.save(build_graph.build(OUTPUT_DIR, PROJECT), GRAPH_PATH)
     data = json.loads(GRAPH_PATH.read_text(encoding="utf-8"))
     return nx.node_link_graph(data, edges="links")
 

@@ -22,7 +22,7 @@ genome distance and the human review loop are still to come.
 
 `genome.py` holds the representation and editing functions; `model.py`
 exposes `Gene`, `Genome` and `prepare_delivery` without loading a voice model.
-`model.py` is a file, not a folder. The genome module has no model dependencies.
+The genome module has no model dependencies.
 
 ```python
 import json

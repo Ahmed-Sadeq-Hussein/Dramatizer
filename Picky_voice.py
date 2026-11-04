@@ -65,7 +65,7 @@ import pyarrow.parquet as pq
 import soundfile as sf
 
 import model
-from Voice_Importer import get_clip, list_speakers, read_crema_d, read_vctk
+from Voice_Importer import get_clip, list_speakers, read_crema_d, read_libritts_r, read_vctk
 
 # The defaults of the four options (see the top of this file for why)
 MIN_SECONDS = 3.0
@@ -205,7 +205,7 @@ def export_references(selected, folder):
 
 
 if __name__ == "__main__":
-    readers = {"crema-d": read_crema_d, "vctk": read_vctk}
+    readers = {"crema-d": read_crema_d, "vctk": read_vctk, "libritts-r": read_libritts_r}
 
     parser = argparse.ArgumentParser(description="Choose which clips of a dataset to use as reference voices.")
     parser.add_argument("dataset", choices=readers)

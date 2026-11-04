@@ -1,9 +1,11 @@
 """Voice_Importer.py | Browse the voice datasets: list the clips, hear one, read its script.
 
-Two datasets from the voice library are supported (see "Voice library.txt"):
+Three datasets from the voice library are supported (see "Voice library.txt"):
 
-    CREMA-D   91 actors, 12 sentences in 6 emotions, one wav file per clip
-    VCTK      109 speakers with many accents, stored in parquet files
+    CREMA-D      91 actors, 12 sentences in 6 emotions, one wav file per clip
+    VCTK         109 speakers with many accents, stored in parquet files
+    LibriTTS-R   audiobook readers (dev_clean and test_clean), a wav and a
+                 .normalized.txt script per clip. CC BY 4.0: credit it if used
 
 Each is read into the same shape, a list of Clip objects, so everything after
 reading works the same for both.
@@ -21,10 +23,14 @@ or browse interactively, from the command line:
 
     python Voice_Importer.py crema-d "D:/Voices library/CREMA-D"
     python Voice_Importer.py vctk "D:/Voices library/VCTK"
+    python Voice_Importer.py libritts-r "D:/Voices library/LibriTTS-R"
 
 VCTK clips live inside parquet files, so get_clip writes the chosen clip to a
 wav file (with its script next to it as a .txt), in IMPORT_DIR from .env, or
 imported_voices/ in this project.
+
+read_custom_voices reads your own recordings (CUSTOM_VOICES in .env), for the
+UIs. They are not a dataset: build_manifest.py and the splits leave them out.
 """
 import argparse
 import io
@@ -35,6 +41,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pyarrow.parquet as pq
+import soundfile as sf
 from dotenv import load_dotenv
 
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -82,9 +89,9 @@ CREMA_D_INTENSITIES = {
 class Clip:
     """One recording from a dataset, whichever dataset it came from."""
 
-    dataset: str            # "CREMA-D" or "VCTK"
+    dataset: str            # "CREMA-D", "VCTK" or "LibriTTS-R"
     clip_id: str            # unique within the dataset, e.g. "1001_DFA_ANG_XX"
-    speaker: str            # e.g. "1001" or "p247"
+    speaker: str            # e.g. "1001", "p247" or "1272"
     text: str               # the script: the exact words spoken
     source: Path            # the wav file, or the parquet file that holds it
     details: dict = field(default_factory=dict)   # emotion, intensity, mic, ...
@@ -170,6 +177,67 @@ def read_vctk(folder):
     return sorted(clips, key=lambda c: (c.speaker, c.clip_id))
 
 
+def read_libritts_r(folder):
+    """
+    Every clip in a LibriTTS-R folder: <split>/<speaker>/<chapter>/<clip id>.wav,
+    with its script beside it as <clip id>.normalized.txt. A wav without a
+    script is left out. Returns a list of Clip, sorted by speaker and clip id.
+    """
+    folder = Path(folder)
+    wavs = sorted(folder.rglob("*.wav"))
+
+    if not wavs:
+        raise FileNotFoundError(f"No wav files found in {folder}. Is this the LibriTTS-R folder?")
+
+    clips = []
+
+    for wav in wavs:
+        script = wav.with_suffix(".normalized.txt")
+
+        if not script.is_file():
+            continue
+
+        clips.append(Clip(
+            dataset="LibriTTS-R",
+            clip_id=wav.stem,
+            speaker=wav.parent.parent.name,
+            text=script.read_text(encoding="utf-8").strip(),
+            source=wav,
+            details={"split": wav.parent.parent.parent.name},
+        ))
+
+    return sorted(clips, key=lambda c: (c.speaker, c.clip_id))
+
+
+def read_custom_voices(folder):
+    """
+    Your own recorded voices: the sub-folders of `folder` named in CUSTOM_VOICES
+    in .env, each with one recording named reference.* and one .txt script.
+    Returns a list of Clip, one per voice, sorted by speaker.
+    """
+    folder = Path(folder)
+    names = [name.strip() for name in os.environ.get("CUSTOM_VOICES", "").split(",") if name.strip()]
+    clips = []
+
+    for name in names:
+        recordings = sorted(path for path in (folder / name).glob("reference.*") if path.suffix.lower() in (".wav", ".mp3", ".flac"))
+        scripts = sorted((folder / name).glob("*.txt"))
+
+        if len(recordings) != 1 or len(scripts) != 1:
+            print(f"Custom voice {name}: left out, it needs one reference recording and one .txt ({folder / name})")
+            continue
+
+        clips.append(Clip(
+            dataset="Custom voices",
+            clip_id=name.capitalize(),
+            speaker=name.capitalize(),
+            text=scripts[0].read_text(encoding="utf-8").strip(),
+            source=recordings[0],
+        ))
+
+    return sorted(clips, key=lambda c: c.speaker)
+
+
 # --------------------------------------------------------------------------- #
 # Viewing, picking and listening
 # --------------------------------------------------------------------------- #
@@ -223,14 +291,21 @@ def get_clip(clip):
 
     CREMA-D clips are already wav files. VCTK clips are written out of their
     parquet file into IMPORT_DIR/VCTK/<speaker>/<clip id>.wav, once, with the
-    script beside it as <clip id>.txt, ready to use as a reference voice.
+    script beside it as <clip id>.txt, ready to use as a reference voice. A
+    custom voice that is not a wav file is written there the same way.
     """
-    if clip.dataset != "VCTK":
+    if clip.dataset != "VCTK" and clip.source.suffix.lower() == ".wav":
         return clip.source, clip.text
 
-    wav = IMPORT_DIR / "VCTK" / clip.speaker / f"{clip.clip_id}.wav"
+    wav = IMPORT_DIR / clip.dataset / clip.speaker / f"{clip.clip_id}.wav"
 
-    if not wav.exists():
+    if clip.dataset != "VCTK":
+        if not wav.exists() or wav.stat().st_mtime < clip.source.stat().st_mtime:
+            samples, rate = sf.read(str(clip.source), dtype="float32")
+            wav.parent.mkdir(parents=True, exist_ok=True)
+            sf.write(str(wav), samples, rate, subtype="PCM_16")
+            wav.with_suffix(".txt").write_text(clip.text, encoding="utf-8")
+    elif not wav.exists():
         table = pq.ParquetFile(clip.source).read_row_group(clip.row_group, columns=["audio"])
         audio = table.column("audio")[clip.row].as_py()
 
@@ -346,7 +421,7 @@ Commands:
 
 
 if __name__ == "__main__":
-    readers = {"crema-d": read_crema_d, "vctk": read_vctk}
+    readers = {"crema-d": read_crema_d, "vctk": read_vctk, "libritts-r": read_libritts_r}
 
     parser = argparse.ArgumentParser(description="Browse a voice dataset: list clips, hear one, read its script.")
     parser.add_argument("dataset", choices=readers, help="which dataset the folder holds")

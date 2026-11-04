@@ -3,7 +3,7 @@ VOICE LIBRARY
 
 The speech datasets Dramatizer 2 uses as example voices, and where to get them.
 
-Every dataset here allows both academic and commercial use. The two that are
+Every dataset here allows both academic and commercial use. The three that are
 downloaded share no speakers: each was recorded by a different group of people.
 
 Local copy (this machine): D:/Voices library/<folder>
@@ -43,13 +43,26 @@ Download:   https://huggingface.co/datasets/myleslinder/crema-d
 Original:   https://github.com/CheyneyComputerScience/CREMA-D
 
 
+3. LibriTTS-R (dev-clean and test-clean only)
+---------------------------------------------
+Folder:     D:/Voices library/LibriTTS-R
+Licence:    CC BY 4.0 (free for any use; credit the dataset)
+Speakers:   79 audiobook readers (40 in dev-clean, 39 in test-clean)
+Speech:     10,573 clips, read from audiobooks, restored by the Miipher model
+Size:       about 2.5 GB download; archives kept in LibriTTS-R/archives
+Download:   https://www.openslr.org/141/ (checksums verified on 3 November 2026)
+Note:       dev-clean and test-clean are the names in the corpus. They have
+            nothing to do with this project's own split.
+
+
 NOT DOWNLOADED (also free for academic and commercial use)
 ==========================================================
 
 GLOBE (version 2)      CC0. 23,519 speakers with worldwide English accents,
                        about 76 GB.
                        https://huggingface.co/datasets/MushanW/GLOBE_V2
-LibriTTS-R             CC BY 4.0. 2,456 audiobook readers, about 101 GB.
+LibriTTS-R (the rest)  CC BY 4.0. 2,456 audiobook readers in all, about 101 GB.
+                       Only dev-clean and test-clean are downloaded (see 3 above).
                        https://huggingface.co/datasets/mythicinfinity/libritts_r
 Mozilla Common Voice   CC0. Tens of thousands of speakers, 100+ languages.
                        No longer on Hugging Face: download it from

@@ -22,6 +22,12 @@ Anything on the internet can reach a tunnel, including scanners that connect and
 then say nothing. Each connection does its HTTPS handshake on its own thread, so
 one of those cannot hold up the others, and is closed after IDLE_SECONDS of silence.
 
+Random voices: a panel above the clips picks a number of random neutral voices,
+one per actor, from one dataset or an even share of all (split_voice_data.py). It
+can stay inside one split. Press Use on a voice to make it the reference; the list
+stays while you go through them. The seed is shown, and the same settings and seed
+give the same voices. Custom voices are never picked.
+
     python Voice_model_example_UI_V4.py
     then open https://127.0.0.1:5004
 
@@ -41,15 +47,19 @@ import ssl
 import threading
 import time
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from ipaddress import ip_address
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit
 
 from flask import abort, redirect, render_template_string, request, session
+from werkzeug.datastructures import MultiDict
 from werkzeug.serving import WSGIRequestHandler
 
 import Voice_model_example_UI_V3 as v3
 import model
+import split_voice_data
+from Picky_voice import MAX_SECONDS, MIN_SECONDS
 from Voice_Importer import read_custom_voices
 
 PORT = 5004
@@ -62,6 +72,11 @@ LOCK_SECONDS = 30           # the first lock; doubles with every further wrong t
 MAX_LOCK_SECONDS = 900
 LOGIN_HOURS = 12
 IDLE_SECONDS = 30           # a connection silent for this long is closed
+
+VOICES_FROM_ALL = "all"     # the random voices come from an even share of every dataset
+VOICE_SPLITS = {"train": "Train", "validation": "Validation", "test": "Final test", "all": "Every speaker"}
+VOICE_SPLIT = "validation"  # the final test stays untouched unless it is asked for
+VOICES_SHOWN = 15           # the number first shown in the box
 
 app = v3.app
 # A new key at every start: restarting logs everyone out
@@ -82,7 +97,22 @@ v3.library_ui.DATASETS["Custom voices"] = (read_custom_voices, model.setting("VO
 # them. Without JavaScript, or on a wide screen, everything shows as in V3.
 PHONE_STYLE = """<style>
   .phone-tabs, .filters-toggle { display: none; }
+  .sampler { margin-bottom: 10px; padding: 10px 12px; background: var(--band); border: 1px solid var(--rule); border-radius: 8px; }
+  .sampler summary { cursor: pointer; font-weight: 600; }
+  .sampler-form { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; margin: 10px 0; }
+  .sampler-form label { display: grid; gap: 3px; font-size: 0.8rem; color: var(--muted); }
+  .sampler-form input[type=number] { width: 6.5em; min-width: 0; }
+  .sampler .summary { margin: 0 0 8px; font-size: 0.82rem; color: var(--muted); }
+  .sampler .table-wrap { background: var(--surface); }
+  .sampler td audio { width: 150px; }
   @media (max-width: 860px) {
+    .sampler-form label { flex: 1 1 40%; }
+    .sampler-form select, .sampler-form input[type=number] { width: 100%; box-sizing: border-box; }
+    .sampler-form button { flex: 1 1 100%; }
+    .sampler .table-wrap { background: none; }
+    .sampler td audio { width: 100%; }
+    .sampler td.use { order: 9; }
+    .sampler summary { min-height: 28px; display: list-item; }
     body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
     header { flex-wrap: wrap; gap: 6px 12px; }
     header h1 { font-size: 1.1rem; margin: 0; }
@@ -221,7 +251,58 @@ PHONE_TABS = """<nav class="phone-tabs" aria-label="Parts of the page">
 </script>
 """
 
-# The page is V3's, with its own name, a Log out button and the phone tabs
+# The random voices. "Use" opens a voice in its own dataset; the list stays in the URL.
+SAMPLER = """{% set sample = random_voices(s) %}
+  <details class="sampler" {{ 'open' if s.voices }}>
+    <summary>Random voices{% if sample.rows %} ({{ sample.rows|length }}){% endif %}</summary>
+    <form method="post" action="/random" class="sampler-form" autocomplete="off">
+      <input type="hidden" name="state" value="{{ q() }}">
+      <label>How many <input type="number" name="voices" min="1" required value="{{ s.voices or voices_shown }}"></label>
+      <label>From
+        <select name="voices_from">
+          <option value="{{ from_all }}">All, even share</option>
+          {% for name in sample.sources %}<option {{ 'selected' if name == s.voices_from }}>{{ name }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Speakers
+        <select name="voices_split">
+          {% for value, label in voice_splits.items() %}<option value="{{ value }}" {{ 'selected' if value == s.voices_split }}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Min length (s) <input type="number" name="voices_min" min="0" max="30" step="0.5" value="{{ '%g' % s.voices_min }}"></label>
+      <label>Max length (s) <input type="number" name="voices_max" min="0" max="30" step="0.5" value="{{ '%g' % s.voices_max }}"></label>
+      <label>Seed <input type="number" name="voices_seed" min="0" placeholder="new"></label>
+      <button type="submit">Pick voices</button>
+      {% if s.voices %}<a class="button" href="/?{{ q(voices=0) }}">Clear</a>{% endif %}
+    </form>
+    {% if sample.error %}<p class="note error">{{ sample.error }}</p>{% endif %}
+    {% if sample.rows %}
+      <p class="summary">Seed {{ s.voices_seed }}, {{ voice_splits[s.voices_split]|lower }}. The same settings and seed give the same voices.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Voice</th><th>Details</th><th>Script</th><th>Listen</th></tr></thead>
+          <tbody>
+            {% for clip in sample.rows %}
+              <tr aria-selected="{{ 'true' if first and clip.dataset == first.dataset and clip.clip_id == first.clip_id else 'false' }}">
+                <td class="use"><a class="button" href="/?{{ q(dataset=clip.dataset, clip=clip.clip_id, clip2='', speaker='', text='', page=1, details={}) }}">Use</a></td>
+                <td class="speaker">{{ clip.speaker }}<br><span class="details">{{ clip.dataset }}</span></td>
+                <td class="details">{{ clip.details.values()|join(' · ') }}{% if length(clip) %} · {{ '%.1f' % length(clip) }} s{% endif %}</td>
+                <td>{{ clip.text }}</td>
+                <td><audio controls preload="none" src="/audio/{{ clip.dataset }}/{{ clip.clip_id }}.wav"></audio></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </details>
+"""
+
+# So that Apply in the filters does not lose the random voices
+SAMPLER_KEPT = """{% if s.voices %}{% for name in voice_fields %}<input type="hidden" name="{{ name }}" value="{{ voice_values(s)[name] }}">{% endfor %}{% endif %}
+    """
+
+# The page is V3's, with its own name, a Log out button, the random voices and the phone tabs
 v3.PAGE = (v3.PAGE
            .replace("<title>Voice Generator V3</title>", "<title>Voice Generator V4</title>")
            .replace('<span class="version">V3</span>', '<span class="version">V4</span>')
@@ -229,10 +310,118 @@ v3.PAGE = (v3.PAGE
 </header>""", 1)
            .replace("</head>", PHONE_STYLE + "</head>", 1)
            .replace('<form method="get" action="/" class="picky"',
-                    '<button type="button" class="filters-toggle quiet" aria-expanded="false">Filters</button>\n'
+                    SAMPLER + '  <button type="button" class="filters-toggle quiet" aria-expanded="false">Filters</button>\n'
                     '  <form method="get" action="/" class="picky"', 1)
+           .replace('<input type="hidden" name="sent" value="1">',
+                    SAMPLER_KEPT + '<input type="hidden" name="sent" value="1">', 1)
            .replace("<h3>Recent</h3>", '</section>\n  <section class="recent-part" aria-label="Recent">\n    <h3>Recent</h3>', 1)
            .replace("</body>", PHONE_TABS + "</body>", 1))
+
+
+# --------------------------------------------------------------------------- #
+# Random voices: V3's settings and page, plus the list in the URL
+# --------------------------------------------------------------------------- #
+
+v3_read_settings = v3.read_settings
+v3_query_string = v3.query_string
+
+
+def read_settings(args):
+    settings = v3_read_settings(args)
+    source = args.get("voices_from", VOICES_FROM_ALL)
+    split = args.get("voices_split", VOICE_SPLIT)
+    settings.update(
+        voices=max(args.get("voices", 0, type=int), 0),
+        voices_from=source if source in split_voice_data.PICKERS else VOICES_FROM_ALL,
+        voices_split=split if split in VOICE_SPLITS else VOICE_SPLIT,
+        voices_min=v3._number(args.get("voices_min"), MIN_SECONDS, 0.0, 30.0),
+        voices_max=v3._number(args.get("voices_max"), MAX_SECONDS, 0.0, 30.0),
+        voices_seed=max(args.get("voices_seed", 0, type=int), 0),
+    )
+    return settings
+
+
+def voice_values(settings):
+    """The random voices' settings, as they go in a URL or a form."""
+    return {
+        "voices": settings["voices"],
+        "voices_from": settings["voices_from"],
+        "voices_split": settings["voices_split"],
+        "voices_min": f"{settings['voices_min']:g}",
+        "voices_max": f"{settings['voices_max']:g}",
+        "voices_seed": settings["voices_seed"],
+    }
+
+
+def query_string(settings, **changes):
+    s = {**settings, **changes}
+    base = v3_query_string(s)
+    return f"{base}&{urlencode(voice_values(s))}" if s["voices"] else base
+
+
+v3.read_settings = read_settings
+v3.query_string = query_string
+
+
+@lru_cache(maxsize=32)
+def pick_voices(number, source, split, min_seconds, max_seconds, seed):
+    library = v3.library_ui.library
+    missing = [name for name in split_voice_data.PICKERS if name not in library]
+    split = None if split == "all" else split
+
+    if source != VOICES_FROM_ALL:
+        if source in missing:
+            raise ValueError(f"{source} is not in the voice library.")
+        picker = split_voice_data.PICKERS[source]
+        return picker(library[source]["clips"], number, min_seconds, max_seconds, seed, split)
+
+    if missing:
+        raise ValueError(f"An even share needs every dataset, and {', '.join(missing)} is not in the voice library.")
+    clips = {name: library[name]["clips"] for name in split_voice_data.PICKERS}
+    return split_voice_data.pick_even(number, min_seconds, max_seconds, seed, split, clips)
+
+
+def random_voices(settings):
+    """What the panel shows: the voices, or why there are none."""
+    sources = [name for name in split_voice_data.PICKERS if name in v3.library_ui.library]
+    if not settings["voices"]:
+        return {"rows": [], "error": "", "sources": sources}
+
+    try:
+        rows = pick_voices(settings["voices"], settings["voices_from"], settings["voices_split"],
+                           settings["voices_min"], settings["voices_max"], settings["voices_seed"])
+    except ValueError as error:
+        return {"rows": [], "error": str(error), "sources": sources}
+
+    return {"rows": rows, "error": "", "sources": sources}
+
+
+@app.context_processor
+def sampler_helpers():
+    return {
+        "random_voices": random_voices,
+        "voice_values": voice_values,
+        "voice_fields": list(voice_values(read_settings(MultiDict()))),
+        "voice_splits": VOICE_SPLITS,
+        "from_all": VOICES_FROM_ALL,
+        "voices_shown": VOICES_SHOWN,
+    }
+
+
+@app.route("/random", methods=["POST"])
+def random_pick():
+    """Pick the voices. Without a seed a new one is drawn, and it goes in the URL so the pick can be repeated."""
+    s = read_settings(MultiDict(parse_qsl(request.form.get("state", ""))))
+    fields = read_settings(request.form)
+    seed = request.form.get("voices_seed", "").strip()
+
+    if fields["voices"] < 1:
+        return v3.back(s, error="Ask for at least one random voice.")
+
+    s.update({name: fields[name] for name in voice_values(fields)})
+    s["voices_seed"] = fields["voices_seed"] if seed else secrets.randbelow(10_000)
+    return v3.back(s)
+
 
 failed_logins = 0
 locked_until = 0.0

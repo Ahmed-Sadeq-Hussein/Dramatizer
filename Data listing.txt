@@ -1,0 +1,70 @@
+DATA LISTING
+============
+
+The data this project uses: how big each part is, and where it came from.
+Sizes were measured on disk on 5 November 2026 (1 GB = 1,000,000,000 bytes).
+Local copy: D:/Voices library/<folder>. The audio itself is not in this repository.
+
+Details of each dataset: "Voice library.txt".
+Exactly which clips are used, with a checksum for each: data/manifests/voices-v1.json.
+
+
+SUMMARY
+=======
+
+Dataset      Size on disk   All clips   All speakers   Used clips   Used speakers   Used speech
+-----------------------------------------------------------------------------------------------
+VCTK         17.60 GB          88,156            109        6,038             109       6.95 h
+CREMA-D       1.08 GB           7,442             91        1,158              90       1.09 h
+LibriTTS-R    5.68 GB          10,573             79        6,952              77      15.29 h
+-----------------------------------------------------------------------------------------------
+Total        24.35 GB        106,171            279       14,148             276      23.33 h
+
+Used: 3-25 s of speech, every emotion, every clip of every speaker. From VCTK only
+one microphone (mic1), and without two clips that hold no speech.
+
+
+THE DATASETS
+============
+
+1. VCTK (version 0.92, the copy with silence trimmed)
+   Size:      17.60 GB (parquet files)
+   Licence:   CC BY 4.0
+   Got from:  https://huggingface.co/datasets/jspaulsen/vctk
+   Original:  https://datashare.ed.ac.uk/handle/10283/3443
+
+2. CREMA-D (the Hugging Face copy)
+   Size:      1.08 GB (0.61 GB unpacked wav files in audio/, 0.47 GB parquet files in data/)
+   Licence:   ODbL 1.0
+   Got from:  https://huggingface.co/datasets/myleslinder/crema-d
+   Original:  https://github.com/CheyneyComputerScience/CREMA-D
+
+3. LibriTTS-R (dev-clean and test-clean only)
+   Size:      5.68 GB (3.03 GB unpacked, 2.65 GB downloaded archives kept in archives/)
+   Licence:   CC BY 4.0
+   Got from:  https://www.openslr.org/141/
+   Original:  the same page
+
+
+OUR OWN VOICES
+==============
+
+Custom voices, shown in the V4 page only. Not downloaded from anywhere, not in this
+repository, and left out of the manifest and the splits.
+
+Ahmed    256 KB, one 5.3 s recording    D:/voice data/Voices/ahmed
+Julius    63 KB, one 5.3 s recording    D:/voice data/Voices/julius
+
+
+HELD-OUT LINES
+==============
+
+20 sentences written for this project: 10 for validation, 10 for the final test.
+They are in build_splits.py and data/manifests/splits-v1.json, and in none of the datasets.
+
+
+DATA VERSION
+============
+
+Manifest:   data/manifests/voices-v1.json
+Clips ID:   clips_sha256 2113c14fb14cd37c6a011b87d5005ade1e123f9120f69b742bd63d9de57b5f04

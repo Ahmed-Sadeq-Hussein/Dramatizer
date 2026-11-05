@@ -11,8 +11,9 @@ there, nowhere else.
     perq_reward("clip.wav")
     similarity_reward("reference.wav", "clip.wav")
     similarity_matrix_reward({"a": "a.wav", "b": "b.wav", "c": "c.wav"})
+    sanity_check("reference.wav", "baseline.wav", "test.wav")
 
-Every function also accepts details=True and then returns a dict with the
+Every reward function also accepts details=True and then returns a dict with the
 reward and every number behind it, for logs and for debugging a run.
 
 Lessons from earlier work (see PLAN.md, section 7) built into the design:
@@ -97,6 +98,19 @@ class RewardConfig:
     # and that is not the voice changing. Never below sim_zero.
     sim_emotion_margin: float = 0.08
 
+    # --- Sanity check (a test clip against the baseline of the same line) ----
+    # Most word differences allowed between the test clip and the baseline. It is a
+    # limit and not a goal, so nothing is gained by speaking slowly to get below it.
+    sanity_wer_limit: float = 0.05
+    # Least speaker similarity between the test clip and the baseline.
+    # Measured 5 Nov 2026 on fresh CosyVoice 3 clones of 12 train voices (4 per dataset):
+    #   same voice, same line, made twice:   0.893 to 0.971
+    #   same voice, with [laughter] [breath]: 0.922 to 0.967
+    #   different voices, same line:         0.354 to 0.871 (66 pairs)
+    # It is higher than sim_full because two clones of one line are closer to each
+    # other than a clone is to its reference clip (0.793 to 0.931).
+    sanity_similarity: float = 0.88
+
 
 CONFIG = RewardConfig()
 
@@ -118,6 +132,55 @@ def speech_seconds(audio, config=CONFIG):
     samples = load_mono(audio, 16000)
     intervals = librosa.effects.split(samples, top_db=config.speech_top_db)
     return float(sum(end - start for start, end in intervals)) / 16000
+
+
+# --------------------------------------------------------------------------- #
+# Sanity check
+# --------------------------------------------------------------------------- #
+
+
+def sanity_check(reference_audio, baseline_audio, test_audio, config=CONFIG):
+    """
+    Is a test clip acceptable next to the baseline of the same line in the same voice?
+
+    reference_audio  the recording of the voice being cloned
+    baseline_audio   the line made with default settings
+    test_audio       the same line, to judge
+
+    Acceptable means both of:
+      - WER: what is heard in the test clip differs from what is heard in the
+        baseline by at most sanity_wer_limit
+      - its speaker similarity to the baseline is at least sanity_similarity
+
+    The similarities to the reference and the pace are reported but do not decide
+    the result. Pace is the baseline's speaking time divided by the test clip's:
+    below 1 the test clip speaks more slowly.
+
+    Returns a dict with "acceptable" (a bool) and every number behind it.
+    """
+    from Similarity import speaker_similarity
+    from WER import transcribe, word_error_rate
+
+    baseline_heard = transcribe(baseline_audio)
+    wer = word_error_rate(test_audio, baseline_heard)
+    similarity = speaker_similarity(test_audio, baseline_audio)
+
+    wer_ok = wer <= config.sanity_wer_limit
+    similarity_ok = similarity >= config.sanity_similarity
+
+    return {
+        "acceptable": wer_ok and similarity_ok,
+        "wer_ok": wer_ok,
+        "similarity_ok": similarity_ok,
+        "wer": wer,
+        "wer_limit": config.sanity_wer_limit,
+        "baseline_heard": baseline_heard,
+        "similarity": similarity,
+        "similarity_limit": config.sanity_similarity,
+        "pace": speech_seconds(baseline_audio, config) / speech_seconds(test_audio, config),
+        "baseline_to_reference": speaker_similarity(baseline_audio, reference_audio),
+        "test_to_reference": speaker_similarity(test_audio, reference_audio),
+    }
 
 
 # --------------------------------------------------------------------------- #

@@ -44,7 +44,7 @@ COSYVOICE3_PROMPT = "You are a helpful assistant.<|endofprompt|>"
 GENERIC_NAMES = ("reference", "refrence")
 
 
-def generate_speech(reference_audio, reference_text, target_text, voice_name=None):
+def generate_speech(reference_audio, reference_text, target_text, voice_name=None, *, genome=None):
     """
     Speak target_text in the voice of reference_audio, using CosyVoice 3
     with the Fun-CosyVoice3-0.5B-2512 weights.
@@ -55,6 +55,8 @@ def generate_speech(reference_audio, reference_text, target_text, voice_name=Non
     voice_name       the folder the audio is written to. Without it, the name
                      of the reference file is used, or its folder's name when
                      the file is just called "reference"
+
+    genome          optional model.Genome of delivery edits; omit for neutral speech
 
     Returns the path of the new wav file: OUTPUT_DIR/voice_name/voice_name_TIME.wav
     """
@@ -70,6 +72,13 @@ def generate_speech(reference_audio, reference_text, target_text, voice_name=Non
     if not target_text.strip():
         raise ValueError("target_text is empty: give the words to speak")
 
+    delivery = model.prepare_delivery(target_text, genome)
+    # Keep the old inference arguments when no genome is supplied. For genome
+    # markup, disable text normalisation so it cannot rewrite delivery tags.
+    delivery_options = {} if genome is None or not genome.genes else {
+        "speed": delivery.speed, "text_frontend": False,
+    }
+
     if voice_name is None:
         voice_name = reference_audio.stem
 
@@ -84,10 +93,11 @@ def generate_speech(reference_audio, reference_text, target_text, voice_name=Non
     chunks = [
         output["tts_speech"]
         for output in cosyvoice.inference_zero_shot(
-            target_text,
+            delivery.markup,
             COSYVOICE3_PROMPT + reference_text.strip(),
             str(reference_audio),
             stream=False,
+            **delivery_options,
         )
     ]
 

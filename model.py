@@ -39,6 +39,14 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+# Pure Python: these do not load a neural model or require a GPU.
+from genome import Gene, Genome, to_cosyvoice
+
+
+def prepare_delivery(text, genome=None):
+    """Convert plain text and an optional Genome into CosyVoice markup + speed."""
+    return to_cosyvoice(text, genome)
+
 PROJECT_DIR = Path(__file__).resolve().parent
 
 # The settings of this machine

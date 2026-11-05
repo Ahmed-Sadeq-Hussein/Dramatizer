@@ -11,6 +11,7 @@ The folders come from .env:
     VOICE_LIBRARY_DIR   the folder that holds one sub-folder per dataset
     CREMA_D_FOLDER      the CREMA-D sub-folder (default CREMA-D)
     VCTK_FOLDER         the VCTK sub-folder (default VCTK)
+    LIBRITTS_R_FOLDER   the LibriTTS-R sub-folder (default LibriTTS-R)
 
 A dataset whose folder is missing is left out, and the page shows the rest.
 
@@ -23,7 +24,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from flask import Flask, abort, jsonify, render_template, request, send_file
 
-from Voice_Importer import find_clips, get_clip, list_speakers, read_crema_d, read_vctk
+from Voice_Importer import find_clips, get_clip, list_speakers, read_crema_d, read_libritts_r, read_vctk
 
 PROJECT_DIR = Path(__file__).resolve().parent
 
@@ -35,6 +36,7 @@ LIBRARY_DIR = Path(os.environ.get("VOICE_LIBRARY_DIR", "voice_library"))
 DATASETS = {
     "CREMA-D": (read_crema_d, os.environ.get("CREMA_D_FOLDER", "CREMA-D"), ["emotion", "intensity"]),
     "VCTK": (read_vctk, os.environ.get("VCTK_FOLDER", "VCTK"), ["mic"]),
+    "LibriTTS-R": (read_libritts_r, os.environ.get("LIBRITTS_R_FOLDER", "LibriTTS-R"), ["split"]),
 }
 
 PAGE_SIZE = 50

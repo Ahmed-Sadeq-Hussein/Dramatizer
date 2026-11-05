@@ -1,14 +1,18 @@
-"""Seeded local mutation search. The caller supplies a higher-is-better score.
+"""Random-parent exploration with WER/speaker gates and a diverse shortlist.
 
-No rendering occurs implicitly: score(genome) may generate audio, apply the
-existing rewards, store audio/measurements, or use a cheap development score.
+The callback renders a genome and returns raw measurements in Evaluation.
+Accepted genomes become parents. Exact repeats are skipped before evaluation.
 """
 import math
+import logging
 import random
 from dataclasses import asdict, dataclass
 from numbers import Real
 
 from genome import FEATURES, MAX_GENES, MIN_RATE, MAX_RATE, Gene, Genome
+from genome_distance import genome_vector
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -18,7 +22,11 @@ class SearchConfig:
     features: tuple[str, ...] = FEATURES
     position_sigma: float = 0.1
     rate_sigma: float = 0.1
-    accept_equal: bool = True
+    max_wer: float = 0.10
+    min_similarity: float = 0.80
+    shortlist_size: int = 10
+    vector_bins: int = 5
+    speed_weight: float = 0.25
 
     def __post_init__(self):
         object.__setattr__(self, "features", tuple(self.features))
@@ -33,8 +41,14 @@ class SearchConfig:
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(value) or value <= 0:
                 raise ValueError(f"{name} must be finite and positive")
-        if type(self.accept_equal) is not bool:
-            raise ValueError("accept_equal must be a bool")
+        for name, low, high in (("max_wer", 0, math.inf), ("min_similarity", -1, 1)):
+            value = getattr(self, name)
+            if (isinstance(value, bool) or not isinstance(value, Real)
+                    or not math.isfinite(value) or not low <= value <= high):
+                raise ValueError(f"{name} must be finite and between {low} and {high}")
+        if type(self.shortlist_size) is not int or self.shortlist_size < 1:
+            raise ValueError("shortlist_size must be a positive integer")
+        genome_vector(Genome(), bins=self.vector_bins, speed_weight=self.speed_weight)
 
 
 @dataclass(frozen=True)
@@ -116,83 +130,178 @@ def mutate(genome, *, rng=None, config=None):
 
 
 @dataclass(frozen=True)
-class SearchStep:
-    step: int
-    parent: Genome
+class Evaluation:
+    """Raw WER and cosine speaker similarity, plus an optional rendered WAV path."""
+
+    wer: float
+    speaker_similarity: float
+    audio_path: str | None = None
+
+
+def _finite_metric(value):
+    if isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(value):
+        return None
+    return float(value)
+
+
+@dataclass(frozen=True)
+class Candidate:
     genome: Genome
-    operator: str
-    score: float
-    accepted: bool
-    cached: bool
+    evaluation: Evaluation
+    step: int
 
     def to_dict(self):
-        return {**asdict(self), "parent": self.parent.to_dict(), "genome": self.genome.to_dict()}
+        return {"genome": self.genome.to_dict(), "evaluation": asdict(self.evaluation), "step": self.step}
+
+
+@dataclass(frozen=True)
+class SearchStep:
+    step: int
+    parent_step: int
+    operator: str
+    status: str
+    wer: float | None = None
+    speaker_similarity: float | None = None
+    error: str | None = None
 
 
 @dataclass(frozen=True)
 class SearchResult:
     initial: Genome
-    initial_score: float
-    best: Genome
-    best_score: float
-    current: Genome
-    current_score: float
+    candidates: tuple[Candidate, ...]
+    shortlist: tuple[Candidate, ...]
     evaluations: int
     history: tuple[SearchStep, ...]
     config: SearchConfig
 
     def to_dict(self):
+        # Store each accepted genome once. Shortlist/history refer to step IDs.
         return {
-            "schema_version": 1, "config": asdict(self.config),
-            "initial": self.initial.to_dict(), "initial_score": self.initial_score,
-            "best": self.best.to_dict(), "best_score": self.best_score,
-            "current": self.current.to_dict(), "current_score": self.current_score,
+            "schema_version": 2, "config": asdict(self.config),
+            "initial": self.initial.to_dict(),
+            "candidates": [candidate.to_dict() for candidate in self.candidates],
+            "shortlist_steps": [candidate.step for candidate in self.shortlist],
             "evaluations": self.evaluations,
-            "history": [step.to_dict() for step in self.history],
+            "history": [asdict(step) for step in self.history],
         }
 
 
-def local_search(score, initial=None, *, config=None):
-    """Evaluate the seed, then attempt config.steps single-edit mutations.
+def select_diverse(candidates, n=10, *, bins=5, speed_weight=0.25):
+    """Greedy farthest-point sampling of accepted genomes, using their vectors.
 
-    Accept higher scores and, by default, ties. Reject worse scores and keep
-    searching from the last accepted genome. Return all attempts and the best.
-    At most steps+1 calls to score; exact repeat genomes reuse their score.
-    The callback must return a finite real number; exceptions stop the run.
-    There is no novelty objective or implicit reward from vector distance.
+    Start with the first accepted candidate. Repeatedly choose the candidate
+    whose nearest selected neighbour is furthest away. Ties follow discovery
+    order. Return all candidates if fewer than n exist, including zero.
+    """
+    if type(n) is not int or n < 1:
+        raise ValueError("n must be a positive integer")
+    candidates = list(candidates)
+    if len(candidates) <= n:
+        return tuple(candidates)
+    vectors = [genome_vector(c.genome, bins=bins, speed_weight=speed_weight) for c in candidates]
+    selected = [0]
+    remaining = list(range(1, len(candidates)))
+    nearest = {index: math.dist(vectors[index], vectors[0]) for index in remaining}
+    while len(selected) < n:
+        chosen = max(remaining, key=lambda index: nearest[index])
+        selected.append(chosen)
+        remaining.remove(chosen)
+        for index in remaining:
+            nearest[index] = min(nearest[index], math.dist(vectors[index], vectors[chosen]))
+    return tuple(candidates[index] for index in selected)
 
-    Seed controls mutations only. For stochastic TTS, fix rendering seeds in
-    the callback, or define a repeated-render aggregate: caching assumes a
-    stable, context-independent score for each exact genome during this run.
+
+def explore(evaluate, initial=None, *, config=None):
+    """Try config.steps mutations, each from a random member of the parent pool.
+
+    The initial genome is an unevaluated starting parent (step 0), as in the
+    previous Dramatizer. Only accepted children join the pool and shortlist.
+    Both gates are inclusive: WER <= max_wer and similarity >= min_similarity.
+    Evaluation errors and invalid/nonfinite measurements are recorded and
+    skipped. Duplicate attempts consume a step but never invoke evaluate.
+
+    Exact identity includes gene order, because simultaneous vocal events
+    render in that order. Vector distance is never used for deduplication.
+    The random seed controls proposals, while the callback controls TTS seeds.
+    Rejected/error audio files written by the callback remain its responsibility.
     """
     config = config if config is not None else SearchConfig()
     initial = initial if initial is not None else Genome()
     if not isinstance(initial, Genome):
         raise TypeError("initial must be a Genome")
     rng = random.Random(config.seed)
-    cache = {}
+    seen = {initial}
+    parents = [(initial, 0)]
+    accepted = []
+    history = []
+    evaluations = 0
+    for step in range(1, config.steps + 1):
+        parent, parent_step = rng.choice(parents)
+        mutation = mutate(parent, rng=rng, config=config)
+        child = mutation.genome
+        if child in seen:
+            history.append(SearchStep(step, parent_step, mutation.operator, "duplicate"))
+            continue
+        seen.add(child)
+        evaluations += 1
+        try:
+            result = evaluate(child)
+            if not isinstance(result, Evaluation):
+                raise TypeError("evaluate(genome) must return Evaluation(wer, speaker_similarity, audio_path)")
+            wer = _finite_metric(result.wer)
+            similarity = _finite_metric(result.speaker_similarity)
+            valid = (wer is not None and similarity is not None
+                     and 0 <= wer <= config.max_wer and similarity >= config.min_similarity)
+            audio_path = str(result.audio_path) if result.audio_path is not None else None
+        except Exception as error:
+            history.append(SearchStep(step, parent_step, mutation.operator, "error",
+                                      error=f"{type(error).__name__}: {error}"))
+            logger.warning("Step %s evaluation failed: %s: %s", step, type(error).__name__, error)
+            continue
+        history.append(SearchStep(step, parent_step, mutation.operator,
+                                  "accepted" if valid else "rejected", wer, similarity))
+        if valid:
+            accepted.append(Candidate(child, Evaluation(wer, similarity, audio_path), step))
+            parents.append((child, step))
+    shortlist = select_diverse(accepted, config.shortlist_size,
+                               bins=config.vector_bins, speed_weight=config.speed_weight)
+    if not shortlist:
+        errors = sum(step.status == "error" for step in history)
+        rejected = sum(step.status == "rejected" for step in history)
+        duplicates = sum(step.status == "duplicate" for step in history)
+        logger.warning("Empty shortlist: %s evaluation errors, %s rejected, %s duplicates. "
+                       "See result.history for errors and WER/similarity measurements.",
+                       errors, rejected, duplicates)
+    return SearchResult(initial, tuple(accepted), shortlist, evaluations, tuple(history), config)
+
+
+def local_search(evaluate, initial=None, *, config=None):
+    """Existing entry point for explore; callback now returns raw Evaluation."""
+    return explore(evaluate, initial, config=config)
+
+
+def explore_voice(reference_audio, reference_text, text, initial=None, *, config=None):
+    """Run exploration with the project's generator, Whisper and speaker encoder.
+
+    WER uses the original plain-text script. Similarity compares each output
+    to the reference audio. The returned candidates include generated paths.
+    """
+    from Voice_model import generate_speech
+    from WER import word_error_rate
+    from Similarity import speaker_similarity
+
+    # Fail before generating a batch if the requested measurement models
+    # cannot load. Per-candidate audio/measurement errors are still recorded.
+    import model
+    model.speaker_encoder()
+    model.recogniser()
 
     def evaluate(genome):
-        cached = genome in cache
-        if not cached:
-            value = score(genome)
-            if isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(value):
-                raise ValueError("score(genome) must return a finite real number")
-            cache[genome] = float(value)
-        return cache[genome], cached
+        audio = generate_speech(reference_audio, reference_text, text, genome=genome)
+        return Evaluation(
+            wer=word_error_rate(audio, text),
+            speaker_similarity=speaker_similarity(audio, reference_audio),
+            audio_path=str(audio),
+        )
 
-    current = best = initial
-    current_score, _ = evaluate(initial)
-    initial_score = best_score = current_score
-    history = []
-    for step in range(1, config.steps + 1):
-        mutation = mutate(current, rng=rng, config=config)
-        value, cached = evaluate(mutation.genome)
-        accepted = value > current_score or (config.accept_equal and value == current_score)
-        history.append(SearchStep(step, current, mutation.genome, mutation.operator, value, accepted, cached))
-        if accepted:
-            current, current_score = mutation.genome, value
-        if value > best_score:
-            best, best_score = mutation.genome, value
-    return SearchResult(initial, initial_score, best, best_score, current, current_score,
-                        len(cache), tuple(history), config)
+    return explore(evaluate, initial, config=config)

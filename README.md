@@ -79,71 +79,97 @@ pass `genome.speed` and `genome.features` separately. A persistent genome
 library is still to come. Normal use of `model.py` needs `python-dotenv`
 from the project's requirements.
 
-## Local mutation search
+## Random-parent genome exploration
 
-`genome_search.py` adds, removes, alters or replaces one gene per step.
-It starts from a supplied genome (neutral by default), scores the proposal,
-and accepts it if its score is higher or equal. A worse proposal is recorded
-but the next step starts from the last accepted genome. Ties allow movement
-across flat scores; `accept_equal=False` makes acceptance strictly improving.
-The best result is retained separately, so on a flat run it remains the seed.
-This is a local hill climber and can get stuck; compare multiple seeds.
+`genome_search.py` uses the population strategy from the first Dramatizer.
+At each step it picks a random parent from the seed and all accepted children,
+then adds, removes, alters or replaces one gene. A new child is accepted when
+both raw measurements pass the inclusive limits:
 
-The callback defines what a higher score means. This cheap executable example
-tests the search against a target genome; it does NOT evaluate speech:
+- Word error rate <= 0.10.
+- Speaker cosine similarity to the reference >= 0.80.
+
+Passing children join the parent pool regardless of their parent's scores.
+The initial genome is a starting parent, excluded from the accepted archive
+and shortlist until a new child passes the gates. Exact duplicate genomes
+are skipped before rendering, including repeats of rejected or failed attempts.
+Gene-list order is part of identity because simultaneous vocal events render
+in that order. Duplicate attempts consume a search step.
+
+After all steps, greedy farthest-point sampling selects up to 10 accepted
+candidates. It starts with the first accepted candidate, then repeatedly
+chooses the candidate furthest from its nearest selected neighbour. Distances
+use the genome vectors described below. If fewer than 10 pass, all are returned.
+The shortlist measures diversity of delivery instructions. The previous
+project used acoustic descriptors, which would need separate measurements.
+
+Run actual audio exploration from Python in the configured voice environment:
 
 ```python
 import json
 from pathlib import Path
-from genome import Gene, Genome
-from genome_distance import genome_distance
-from genome_search import SearchConfig, local_search
+from genome import Genome
+from genome_search import SearchConfig, explore_voice
 
-target = Genome([Gene("emphasis", position=0.6), Gene("speed", rate=1.1)])
-result = local_search(
-    lambda candidate: -genome_distance(candidate, target),
-    config=SearchConfig(steps=100, seed=42, features=("emphasis", "speed")),
+result = explore_voice(
+    reference_audio="path/to/reference.wav",
+    reference_text="Exact words spoken in the reference.",
+    text="We really did pull this off.",
+    initial=Genome(),  # or a previous winning genome
+    config=SearchConfig(steps=100, seed=42),
 )
-print(result.initial_score, result.best_score, result.evaluations)
-print(result.best.to_dict())
-# Save only when wanted; the search itself writes no files.
+print(len(result.candidates), "accepted candidates")
+for candidate in result.shortlist:
+    print(candidate.step, candidate.evaluation.audio_path,
+          candidate.evaluation.wer, candidate.evaluation.speaker_similarity)
+
 Path("runs").mkdir(exist_ok=True)
-Path("runs/search.json").write_text(json.dumps(result.to_dict(), indent=2), encoding="utf-8")
+Path("runs/search.json").write_text(
+    json.dumps(result.to_dict(), indent=2, allow_nan=False), encoding="utf-8"
+)
 ```
 
-For real audio, supply a callback that calls `generate_speech(...,
-genome=candidate)` and returns a finite score from the existing measurements.
-For example, with a fixed `reference`, `reference_text`, `text` and a neutral
-render `neutral_audio`:
+`explore_voice` uses `generate_speech`, `WER.word_error_rate` and
+`Similarity.speaker_similarity`, so generation, Whisper and Resemblyzer must
+be set up. WER is measured against the original script. These are raw
+measurements rather than the transformed rewards from `reward.py`.
+The generator writes each evaluated clip to its normal output folder.
+Rejected/error audio may remain there, but the saved accepted genome archive
+and shortlist contain only passing candidates. Duplicate genomes are never
+rendered again within the same run.
+
+For a cheap deterministic development check, the callback API can be used
+without neural models:
 
 ```python
-from Voice_model import generate_speech
-from reward import wer_reward, perq_reward, similarity_reward
+from genome_search import Evaluation, SearchConfig, explore
 
-def score_audio(candidate):
-    audio = generate_speech(reference, reference_text, text, genome=candidate)
-    return (
-        wer_reward(audio, text, speed=candidate.speed,
-                   features=candidate.features, neutral_audio=neutral_audio)
-        * perq_reward(audio)
-        * similarity_reward(reference, audio, neutral_audio=neutral_audio)
-    )
-
-# result = local_search(score_audio, initial=previous_winner,
-#                       config=SearchConfig(steps=30, seed=42))
+result = explore(
+    lambda genome: Evaluation(wer=0.10, speaker_similarity=0.80),
+    config=SearchConfig(steps=30, seed=42),
+)
+assert all(c.evaluation.wer <= 0.10 and
+           c.evaluation.speaker_similarity >= 0.80 for c in result.candidates)
+print(len(result.candidates), len(result.shortlist))
 ```
 
-That product is a guard-only baseline. It does not reward expressiveness;
-an expressive preference/objective still needs to be defined and evaluated.
-`features` in SearchConfig restricts newly added/replacement features to ones
-verified by listening. Seed genes outside that set can still be altered or
-removed. Each run makes at most `steps + 1` callback calls, including the seed.
-Exact repeat genomes reuse cached scores; proposal history records cached
-and accepted status. A callback exception or invalid score stops the run.
-For stochastic speech, control render seeds in the callback or score a fixed
-aggregate of renders. The search seed controls mutations, not CosyVoice.
-Scores must stay stable and independent of search history within a run;
-an archive-dependent novelty score would need different caching logic.
+The callback returns `Evaluation(wer, speaker_similarity, audio_path=None)`.
+`local_search` remains available as an entry point with this same callback
+contract. Numeric reward callbacks must be changed to return measurements.
+Exceptions are recorded with status `error` and the search continues. Missing,
+nonfinite or invalid measurements cannot pass the gates. `result.history`
+records each proposal's parent step, operation, status and available metrics.
+`result.to_dict()` uses schema version 2 and stores each accepted genome once,
+with shortlist references by step ID. It records the search configuration.
+`result.evaluations` counts unique attempted callback calls, including errors,
+and is at most `steps`.
+
+The seed controls parent selection and mutation. Full audio reproducibility
+also depends on rendering randomness. `features` restricts newly introduced
+features to a subset verified by listening. Vector bins, speed weight and
+shortlist size are configurable in `SearchConfig`. Defaults are five bins,
+0.25 speed weight and 10 samples. Gates measure intelligibility and identity;
+final preference among the diverse passing samples is left to a listener.
 
 ## Genome vectors and distance
 

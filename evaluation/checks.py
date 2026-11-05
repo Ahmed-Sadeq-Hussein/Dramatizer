@@ -1,21 +1,41 @@
-"""checks.py | Deterministic checks on the manifest and the split. 
+"""checks.py | Deterministic checks on the manifest and the split.
 
-    Prints one line per check and exits with an error if any check fails.
+    python evaluation/checks.py
+
+The split is the one made by split_voice_data.py, saved in
+data/manifests/split-validation-test.json. It is locked there: that file is never
+overwritten, so the checks here only read it.
+
+Prints one line per check and exits with an error if any check fails.
 """
 import csv
+import hashlib
 import json
 import sys
+from pathlib import Path
 
-from make_split import MANIFEST, SPLIT, sha256, speaker_key
+PROJECT = Path(__file__).resolve().parent.parent
+EVAL_DIR = PROJECT / "history" / "eval"
+MANIFEST = EVAL_DIR / "manifest.csv"
+SPLIT = PROJECT / "data" / "manifests" / "split-validation-test.json"
 
 
-def run_checks(rows, split, manifest_hash):
-    dev, test = set(split["dev"]), set(split["test"])
+def speaker_key(row):
+    """Speaker ids repeat across datasets, so the dataset is part of the key."""
+    return f"{row['dataset']}/{row['speaker']}"
+
+
+def sha256(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def run_checks(rows, split):
+    validation = set(split.get("validation", []))
+    test = set(split.get("test", []))
     return [
-        ("manifest is the one the split was made from", manifest_hash == split["manifest_sha256"]),
-        ("dev and test share no speaker", not (dev & test)),
-        ("every clip belongs to a speaker in the split", all(speaker_key(r) in dev | test for r in rows)),
-        ("test set is marked locked", split.get("test_locked") is True),
+        ("validation and test are both present", bool(validation) and bool(test)),
+        ("validation and test share no speaker", not (validation & test)),
+        ("every clip belongs to a speaker in the split", all(speaker_key(r) in validation | test for r in rows)),
         ("no clip has an empty script", all((r.get("text") or "").strip() for r in rows)),
     ]
 
@@ -25,7 +45,7 @@ def main():
         rows = list(csv.DictReader(f))
     split = json.loads(SPLIT.read_text(encoding="utf-8"))
 
-    results = run_checks(rows, split, sha256(MANIFEST))
+    results = run_checks(rows, split)
     for name, ok in results:
         print(f"{'ok  ' if ok else 'FAIL'}  {name}")
 

@@ -1,7 +1,9 @@
 """make_manifest.py | List every clip in the datasets once, in a fixed order.
 
-    Writes history/eval/manifest.csv. The readers come from Voice_Importer.py, so
-    run this in the dramatizer environment (it needs pyarrow).
+    python evaluation/make_manifest.py
+
+Writes history/eval/manifest.csv. The readers come from Voice_Importer.py, so
+run this in the dramatizer environment (it needs pyarrow).
 """
 import csv
 import os
@@ -19,7 +21,7 @@ import Voice_Importer as library  # noqa: E402
 EVAL_DIR = PROJECT / "history" / "eval"
 MANIFEST = EVAL_DIR / "manifest.csv"
 FIELDS = ["dataset", "clip_id", "speaker", "text", "emotion", "intensity", "mic", "licence", "source"]
-LICENCE = {"CREMA-D": "ODbL", "VCTK": "CC BY 4.0"}
+LICENCE = {"CREMA-D": "ODbL", "VCTK": "CC BY 4.0", "LibriTTS-R": "CC BY 4.0"}
 
 
 def main():
@@ -27,6 +29,7 @@ def main():
     clips = (
         library.read_crema_d(library_dir / os.environ.get("CREMA_D_FOLDER", "CREMA-D"))
         + library.read_vctk(library_dir / os.environ.get("VCTK_FOLDER", "VCTK"))
+        + library.read_libritts_r(library_dir / os.environ.get("LIBRITTS_R_FOLDER", "LibriTTS-R"))
     )
     clips.sort(key=lambda c: (c.dataset, c.speaker, c.clip_id))
 

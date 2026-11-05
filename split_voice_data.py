@@ -1,4 +1,4 @@
-"""split_voice_data.py | Picks voices from the datasets, and decides which are for training, validation and the final test.
+"""split_voice_data.py | Picks voices from the datasets, and keeps the train-free split between validation and the final test.
 
 Picking takes the clips from the readers in Voice_Importer.py (read_crema_d,
 read_vctk, read_libritts_r). A voice here is one clip that is neutral and whose
@@ -17,14 +17,19 @@ are never included.
     pick_even(30)                                           # 10 from each dataset
     pick_even(30, min_seconds=4, max_seconds=10, seed=1)
 
-split= keeps a pick inside one split of data/manifests/splits-v1.json, so test
-speakers cannot reach a baseline by accident. Without it, every speaker can be picked.
+split= keeps a pick inside one split: "validation" or "test". The test speakers
+cannot reach a baseline by accident, because the split is locked in a file.
 
     pick_even(30, split="validation")
-    pick_crema_d(clips, 5, split="train")
+    pick_crema_d(clips, 5, split="validation")
 
-The same seed gives the same voices. Making the splits is not written here yet: those
-functions are empty for now, and build_splits.py writes the file.
+The split is made once from the whole library, by make_splits(), and saved to
+SPLITS_FILE. Each dataset is split on its own, 80 % validation and 20 % test, by
+speaker (dataset + id), with seed 42. Run this file once to make the split:
+
+    python split_voice_data.py
+
+The same seed gives the same voices. The saved file is never overwritten.
 """
 import json
 import random
@@ -35,21 +40,23 @@ import model
 from build_manifest import MANIFEST, NO_SPEECH, SOURCES, VCTK_MIC
 from Picky_voice import MAX_SECONDS, MIN_SECONDS, select_clips
 
-SPLITS_FILE = MANIFEST.parent / "splits-v1.json"
+SPLITS_FILE = MANIFEST.parent / "split-validation-test.json"
+SPLIT_SEED = 42
+TEST_FRACTION = 0.2
 
 
 def _speakers_in(split, dataset):
-    """The speakers of one dataset in one split. The same id in another dataset is another person."""
-    speakers = json.loads(SPLITS_FILE.read_text(encoding="utf-8"))["speakers"]
-    if split not in speakers:
-        raise ValueError(f"Unknown split {split!r}: use one of {list(speakers)}.")
-    return set(speakers[split][dataset])
+    """The speaker keys of one split. The key is dataset/id, so the same id in another dataset is another person."""
+    splits = load_splits(SPLITS_FILE)
+    if split not in splits:
+        raise ValueError(f"Unknown split {split!r}: use one of {list(splits)}.")
+    return set(splits[split])
 
 
 def _pick(clips, dataset, voices, min_seconds, max_seconds, seed, split):
     if split is not None:
         allowed = _speakers_in(split, dataset)
-        clips = [clip for clip in clips if clip.speaker in allowed]
+        clips = [clip for clip in clips if f"{dataset}/{clip.speaker}" in allowed]
 
     what = f"a neutral clip of {min_seconds:g}-{max_seconds:g} s" + (f" in {split}" if split else "")
     usable = select_clips(clips, min_seconds, max_seconds, duplicate_actor=True, emotions=False)
@@ -131,36 +138,96 @@ def pick_even(number, min_seconds=MIN_SECONDS, max_seconds=MAX_SECONDS, seed=0, 
     return chosen
 
 
+def read_library():
+    """Every clip in all the datasets in PICKERS, read the same way pick_even reads them."""
+    folder = Path(model.setting("VOICE_LIBRARY_DIR"))
+    clips = []
+    for name in PICKERS:
+        setting, default = SOURCES[name]["folder"]
+        clips += SOURCES[name]["reader"](folder / model.setting(setting, default))
+    return clips
+
+
 def speaker_key(clip):
     """The one name of a clip's speaker: dataset + id, because the same id can be two people in two datasets."""
-    pass
+    return f"{clip.dataset}/{clip.speaker}"
 
 
 def group_by_speaker(clips):
     """{speaker key: [clips]} for a list of clips from any of the readers."""
-    pass
+    groups = defaultdict(list)
+    for clip in clips:
+        groups[speaker_key(clip)].append(clip)
+    return dict(groups)
 
 
 def split_speakers(clips):
-    """{"train": [speaker keys], "validation": [...], "test": [...]}, every speaker in exactly one."""
-    pass
+    """
+    {"validation": [speaker keys], "test": [speaker keys]}, split inside each dataset,
+    so every dataset gets about 80 % validation and 20 % test. 
+    Applied per dataset. Pass every clip in the library.
+    """
+    by_dataset = defaultdict(list)
+    for key in group_by_speaker(clips):
+        by_dataset[key.split("/", 1)[0]].append(key)
+
+    splits = {"validation": [], "test": []}
+    for dataset in sorted(by_dataset):
+        ordered = sorted(by_dataset[dataset])
+        random.Random(SPLIT_SEED).shuffle(ordered)
+        n_test = max(1, round(len(ordered) * TEST_FRACTION))
+        splits["test"] += ordered[:n_test]
+        splits["validation"] += ordered[n_test:]
+
+    splits = {name: sorted(keys) for name, keys in splits.items()}
+    check_no_leakage(splits)
+    return splits
+
+
+def check_no_leakage(splits):
+    """Stops with an error if a speaker is in two splits."""
+    seen = {}
+    for name, keys in splits.items():
+        for key in keys:
+            if key in seen:
+                raise ValueError(f"{key} is in both {seen[key]} and {name}")
+            seen[key] = name
+
+
+def save_splits(splits, path=SPLITS_FILE):
+    """Writes the split once. The test set is locked, so an existing file is never overwritten."""
+    path = Path(path)
+    if path.exists():
+        raise FileExistsError(f"{path} exists. A new split would change the locked test set.")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(splits, indent=2), encoding="utf-8")
+
+
+def load_splits(path=SPLITS_FILE):
+    """{"validation": [speaker keys], "test": [speaker keys]} from the saved file, checked for leakage."""
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"{path} not found. Run this file once: python split_voice_data.py")
+    splits = json.loads(path.read_text(encoding="utf-8"))
+    check_no_leakage(splits)
+    return splits
 
 
 def clips_in_split(clips, speakers):
     """The clips that belong to the given speaker keys."""
-    pass
+    wanted = set(speakers)
+    return [clip for clip in clips if speaker_key(clip) in wanted]
 
 
-def check_no_leakage(splits):
-    """Stops with an error if a speaker is in two splits, or in none."""
-    pass
+def make_splits():
+    """Makes the split from the whole library and saves it. Run once, then never again."""
+    splits = split_speakers(read_library())
+    save_splits(splits)
+    return splits
 
 
-def save_splits(splits, path):
-    """Writes the splits to a file, the same bytes for the same data."""
-    pass
-
-
-def load_splits(path):
-    """Reads back what save_splits wrote."""
-    pass
+if __name__ == "__main__":
+    result = make_splits()
+    for name, keys in result.items():
+        print(f"{name:10s} {len(keys):4d} speakers")
+    print(f"saved {SPLITS_FILE}")

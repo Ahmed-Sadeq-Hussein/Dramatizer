@@ -1,19 +1,17 @@
 # evaluation/track.py
 """track.py | Record evaluation runs with MLflow.
 
-Runs are stored in history/mlruns (gitignored). See them with:
-    mlflow ui --port 5050
+Runs are stored in history/eval (gitignored). See them with:
+    mlflow ui --backend-store-uri sqlite:///history/eval/mlflow.db --port 5050
 """
 import csv
 import json
 import subprocess
 import sys
-from pathlib import Path
 
 import mlflow
 
-from checks import run_checks
-from make_split import EVAL_DIR, MANIFEST, SPLIT, sha256
+from checks import EVAL_DIR, MANIFEST, SPLIT, run_checks, sha256
 
 DB_PATH = EVAL_DIR / "mlflow.db"
 ARTIFACT_DIR = EVAL_DIR / "mlartifacts"
@@ -24,6 +22,7 @@ mlflow.set_tracking_uri(f"sqlite:///{DB_PATH.as_posix()}")
 if mlflow.get_experiment_by_name(EXPERIMENT) is None:
     mlflow.create_experiment(EXPERIMENT, artifact_location=ARTIFACT_DIR.as_uri())
 mlflow.set_experiment(EXPERIMENT)
+
 
 def log_environment():
     """The installed package versions, so a run can be repeated."""
@@ -46,15 +45,16 @@ if __name__ == "__main__":
     with MANIFEST.open(encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
     split = json.loads(SPLIT.read_text(encoding="utf-8"))
-    results = run_checks(rows, split, sha256(MANIFEST))
+    results = run_checks(rows, split)
 
     log_run(
         name="data-checks",
         params={
             "manifest_sha256": sha256(MANIFEST),
-            "split_seed": split["seed"],
-            "test_fraction": split["test_fraction"],
-            "dev_speakers": len(split["dev"]),
+            "split_sha256": sha256(SPLIT),
+            "split_seed": 42,
+            "test_fraction": 0.2,
+            "validation_speakers": len(split["validation"]),
             "test_speakers": len(split["test"]),
         },
         metrics={

@@ -21,6 +21,8 @@ or from the command line:
 
     python Voice_model.py REFERENCE_AUDIO REFERENCE_TEXT TARGET_TEXT [--name NAME]
 """
+import json
+import time
 import argparse
 from datetime import datetime
 from pathlib import Path
@@ -56,6 +58,7 @@ def generate_speech(reference_audio, reference_text, target_text, voice_name=Non
 
     Returns the path of the new wav file: OUTPUT_DIR/voice_name/voice_name_TIME.wav
     """
+    started = time.time()
     reference_audio = Path(reference_audio)
 
     if not reference_audio.is_file():
@@ -98,7 +101,15 @@ def generate_speech(reference_audio, reference_text, target_text, voice_name=Non
     path = folder / f"{voice_name}_{stamp}.wav"
 
     torchaudio.save(str(path), audio, cosyvoice.sample_rate)
-
+    record = {
+        "target_text": target_text,
+        "reference_audio": str(reference_audio),
+        "reference_text": reference_text,
+        "voice_name": voice_name,
+        "seconds": round(time.time() - started, 1),
+        "created": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    path.with_suffix(".json").write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
     return path
 
 

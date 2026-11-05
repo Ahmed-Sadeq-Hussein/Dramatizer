@@ -8,6 +8,8 @@ Other files never load a model themselves. They ask this file:
     whisper_model = model.recogniser()     # turns speech into text (for WER)
     encoder = model.speaker_encoder()      # turns a voice into numbers (similarity)
     squim = model.quality_model()          # estimates how clean a recording is
+    deepfilter = model.denoiser()          # removes background noise from speech
+    llm = model.emphasis_model()           # a small LLM that scores how much each word is stressed
 
 Why one file: to change a model (a bigger Whisper, another speaker encoder, a
 new TTS model) you edit .env, or the one loader below, and nothing else.
@@ -25,6 +27,9 @@ Settings, from .env (a missing one falls back to the default shown):
     WER_MODEL             whisper-base   (whisper-tiny, whisper-small, ...)
     SIMILARITY_MODEL      resemblyzer
     PERQ_MODEL            squim
+    DENOISE_MODEL         deepfilternet3
+    LLM_LIBRARY_DIR       the folder with one sub-folder per downloaded LLM
+    EMPHASIS_MODEL        Qwen3-4B       (Qwen3-1.7B, gemma-4-E2B-it, gemma-4-E4B-it)
 """
 import logging
 import os
@@ -79,8 +84,23 @@ def _load_once(key, loader):
 
 
 def is_loaded(key):
-    """True once the model is in memory. Keys: voice, recogniser, speaker, quality."""
+    """True once the model is in memory. Keys: voice, recogniser, speaker, quality, denoiser, emphasis:<name>."""
     return key in _loaded
+
+
+def unload(key):
+    """Forget a loaded model and free its GPU memory (e.g. to compare LLMs one after another)."""
+    with _lock:
+        if _loaded.pop(key, None) is not None:
+            import gc
+
+            gc.collect()
+            try:
+                import torch
+
+                torch.cuda.empty_cache()
+            except ImportError:
+                pass
 
 
 # --------------------------------------------------------------------------- #
@@ -184,3 +204,157 @@ def quality_model():
         return SQUIM_OBJECTIVE.get_model().to(device()).eval()
 
     return _load_once("quality", load)
+
+
+# --------------------------------------------------------------------------- #
+# The denoiser: DeepFilterNet 3 (for Clean_Audio_Distortion.py)
+# --------------------------------------------------------------------------- #
+
+
+def denoiser():
+    """
+    DeepFilterNet 3: removes background noise from speech, at 48 kHz.
+    Returns (network, df_state); Clean_Audio_Distortion.py is the way to use them.
+    The weights (about 8 MB) are downloaded from the DeepFilterNet GitHub
+    releases the first time and cached.
+    """
+
+    def load():
+        name = setting("DENOISE_MODEL", "deepfilternet3").lower()
+
+        if name != "deepfilternet3":
+            raise ValueError(f"Unknown DENOISE_MODEL {name!r}. Supported: deepfilternet3.")
+
+        import warnings
+
+        # DeepFilterNet imports a torchaudio path that moved; it still works
+        warnings.filterwarnings("ignore", message=".*AudioMetaData.*")
+        try:
+            from df.enhance import init_df
+        except ImportError as error:
+            raise ImportError(
+                "DeepFilterNet is not installed in this environment. Run: "
+                "pip install --no-deps deepfilternet==0.5.6 deepfilterlib==0.5.6 "
+                "and pip install appdirs==1.4.4 loguru==0.7.3 (step 3c in requirements.txt)"
+            ) from error
+
+        print("Loading the denoiser (DeepFilterNet 3)...")
+        network, df_state, _ = init_df(model_base_dir="DeepFilterNet3", log_level="WARNING", log_file=None)
+        return network, df_state
+
+    return _load_once("denoiser", load)
+
+
+# --------------------------------------------------------------------------- #
+# The emphasis LLM: a small language model (for emphasis.py)
+# --------------------------------------------------------------------------- #
+
+
+def emphasis_model(name=None):
+    """
+    A small instruction-tuned LLM from LLM_LIBRARY_DIR, loaded in 4-bit so it
+    fits on the GPU next to CosyVoice. Returns (tokenizer, model).
+    name: a folder in LLM_LIBRARY_DIR; default EMPHASIS_MODEL from .env.
+
+    Needs transformers, accelerate and bitsandbytes. Gemma 4 needs a newer
+    transformers than CosyVoice allows, so it runs in its own environment
+    (see requirements.txt).
+    """
+    name = name or setting("EMPHASIS_MODEL", "Qwen3-4B")
+
+    def load():
+        folder = Path(setting("LLM_LIBRARY_DIR")) / name
+        if not folder.is_dir():
+            raise FileNotFoundError(f"LLM not found: {folder} (LLM_LIBRARY_DIR and EMPHASIS_MODEL in .env)")
+
+        import torch
+        from accelerate import init_empty_weights
+        from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+
+        print(f"Loading the emphasis LLM ({name}, 4-bit)...")
+        gpu = device()
+        config = AutoConfig.from_pretrained(folder)
+
+        # Gemma 3n / Gemma 4 carry a per-layer embedding table bigger than the
+        # model's layers (2.35 B numbers in E2B), plus audio and vision parts
+        # that text never uses. 4-bit does not shrink embeddings, so together
+        # they overflow a 10 GB card. Google meant the table to live in CPU
+        # memory (it is a lookup, not computation), so it and the unused parts
+        # go to the CPU, unquantized; everything else goes to the GPU in 4-bit.
+        cpu_parts = ("embed_tokens_per_layer", "audio_tower", "vision_tower", "embed_audio", "embed_vision")
+        with init_empty_weights():
+            names = [n for n, _ in AutoModelForCausalLM.from_config(config).named_modules()]
+        offload = [n for n in names if n.split(".")[-1] in cpu_parts]
+
+        device_map = _split_map(names, offload) if offload and gpu == "cuda" else gpu
+
+        quantization = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
+                                          bnb_4bit_compute_dtype=torch.bfloat16,
+                                          llm_int8_skip_modules=[*cpu_parts, "lm_head"],
+                                          llm_int8_enable_fp32_cpu_offload=bool(offload))
+        tokenizer = AutoTokenizer.from_pretrained(folder)
+        llm = AutoModelForCausalLM.from_pretrained(folder, quantization_config=quantization,
+                                                   device_map=device_map, dtype=torch.bfloat16)
+        if offload and gpu == "cuda":
+            _lookup_on_cpu(llm, folder, [n for n in offload if n.endswith("embed_tokens_per_layer")])
+        return tokenizer, llm.eval()
+
+    return _load_once(f"emphasis:{name}", load)
+
+
+def _lookup_on_cpu(llm, folder, modules):
+    """
+    Make offloaded embedding tables look rows up ON the CPU. By default an
+    offloaded module is copied to the GPU for every call, which for Gemma's
+    4.7 GB per-layer table means every generated token (about 2 tokens/s).
+    Here the table stays in CPU memory with its real weights, and only the
+    rows asked for travel to the GPU.
+    """
+    import json
+
+    import torch
+    from accelerate.hooks import remove_hook_from_module
+    from safetensors import safe_open
+
+    index = folder / "model.safetensors.index.json"
+    files = json.loads(index.read_text())["weight_map"] if index.exists() else None
+
+    for name in modules:
+        table = llm.get_submodule(name)
+        remove_hook_from_module(table)
+        table.to_empty(device="cpu")
+
+        key = f"{name}.weight"
+        with safe_open(str(folder / (files[key] if files else "model.safetensors")), "pt", device="cpu") as f:
+            table.weight.data = f.get_tensor(key).to(torch.bfloat16)
+        if hasattr(table, "scalar_embed_scale"):
+            table.embed_scale = torch.tensor(table.scalar_embed_scale)
+
+        lookup = table.forward
+
+        def forward(input_ids, lookup=lookup):
+            return lookup(input_ids.to("cpu")).to(input_ids.device)
+
+        table.forward = forward
+
+
+def _split_map(names, offload):
+    """A device_map: the `offload` modules on the CPU, every other branch on GPU 0, as high in the tree as possible."""
+    offload = set(offload)
+    device_map = {}
+
+    def children(parent):
+        prefix = f"{parent}." if parent else ""
+        return [n for n in names if n.startswith(prefix) and n != parent and "." not in n[len(prefix):]]
+
+    def visit(module):
+        if module in offload:
+            device_map[module] = "cpu"
+        elif module and not any(o.startswith(f"{module}.") for o in offload):
+            device_map[module] = 0
+        else:
+            for child in children(module):
+                visit(child)
+
+    visit("")
+    return device_map

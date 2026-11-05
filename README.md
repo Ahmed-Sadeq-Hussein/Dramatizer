@@ -32,6 +32,7 @@ own `.env`, and it is never committed.
 | `RUNS_DIR` | Where exploration runs are written |
 | `HISTORY_PATH` | The stored winning genomes |
 | `WHISPER_MODEL` | Speech recogniser size used for the word error rate |
+| `DENOISE_MODEL` | Background noise remover for `Clean_Audio_Distortion.py`: `deepfilternet3` |
 | `LOG_LEVEL` | `DEBUG`, `INFO`, `WARNING` or `ERROR` |
 
 ## Still to come

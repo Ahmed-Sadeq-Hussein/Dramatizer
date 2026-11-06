@@ -53,6 +53,26 @@ def _speakers_in(split, dataset):
     return set(splits[split])
 
 
+def split_of(dataset, speaker):
+    """Which split a speaker is in: "validation", "test", or None (for example a custom voice)."""
+    key = f"{dataset}/{speaker}"
+    for split, keys in load_splits(SPLITS_FILE).items():
+        if key in keys:
+            return split
+    return None
+
+
+def voice_origin(clip):
+    """Where a cloned voice comes from: its dataset, speaker, clip, the clip's labels and the speaker's split."""
+    return {
+        "dataset": clip.dataset,
+        "speaker": clip.speaker,
+        "clip_id": clip.clip_id,
+        "details": {key: str(value) for key, value in clip.details.items()},
+        "split": split_of(clip.dataset, clip.speaker),
+    }
+
+
 def _pick(clips, dataset, voices, min_seconds, max_seconds, seed, split):
     if split is not None:
         allowed = _speakers_in(split, dataset)

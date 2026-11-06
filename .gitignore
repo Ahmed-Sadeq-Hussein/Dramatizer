@@ -50,6 +50,9 @@ imported_voices/
 /history/
 ratings.json
 /plots/
+# Every measurement of every recording (measurements.py): local paths and the
+# metrics of real people's cloned voices
+/measurements/
 *.csv
 
 # --- Models and weights ---------------------------------------------------

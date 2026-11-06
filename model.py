@@ -108,6 +108,36 @@ def unload(key):
 # --------------------------------------------------------------------------- #
 
 
+def _wetext_from_cache():
+    """
+    CosyVoice's text normaliser (wetext: numbers, dates and the like into words)
+    asks ModelScope for its files every time it loads. ModelScope now refuses part
+    of that request (403), so each load spent about a minute retrying and then went
+    on with no normaliser at all. Once the files are on this PC, use them as they are;
+    the first time, they are still downloaded.
+    """
+    try:
+        import wetext.wetext as wetext
+    except ImportError:
+        return
+
+    download = wetext.snapshot_download
+    if getattr(download, "from_cache", False):
+        return
+
+    def from_cache(model_id, *args, **kwargs):
+        try:
+            folder = download(model_id, *args, local_files_only=True, **kwargs)
+            if all((Path(folder) / lang / "tn" / "tagger.fst").is_file() for lang in ("en", "zh")):
+                return folder
+        except Exception:
+            pass
+        return download(model_id, *args, **kwargs)
+
+    from_cache.from_cache = True
+    wetext.snapshot_download = from_cache
+
+
 def voice_model():
     """
     CosyVoice 3 with the Fun-CosyVoice3-0.5B-2512 weights. Takes about a minute
@@ -130,6 +160,7 @@ def voice_model():
 
         from cosyvoice.cli.cosyvoice import AutoModel
 
+        _wetext_from_cache()
         print("Loading CosyVoice 3...")
         return AutoModel(model_dir=str(weights))
 

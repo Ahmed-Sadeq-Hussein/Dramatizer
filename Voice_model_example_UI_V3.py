@@ -43,6 +43,7 @@ import model
 from Clean_Audio_Distortion import clean_audio
 from Combine_audio import combine_audio
 from Picky_voice import measure
+from split_voice_data import voice_origin
 from Voice_Importer import find_clips, get_clip, list_speakers
 
 PORT = 5003
@@ -286,14 +287,17 @@ def generate():
         return back(s, error=f"{type(error).__name__}: {error}", target=text)
 
     # The same .json as V1 writes, plus how the reference was prepared
+    written = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
     record = {
         "target_text": text,
         "reference_clip": f"{first.dataset}/{first.clip_id}",
+        "origin": voice_origin(first),
         "second_clip": f"{second.dataset}/{second.clip_id}" if second else None,
         "cleaned": s["strength"] if s["clean"] else None,
         "reference_audio": str(reference_audio),
         "reference_text": reference_text,
         "voice_name": path.parent.name,
+        "seed": written.get("seed"),
         "seconds": round(time.time() - started, 1),
         "created": time.strftime("%Y-%m-%d %H:%M:%S"),
     }

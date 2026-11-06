@@ -24,9 +24,19 @@ one of those cannot hold up the others, and is closed after IDLE_SECONDS of sile
 
 Random voices: a panel above the clips picks a number of random neutral voices,
 one per actor, from one dataset or an even share of all (split_voice_data.py). It
-can stay inside one split. Press Use on a voice to make it the reference; the list
+can stay inside the validation speakers (80%) or the final test speakers (20%). Press Use on a voice to make it the reference; the list
 stays while you go through them. The seed is shown, and the same settings and seed
 give the same voices. Custom voices are never picked.
+
+CosyVoice starts loading in the background as soon as the page is up, so the first
+Generate is ready sooner (about half a minute on this PC).
+
+Examine: every clip under Recent shows where its voice comes from (dataset,
+speaker, clip, labels, split), and has an Examine button that measures it against
+its reference with reward.clone_metrics: WER, speaker similarity, quality,
+speaking rate and the rewards. The numbers go in the clip's node in measurements/
+(measurements.py, never committed), and the clip's .json links to it, so they show
+again without measuring. "Measure again" adds a new run and keeps the old ones.
 
     python Voice_model_example_UI_V4.py
     then open https://127.0.0.1:5004
@@ -39,6 +49,7 @@ Reused, not copied: all of V3. Only this page is protected: the older UIs
 (ports 5000-5003) have no login, so do not put a tunnel in front of them.
 """
 import hmac
+import json
 import os
 import re
 import secrets
@@ -58,9 +69,10 @@ from werkzeug.serving import WSGIRequestHandler
 
 import Voice_model_example_UI_V3 as v3
 import model
+import measurements
 import split_voice_data
 from Picky_voice import MAX_SECONDS, MIN_SECONDS
-from Voice_Importer import read_custom_voices
+from Voice_Importer import get_clip, read_custom_voices
 
 PORT = 5004
 ENV_FILE = model.PROJECT_DIR / ".env"
@@ -74,7 +86,17 @@ LOGIN_HOURS = 12
 IDLE_SECONDS = 30           # a connection silent for this long is closed
 
 VOICES_FROM_ALL = "all"     # the random voices come from an even share of every dataset
-VOICE_SPLITS = {"train": "Train", "validation": "Validation", "test": "Final test", "all": "Every speaker"}
+# The speakers are split once, per dataset (split_voice_data.py): most for validation, the rest
+# locked away as the final test. The page says which is which, and how big each part is.
+TEST_PERCENT = round(100 * split_voice_data.TEST_FRACTION)
+SPLIT_SIZES = {name: len(keys) for name, keys in split_voice_data.load_splits().items()}
+VOICE_SPLITS = {
+    "validation": f"Validation {100 - TEST_PERCENT}%",
+    "test": f"Final test {TEST_PERCENT}%",
+    "all": "Both",
+}
+SPLIT_NAMES = {"validation": f"validation ({100 - TEST_PERCENT}%)", "test": f"final test ({TEST_PERCENT}%)"}
+VOICE_SPLITS_ONLY = ["validation", "test"]   # the order the blocks show in, when both are picked
 VOICE_SPLIT = "validation"  # the final test stays untouched unless it is asked for
 VOICES_SHOWN = 15           # the number first shown in the box
 
@@ -104,7 +126,26 @@ PHONE_STYLE = """<style>
   .sampler-form input[type=number] { width: 6.5em; min-width: 0; }
   .sampler .summary { margin: 0 0 8px; font-size: 0.82rem; color: var(--muted); }
   .sampler .table-wrap { background: var(--surface); }
+  .recent .origin { font-size: 0.8rem; color: var(--muted); }
+  .recent form.examine { margin: 0; }
+  .recent li.examined { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+  .metrics summary { cursor: pointer; font-size: 0.88rem; }
+  .metrics table { width: 100%; font-size: 0.82rem; border-collapse: collapse; margin-top: 6px; }
+  .metrics th { text-align: left; font-weight: 600; color: var(--muted); padding: 3px 8px 3px 0; vertical-align: top; width: 38%; }
+  .metrics td { padding: 3px 0; overflow-wrap: anywhere; }
   .sampler td audio { width: 150px; }
+
+  /* With both splits shown, each is its own block: validation in the accent colour, the final test in amber */
+  .sampler { --test: #9a5b00; --test-soft: #fbefd9; }
+  @media (prefers-color-scheme: dark) { .sampler { --test: #f0b45a; --test-soft: #3a2a10; } }
+  .split-group + .split-group { margin-top: 16px; }
+  .split-head { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 0.88rem; font-weight: 400; color: var(--muted); }
+  .split-tag { padding: 2px 9px; border-radius: 999px; font-weight: 600; background: var(--accent-soft); color: var(--accent); }
+  .split-test .split-tag { background: var(--test-soft); color: var(--test); }
+  .split-none .split-tag { background: var(--band); color: var(--muted); }
+  .sampler .split-group:has(.split-head) { padding-left: 10px; border-left: 4px solid var(--accent); }
+  .sampler .split-test:has(.split-head) { border-left-color: var(--test); }
+  .sampler .split-none:has(.split-head) { border-left-color: var(--rule); }
   @media (max-width: 860px) {
     .sampler-form label { flex: 1 1 40%; }
     .sampler-form select, .sampler-form input[type=number] { width: 100%; box-sizing: border-box; }
@@ -275,14 +316,21 @@ SAMPLER = """{% set sample = random_voices(s) %}
       <button type="submit">Pick voices</button>
       {% if s.voices %}<a class="button" href="/?{{ q(voices=0) }}">Clear</a>{% endif %}
     </form>
+    <p class="summary">Every dataset's speakers are split once: {{ 100 - test_percent }}% for validation ({{ split_sizes.validation }} speakers),
+      to tune and listen with, and {{ test_percent }}% for the final test ({{ split_sizes.test }} speakers), kept for the end.
+      A speaker is only ever in one of them.</p>
     {% if sample.error %}<p class="note error">{{ sample.error }}</p>{% endif %}
     {% if sample.rows %}
-      <p class="summary">Seed {{ s.voices_seed }}, {{ voice_splits[s.voices_split]|lower }}. The same settings and seed give the same voices.</p>
+      <p class="summary">Seed {{ s.voices_seed }}, {{ 'from the ' ~ split_names[s.voices_split] if s.voices_split in split_names else 'from both splits, shown apart below' }}. The same settings and seed give the same voices.</p>
+      {% for group in sample.groups %}
+      <div class="split-group split-{{ group.split or 'none' }}">
+      {% if group.label %}<h4 class="split-head"><span class="split-tag">{{ group.label }}</span>
+        {{ group.rows|length }} voice{{ 's' if group.rows|length != 1 }}</h4>{% endif %}
       <div class="table-wrap">
         <table>
           <thead><tr><th></th><th>Voice</th><th>Details</th><th>Script</th><th>Listen</th></tr></thead>
           <tbody>
-            {% for clip in sample.rows %}
+            {% for clip in group.rows %}
               <tr aria-selected="{{ 'true' if first and clip.dataset == first.dataset and clip.clip_id == first.clip_id else 'false' }}">
                 <td class="use"><a class="button" href="/?{{ q(dataset=clip.dataset, clip=clip.clip_id, clip2='', speaker='', text='', page=1, details={}) }}">Use</a></td>
                 <td class="speaker">{{ clip.speaker }}<br><span class="details">{{ clip.dataset }}</span></td>
@@ -294,6 +342,8 @@ SAMPLER = """{% set sample = random_voices(s) %}
           </tbody>
         </table>
       </div>
+      </div>
+      {% endfor %}
     {% endif %}
   </details>
 """
@@ -302,8 +352,76 @@ SAMPLER = """{% set sample = random_voices(s) %}
 SAMPLER_KEPT = """{% if s.voices %}{% for name in voice_fields %}<input type="hidden" name="{{ name }}" value="{{ voice_values(s)[name] }}">{% endfor %}{% endif %}
     """
 
-# The page is V3's, with its own name, a Log out button, the random voices and the phone tabs
+# A clip under Recent: where its voice comes from, Examine, and the numbers once measured
+RECENT_ITEM_V3 = """        <li><span><strong>{{ item.voice }}</strong> · {{ item.text or item.file }}</span>
+            <audio controls preload="none" src="{{ item.audio }}"></audio></li>"""
+
+NUMBER = "{% macro n(value, form='%.2f') %}{{ form % value if value is not none else '-' }}{% endmacro %}"
+
+RECENT_ITEM = """        {% set info = clip_info(item) %}
+        <li class="{{ 'examined' if info and request.args.get('examined') == info.path }}">
+          <span><strong>{{ item.voice }}</strong> · {{ item.text or item.file }}</span>
+          {% if info and info.origin_text %}<span class="origin">Voice from {{ info.origin_text }}</span>{% endif %}
+          <audio controls preload="none" src="{{ item.audio }}"></audio>
+          {% if info %}
+            <form method="post" action="/examine" class="examine">
+              <input type="hidden" name="state" value="{{ q() }}">
+              <input type="hidden" name="clip" value="{{ info.path }}">
+              {% if info.metrics %}<input type="hidden" name="force" value="1">{% endif %}
+              <button type="submit" class="quiet">{{ 'Measure again' if info.metrics else 'Examine' }}</button>
+            </form>
+            {% set m = info.metrics %}
+            {% if m %}
+              <details class="metrics" {{ 'open' if request.args.get('examined') == info.path }}>
+                <summary>WER {{ n(m.wer) }} · similarity {{ n(m.similarity) }} · PESQ {{ n(m.quality.pesq) }}</summary>
+                <table>
+                  <tr><th>Heard</th><td>{{ m.heard }}</td></tr>
+                  <tr><th>Word error rate</th><td>{{ n(m.wer) }}</td></tr>
+                  <tr><th>Similarity to reference</th><td>{{ n(m.similarity, '%.3f') }}</td></tr>
+                  <tr><th>Quality: PESQ · STOI · SI-SDR</th><td>clone {{ n(m.quality.pesq) }} · {{ n(m.quality.stoi) }} · {{ n(m.quality.si_sdr, '%.1f') }} dB<br>
+                      reference {{ n(m.reference_quality.pesq) }} · {{ n(m.reference_quality.stoi) }} · {{ n(m.reference_quality.si_sdr, '%.1f') }} dB</td></tr>
+                  <tr><th>Speaking rate</th><td>clone {{ n(m.words_per_second) }} words/s · reference {{ n(m.reference_words_per_second) }}
+                      {% if m.rate_vs_reference %}({{ n(m.rate_vs_reference) }}×){% endif %}</td></tr>
+                  <tr><th>Length</th><td>{{ n(m.seconds, '%.1f') }} s, {{ n(m.speech_seconds, '%.1f') }} s of speech</td></tr>
+                  <tr><th>Rewards (0 to 1)</th><td>WER {{ n(m.rewards.wer) }} · similarity {{ n(m.rewards.similarity) }} · quality {{ n(m.rewards.quality) }}</td></tr>
+                  <tr><th>Measured</th><td>{{ m.measured }} with {{ m.models.wer }}, {{ m.models.similarity }}, {{ m.models.quality }}</td></tr>
+                  <tr><th>Logged in</th><td>{{ info.node }} ({{ info.runs }} run{{ 's' if info.runs != 1 }})</td></tr>
+                </table>
+              </details>
+            {% endif %}
+          {% endif %}
+        </li>"""
+
+# Examining waits for the models: say so, do not send twice, and show the result
+EXAMINE_SCRIPT = """<script>
+(function () {
+  var busy = false;
+  document.querySelectorAll("form.examine").forEach(function (form) {
+    form.addEventListener("submit", function (event) {
+      if (busy) { event.preventDefault(); return; }
+      busy = true;
+      var button = form.querySelector("button");
+      button.dataset.label = button.textContent;
+      button.textContent = "Measuring...";
+    });
+  });
+  window.addEventListener("pageshow", function () {
+    busy = false;
+    document.querySelectorAll("form.examine button[data-label]").forEach(function (button) { button.textContent = button.dataset.label; });
+  });
+  var examined = document.querySelector(".recent li.examined");
+  if (examined) examined.scrollIntoView({ block: "center" });
+})();
+</script>
+"""
+
+assert v3.PAGE.count(RECENT_ITEM_V3) == 1, "V3's Recent list has changed"
+
+# The page is V3's, with its own name, a Log out button, the random voices, Examine and the phone tabs
 v3.PAGE = (v3.PAGE
+           .replace("<body>", "<body>\n" + NUMBER, 1)
+           .replace(RECENT_ITEM_V3, RECENT_ITEM, 1)
+           .replace("</body>", EXAMINE_SCRIPT + "</body>", 1)
            .replace("<title>Voice Generator V3</title>", "<title>Voice Generator V4</title>")
            .replace('<span class="version">V3</span>', '<span class="version">V4</span>')
            .replace("</header>", """  <form method="post" action="/logout"><button type="submit">Log out</button></form>
@@ -363,11 +481,21 @@ v3.read_settings = read_settings
 v3.query_string = query_string
 
 
+def split_shares(number):
+    """How many of `number` voices come from each split when both are asked for: 80 % validation, 20 % final test."""
+    test = round(number * split_voice_data.TEST_FRACTION)
+    return {"validation": number - test, "test": test}
+
+
 @lru_cache(maxsize=32)
 def pick_voices(number, source, split, min_seconds, max_seconds, seed):
+    # Both splits: each is picked on its own, so the 80/20 share holds in every list, not just on average
+    if split == "all":
+        return [clip for name, share in split_shares(number).items() if share
+                for clip in pick_voices(share, source, name, min_seconds, max_seconds, seed)]
+
     library = v3.library_ui.library
     missing = [name for name in split_voice_data.PICKERS if name not in library]
-    split = None if split == "all" else split
 
     if source != VOICES_FROM_ALL:
         if source in missing:
@@ -393,7 +521,24 @@ def random_voices(settings):
     except ValueError as error:
         return {"rows": [], "error": str(error), "sources": sources}
 
-    return {"rows": rows, "error": "", "sources": sources}
+    return {"rows": rows, "error": "", "sources": sources, "groups": split_groups(rows, settings["voices_split"])}
+
+
+def split_groups(rows, split):
+    """
+    The voices in blocks for the page. From one split they are one block; from both,
+    the validation voices first, then the final test ones, each block labelled.
+    """
+    if split != "all":
+        return [{"split": split, "label": "", "rows": rows}]
+
+    by_split = {}
+    for clip in rows:
+        by_split.setdefault(split_voice_data.split_of(clip.dataset, clip.speaker), []).append(clip)
+
+    order = [*VOICE_SPLITS_ONLY, None]
+    return [{"split": name, "label": VOICE_SPLITS.get(name, "In no split"), "rows": by_split[name]}
+            for name in order if by_split.get(name)]
 
 
 @app.context_processor
@@ -403,6 +548,9 @@ def sampler_helpers():
         "voice_values": voice_values,
         "voice_fields": list(voice_values(read_settings(MultiDict()))),
         "voice_splits": VOICE_SPLITS,
+        "split_names": SPLIT_NAMES,
+        "test_percent": TEST_PERCENT,
+        "split_sizes": SPLIT_SIZES,
         "from_all": VOICES_FROM_ALL,
         "voices_shown": VOICES_SHOWN,
     }
@@ -421,6 +569,129 @@ def random_pick():
     s.update({name: fields[name] for name in voice_values(fields)})
     s["voices_seed"] = fields["voices_seed"] if seed else secrets.randbelow(10_000)
     return v3.back(s)
+
+
+# --------------------------------------------------------------------------- #
+# Examine: a generated clip measured against its reference
+# --------------------------------------------------------------------------- #
+
+
+def generated_wav(relative):
+    """The wav for a path like "1001/1001_20261103_103302_543.wav", only if it is a clip in OUTPUT_DIR."""
+    root = v3.generator_ui.OUTPUT_DIR.resolve()
+    path = (root / relative).resolve()
+    if path.parent.parent != root or path.suffix != ".wav" or not path.is_file():
+        return None
+    return path
+
+
+def library_clip(record):
+    """The library clip a record names in "reference_clip" (dataset/clip id), or None."""
+    dataset, _, clip_id = record.get("reference_clip", "").partition("/")
+    return v3.library_ui.library.get(dataset, {}).get("by_id", {}).get(clip_id)
+
+
+def origin_of(record):
+    """
+    Where the voice comes from: saved with the clip, or worked out for clips made before
+    that. The split is always looked up again, so a clip made under an older split
+    shows the speaker's part of the current one.
+    """
+    if record.get("origin"):
+        origin = dict(record["origin"])
+        if origin.get("dataset") and origin.get("speaker"):
+            origin["split"] = split_voice_data.split_of(origin["dataset"], origin["speaker"])
+        return origin
+    clip = library_clip(record)
+    return split_voice_data.voice_origin(clip) if clip else None
+
+
+def origin_text(origin):
+    if not origin:
+        return ""
+    parts = [origin.get("dataset"), origin.get("speaker"), origin.get("clip_id"),
+             *(origin.get("details") or {}).values()]
+    split = origin.get("split")
+    parts.append(SPLIT_NAMES.get(split, f"{split} split") if split else "in no split")
+    return " · ".join(str(part) for part in parts if part)
+
+
+def read_record(path):
+    info = path.with_suffix(".json")
+    return json.loads(info.read_text(encoding="utf-8")) if info.is_file() else None
+
+
+def clip_info(item):
+    """For the page: the clip's path, where its voice comes from, and its newest measurement if any."""
+    relative = item["audio"].removeprefix("/generated/")
+    path = generated_wav(relative)
+    record = read_record(path) if path else None
+    if record is None:
+        return None
+
+    # The node the clip links to; a clip measured outside this page is found by its checksum
+    node = measurements.load_node(node=record["measurements"]) if record.get("measurements") else None
+    node = node or measurements.load_node(audio=path)
+    runs = node["runs"] if node else []
+
+    return {
+        "path": relative,
+        "origin_text": origin_text(origin_of(record)),
+        "metrics": runs[-1]["metrics"] if runs else None,
+        "node": record.get("measurements") or (measurements.shown(measurements.node_path(path)) if node else None),
+        "runs": len(runs),
+    }
+
+
+def examine_clip(path, force=False):
+    """
+    The clip's metrics against its reference, from its node if it was measured with the same inputs
+    (unless force), otherwise measured now. Its .json then links to the node and records the origin.
+    """
+    record = read_record(path)
+    if record is None or not record.get("target_text"):
+        raise ValueError("There is no record of what this clip should say, so it cannot be measured.")
+
+    reference = record.get("reference_audio")
+    if not reference or not Path(reference).is_file():
+        clip = library_clip(record)
+        if clip is None:
+            raise ValueError("The reference recording of this clip cannot be found.")
+        reference = get_clip(clip)[0]
+
+    result = measurements.measure(reference, path, record["target_text"], record.get("reference_text"), force=force)
+    record["measurements"] = result["node"]
+    record["origin"] = origin_of(record)
+    record.pop("metrics", None)     # kept in the node now, not here
+    path.with_suffix(".json").write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
+    return result
+
+
+@app.context_processor
+def examine_helpers():
+    return {"clip_info": clip_info}
+
+
+@app.route("/examine", methods=["POST"])
+def examine():
+    s = read_settings(MultiDict(parse_qsl(request.form.get("state", ""))))
+    relative = request.form.get("clip", "")
+    path = generated_wav(relative)
+
+    if path is None:
+        return v3.back(s, error="That clip cannot be found.")
+
+    try:
+        # The models share the GPU with generating, so one at a time
+        with v3.generate_lock:
+            result = examine_clip(path, force=request.form.get("force") == "1")
+    except Exception as error:
+        import traceback
+        traceback.print_exc()
+        return v3.back(s, error=f"Examining failed: {type(error).__name__}: {error}")
+
+    message = "Already measured with the same inputs: shown from its saved node, nothing was run." if result["cached"] else ""
+    return v3.back(s, examined=relative, message=message)
 
 
 failed_logins = 0
@@ -663,6 +934,18 @@ if __name__ == "__main__":
     # Speech lengths, shared with V2's helpers (read from output/picky/)
     for name, data in v3.library_ui.library.items():
         v3.v2.seconds[name] = v3.measure(data["clips"])
+
+    # Load CosyVoice now, in the background, so the first Generate does not wait for it.
+    # A Generate pressed before it is ready waits for this load instead of starting another.
+    def preload():
+        started = time.time()
+        try:
+            model.voice_model()
+            print(f"CosyVoice 3 is ready ({time.time() - started:.0f} s)")
+        except Exception as error:
+            print(f"CosyVoice 3 did not load in the background ({error}); the first Generate will try again")
+
+    threading.Thread(target=preload, name="preload-cosyvoice", daemon=True).start()
 
     # Only this PC can connect directly; a tunnel's agent runs on this PC too.
     # The debugger stays off.

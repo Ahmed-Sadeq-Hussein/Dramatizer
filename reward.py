@@ -12,6 +12,7 @@ there, nowhere else.
     similarity_reward("reference.wav", "clip.wav")
     similarity_matrix_reward({"a": "a.wav", "b": "b.wav", "c": "c.wav"})
     sanity_check("reference.wav", "baseline.wav", "test.wav")
+    clone_metrics("reference.wav", "clone.wav", "the line", reference_text="the reference's words")
 
 Every reward function also accepts details=True and then returns a dict with the
 reward and every number behind it, for logs and for debugging a run.
@@ -29,6 +30,8 @@ Lessons from earlier work (see PLAN.md, section 7) built into the design:
   limit instead of being punished for doing what they were asked.
 """
 import math
+import re
+import time
 from dataclasses import dataclass, field
 
 import librosa
@@ -132,6 +135,91 @@ def speech_seconds(audio, config=CONFIG):
     samples = load_mono(audio, 16000)
     intervals = librosa.effects.split(samples, top_db=config.speech_top_db)
     return float(sum(end - start for start, end in intervals)) / 16000
+
+
+# --------------------------------------------------------------------------- #
+# Every metric of one clone
+# --------------------------------------------------------------------------- #
+
+# Tags such as [laughter] or <strong>...</strong> are spoken as sounds or stress, not words
+TAGS = re.compile(r"\[[^\]]*\]|<[^>]*>")
+
+
+def _words(text):
+    return len(TAGS.sub(" ", text or "").split())
+
+
+def measuring_models():
+    """Which models clone_metrics measures with (from .env)."""
+    import model
+
+    return {
+        "wer": model.setting("WER_MODEL", "whisper-base"),
+        "similarity": model.setting("SIMILARITY_MODEL", "resemblyzer"),
+        "quality": model.setting("PERQ_MODEL", "squim"),
+    }
+
+
+def clone_metrics(reference_audio, clone_audio, text, reference_text=None, config=CONFIG):
+    """
+    Every measurement of a cloned clip against the recording it was cloned from.
+
+    reference_audio  the recording the model heard
+    clone_audio      the cloned clip
+    text             the words the clone should say (tags are left out of the WER)
+    reference_text   the words of the reference, for its speaking rate (optional)
+
+    Returns a dict:
+      wer, heard               word error rate against `text`, and what Whisper heard
+      similarity               speaker similarity of the clone to the reference
+      quality, reference_quality   estimated pesq, stoi and si_sdr of each (PERQ.py)
+      seconds, speech_seconds  length of the clone, and without its pauses
+      words_per_second         speaking rate of the clone (and reference_words_per_second)
+      rate_vs_reference        the clone's rate divided by the reference's: below 1 is slower
+      rewards                  what wer_reward, similarity_reward and perq_reward give,
+                               without a neutral render to compare with
+      models, measured         which models measured it, and when
+
+    To measure each clip only once and keep every result, use measurements.measure.
+    """
+    from PERQ import perceptual_qualities
+    from Similarity import speaker_similarity
+    from WER import transcribe, wer_of
+
+    script = TAGS.sub(" ", text)
+    heard = transcribe(clone_audio)
+    wer = wer_of(script, heard)
+    similarity = speaker_similarity(clone_audio, reference_audio)
+    quality = perceptual_qualities(clone_audio)
+
+    seconds = float(len(load_mono(clone_audio, 16000))) / 16000
+    speech = speech_seconds(clone_audio, config)
+    rate = _words(text) / speech if speech > 0 else None
+
+    reference_rate = None
+    if reference_text:
+        reference_speech = speech_seconds(reference_audio, config)
+        reference_rate = _words(reference_text) / reference_speech if reference_speech > 0 else None
+
+    return {
+        "wer": wer,
+        "heard": heard,
+        "similarity": similarity,
+        "quality": quality,
+        "reference_quality": perceptual_qualities(reference_audio),
+        "seconds": seconds,
+        "speech_seconds": speech,
+        "words_per_second": rate,
+        "reference_words_per_second": reference_rate,
+        "rate_vs_reference": rate / reference_rate if rate and reference_rate else None,
+        "rewards": {
+            "wer": ramp(wer, config.wer_free, config.wer_free + config.wer_fade),
+            "similarity": ramp(similarity, config.sim_full, config.sim_zero),
+            "quality": ramp(quality[config.perq_metric], config.perq_full, config.perq_zero),
+        },
+        "models": measuring_models(),
+        "measured": time.strftime("%Y-%m-%d %H:%M:%S"),
+    }
 
 
 # --------------------------------------------------------------------------- #

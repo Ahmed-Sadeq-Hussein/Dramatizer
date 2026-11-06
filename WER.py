@@ -56,12 +56,21 @@ def word_error_rate(audio, text, language="en"):
     higher is worse. `audio` is a path to a wav, flac or mp3 file, `text` the
     words that should be heard, `language` the language code Whisper listens for.
     """
+    # Checked before listening, which is the slow part
+    if not normalise(text):
+        raise ValueError("The script has no words to compare with.")
+
+    return wer_of(text, transcribe(audio, language))
+
+
+def wer_of(text, heard):
+    """The word error rate of what was heard against the script, without listening again."""
     expected = normalise(text)
 
     if not expected:
         raise ValueError("The script has no words to compare with.")
 
-    heard = normalise(transcribe(audio, language))
+    heard = normalise(heard)
 
     # Nothing heard at all: every word is missing
     if not heard:

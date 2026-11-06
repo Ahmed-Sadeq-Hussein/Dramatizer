@@ -45,12 +45,17 @@ def perceptual_quality(audio, metric="pesq"):
     if metric not in METRICS:
         raise ValueError(f"Unknown metric {metric!r}. Use one of: {', '.join(METRICS)}.")
 
+    return perceptual_qualities(audio)[metric]
+
+
+def perceptual_qualities(audio):
+    """All three estimates at once: {"stoi": ..., "pesq": ..., "si_sdr": ...}."""
     wave = torch.from_numpy(load_mono(audio, SAMPLE_RATE)).unsqueeze(0)
 
     with torch.no_grad():
         estimates = model.quality_model()(wave.to(model.device()))
 
-    return float(estimates[METRICS.index(metric)].item())
+    return {name: float(value.item()) for name, value in zip(METRICS, estimates)}
 
 
 if __name__ == "__main__":

@@ -5,6 +5,12 @@ loaded by model.py (which reads VOICE_MODEL_DIR and COSYVOICE_MODEL_DIR from
 .env), so this file only decides what to say and where to save it:
 
     OUTPUT_DIR            where audio is written (optional, default: output)
+    VOICE_SEED            the random seed of every render (optional, default: 0),
+                          or "random" for a new one each time
+
+The same reference, text and seed give the same audio: CosyVoice picks its
+speech tokens at random and adds random noise in its vocoder, and both draw
+from the seed set right before each render. The seed is saved in the .json.
 
 Use it from Python:
 
@@ -22,11 +28,13 @@ or from the command line:
     python Voice_model.py REFERENCE_AUDIO REFERENCE_TEXT TARGET_TEXT [--name NAME]
 """
 import json
+import random
 import time
 import argparse
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import torch
 import torchaudio
 
@@ -34,6 +42,27 @@ import model
 
 # Where audio is written (settings come from .env, loaded by model.py)
 OUTPUT_DIR = model.PROJECT_DIR / model.setting("OUTPUT_DIR", "output")
+
+# The seed of every render: VOICE_SEED in .env, or "random"
+SEED = model.setting("VOICE_SEED", "0")
+
+
+def choose_seed(seed=None):
+    """The seed to render with: the one given, else VOICE_SEED, else (for "random") a new one."""
+    if seed is None:
+        seed = SEED
+    if str(seed).strip().lower() == "random":
+        return random.SystemRandom().randrange(2**31)
+    return int(seed)
+
+
+def set_seed(seed):
+    """Every random generator CosyVoice draws from (as cosyvoice.utils.common.set_all_random_seed)."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
 
 # CosyVoice 3 expects this system prompt in front of the reference text;
 # CosyVoice 2 did not
@@ -44,7 +73,7 @@ COSYVOICE3_PROMPT = "You are a helpful assistant.<|endofprompt|>"
 GENERIC_NAMES = ("reference", "refrence")
 
 
-def generate_speech(reference_audio, reference_text, target_text, voice_name=None):
+def generate_speech(reference_audio, reference_text, target_text, voice_name=None, seed=None):
     """
     Speak target_text in the voice of reference_audio, using CosyVoice 3
     with the Fun-CosyVoice3-0.5B-2512 weights.
@@ -55,6 +84,8 @@ def generate_speech(reference_audio, reference_text, target_text, voice_name=Non
     voice_name       the folder the audio is written to. Without it, the name
                      of the reference file is used, or its folder's name when
                      the file is just called "reference"
+    seed             the random seed (default: VOICE_SEED, which defaults to 0).
+                     The same inputs and seed give the same audio
 
     Returns the path of the new wav file: OUTPUT_DIR/voice_name/voice_name_TIME.wav
     """
@@ -78,6 +109,10 @@ def generate_speech(reference_audio, reference_text, target_text, voice_name=Non
 
     # Loaded by model.py on the first call (about a minute), then reused
     cosyvoice = model.voice_model()
+
+    # Right before rendering, so loading the model does not move the generators on
+    seed = choose_seed(seed)
+    set_seed(seed)
 
     # Zero-shot cloning: the model hears the reference clip and its words,
     # then says the target text in that voice. Long text comes back in chunks.
@@ -106,6 +141,7 @@ def generate_speech(reference_audio, reference_text, target_text, voice_name=Non
         "reference_audio": str(reference_audio),
         "reference_text": reference_text,
         "voice_name": voice_name,
+        "seed": seed,
         "seconds": round(time.time() - started, 1),
         "created": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
@@ -119,6 +155,7 @@ if __name__ == "__main__":
     parser.add_argument("reference_text", help="the words spoken in the clip")
     parser.add_argument("target_text", help="the words to speak")
     parser.add_argument("--name", default=None, help="output folder name (default: from the clip)")
+    parser.add_argument("--seed", default=None, help="random seed, or random (default: VOICE_SEED, else 0)")
     args = parser.parse_args()
 
-    print(generate_speech(args.reference_audio, args.reference_text, args.target_text, args.name))
+    print(generate_speech(args.reference_audio, args.reference_text, args.target_text, args.name, args.seed))

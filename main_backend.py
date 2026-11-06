@@ -1,0 +1,122 @@
+"""main_backend.py | One place to run the back end: the code and the data.
+
+    python main_backend.py                          # what can be run, and how
+    python main_backend.py wer clone.wav "the words that should be heard"
+    python main_backend.py split                    # make the validation/test split (once)
+    python main_backend.py test                     # every test that needs no GPU
+
+Everything after the command's name goes to that command as it is, so each one
+takes the same options as before. `python main_backend.py NAME --help` shows them,
+for the commands that have options.
+
+The back end lives in backend/:
+
+    backend/model.py          every model, and the settings from .env
+    backend/audio_io.py       reading a recording the way the measurements need it
+    backend/metrics/          WER, similarity, quality, the rewards, the measurement log
+    backend/voice_data/       the datasets: reading, picking, the manifest, the split
+    backend/speech/           cloning a voice (CosyVoice 3), cleaning and combining references
+    backend/emphasis/         word emphasis chosen by a small LLM, and its tests
+    backend/evaluation/       checks of the manifest and the split, and run tracking
+    backend/mcp_server/       the knowledge graph of the generated clips, for an assistant
+    backend/data/             the committed data: manifests, the split, the emphasis test set
+
+The front end (the website and logging in) is run by main_frontend.py.
+"""
+import runpy
+import subprocess
+import sys
+from pathlib import Path
+
+PROJECT_DIR = Path(__file__).resolve().parent
+
+# name: (what it does, the module to run). A path instead of a module is a script
+# that imports the files next to it, so it runs from its own folder.
+COMMANDS = {
+    "Measuring": {
+        "wer": ("Word error rate of a recording against its script", "backend.metrics.WER"),
+        "similarity": ("How alike two voices sound", "backend.metrics.Similarity"),
+        "quality": ("Estimated quality of one recording (PESQ, STOI, SI-SDR)", "backend.metrics.PERQ"),
+        "calibrate": ("Find the same/different speaker similarity limits", "backend.metrics.calibrate_similarity"),
+    },
+    "Voices and data": {
+        "voices": ("Browse a dataset: list clips, hear one, read its script", "backend.voice_data.Voice_Importer"),
+        "pick": ("Choose which clips of a dataset to use as references", "backend.voice_data.Picky_voice"),
+        "manifest": ("Build the data manifest", "backend.voice_data.build_manifest"),
+        "split": ("Make the validation/test split (once; never overwritten)", "backend.voice_data.split_voice_data"),
+    },
+    "Speech": {
+        "speak": ("Speak a line in a cloned voice (CosyVoice 3)", "backend.speech.Voice_model"),
+        "clean": ("Remove background noise from a recording", "backend.speech.Clean_Audio_Distortion"),
+        "combine": ("Combine two recordings into one reference", "backend.speech.Combine_audio"),
+        "format": ("Add paralinguistic tags to a line", "backend.speech.tts_formatter"),
+    },
+    "Emphasis": {
+        "emphasis-test": ("Which small LLM picks the right words to stress", "backend.emphasis.test_emphasis_llms"),
+        "emphasis-plot": ("Graphs of the emphasis test", "backend.emphasis.plot_emphasis_results"),
+    },
+    "Evaluation": {
+        "checks": ("Deterministic checks of the manifest and the split", "backend/evaluation/checks.py"),
+        "eval-manifest": ("List every clip once, in a fixed order (history/eval)", "backend/evaluation/make_manifest.py"),
+        "track": ("Record an evaluation run with MLflow", "backend/evaluation/track.py"),
+        "graph": ("Build the knowledge graph of the generated clips", "backend/mcp_server/build_graph.py"),
+        "mcp": ("Start the MCP server for the knowledge graph", "backend/mcp_server/dramatizer_mcp.py"),
+    },
+}
+
+# The tests that need no models or GPU, run as they are run by hand
+TESTS = ["backend/evaluation/test_checks.py", "backend/mcp_server/test_graph.py"]
+
+
+def all_commands():
+    return {name: target for group in COMMANDS.values() for name, (_, target) in group.items()}
+
+
+def show_help():
+    print(__doc__.split("\n\nThe back end lives")[0].split("\n", 1)[1])
+    for group, commands in COMMANDS.items():
+        print(f"\n{group}:")
+        for name, (what, _) in commands.items():
+            print(f"  {name:15s} {what}")
+    print(f"\n  {'test':15s} Run every test that needs no GPU")
+
+
+def run(target, args):
+    """Run one command as if it were started on its own, with `args` as its command line."""
+    sys.argv = [target, *args]
+    if target.endswith(".py"):
+        script = PROJECT_DIR / target
+        sys.path.insert(0, str(script.parent))
+        runpy.run_path(str(script), run_name="__main__")
+    else:
+        runpy.run_module(target, run_name="__main__", alter_sys=True)
+
+
+def run_tests():
+    failed = []
+    for test in TESTS:
+        print(f"\n=== {test}", flush=True)
+        if subprocess.run([sys.executable, str(PROJECT_DIR / test)], cwd=PROJECT_DIR).returncode:
+            failed.append(test)
+    print("\nAll tests passed." if not failed else f"\nFailed: {', '.join(failed)}")
+    return 1 if failed else 0
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help", "help"):
+        show_help()
+        return 0
+    name, args = argv[0], argv[1:]
+    if name == "test":
+        return run_tests()
+    commands = all_commands()
+    if name not in commands:
+        print(f"Unknown command {name!r}. Run `python main_backend.py` to see them all.", file=sys.stderr)
+        return 2
+    run(commands[name], args)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.path.insert(0, str(PROJECT_DIR))
+    sys.exit(main(sys.argv[1:]))

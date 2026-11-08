@@ -12,12 +12,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from checks import FIELDS, contract_checks, run_checks, speaker_key  # noqa: E402
+from checks import FIELDS, contract_checks, run_checks, speaker_key, voice_checks  # noqa: E402
 
 CHECK_NAMES = [
     "validation and test are both present",
     "validation and test share no speaker",
-    "every clip belongs to a speaker in the split",
+    "every clip's speaker is a validation voice, a test voice or listed as unused",
     "no clip has an empty script",
 ]
 
@@ -76,12 +76,101 @@ class KnownAnswers(unittest.TestCase):
         rows[0]["text"] = None
         self.assertEqual(failed(run_checks(rows, split)), [CHECK_NAMES[3]])
 
+    def test_unused_speaker_is_accounted_for(self):
+        rows, split = good_setup()
+        rows.append({"dataset": "CREMA-D", "speaker": "1003", "clip_id": "1003_x", "text": "hi"})
+        self.assertEqual(failed(run_checks(rows, split)), [CHECK_NAMES[2]])
+        split["unused"] = [{"speaker": "CREMA-D/1003", "why": "no neutral clip"}]
+        self.assertEqual(failed(run_checks(rows, split)), [])
+
     def test_same_speaker_id_in_two_datasets_is_not_a_leak(self):
         # "1001" can exist in CREMA-D and in VCTK: the dataset is part of the key
         self.assertNotEqual(
             speaker_key({"dataset": "VCTK", "speaker": "1001"}),
             speaker_key({"dataset": "CREMA-D", "speaker": "1001"}),
         )
+
+
+VOICE_CHECKS = [
+    "every voice is listed once, with one clip",
+    "the split's lists hold exactly the voices, each in its own split",
+    "no unused speaker is also a voice",
+    "every voice's clip is in the manifest and is its own speaker's",
+    "every voice's clip is neutral, within the length limits",
+    "each dataset's test share is 20 %, rounded, at least one voice",
+]
+
+
+def voice_setup():
+    """Five VCTK voices (1 test) and one CREMA-D voice (1 test), each with one clip, plus one unused speaker."""
+    speakers = ["p225", "p226", "p227", "p228", "p229"]
+    rows = [{"dataset": "VCTK", "speaker": s, "clip_id": f"{s}_1", "text": "hi", "emotion": ""} for s in speakers]
+    rows.append({"dataset": "CREMA-D", "speaker": "1001", "clip_id": "1001_NEU", "text": "hi", "emotion": "neutral"})
+    rows.append({"dataset": "CREMA-D", "speaker": "1002", "clip_id": "1002_ANG", "text": "hi", "emotion": "anger"})
+    voices = [{"voice": f"VCTK/{s}", "dataset": "VCTK", "clip_id": f"{s}_1", "speech_seconds": 9.0,
+               "split": "test" if s == "p229" else "validation"} for s in speakers]
+    voices.append({"voice": "CREMA-D/1001", "dataset": "CREMA-D", "clip_id": "1001_NEU", "speech_seconds": 3.5,
+                   "split": "test"})
+    split = {
+        "rules": {"min_seconds": 3.0, "max_seconds": 25.0, "test_fraction": 0.2},
+        "validation": [v["voice"] for v in voices if v["split"] == "validation"],
+        "test": [v["voice"] for v in voices if v["split"] == "test"],
+        "unused": [{"speaker": "CREMA-D/1002", "why": "no neutral clip"}],
+        "voices": voices,
+    }
+    return rows, split
+
+
+class Voices(unittest.TestCase):
+    def test_correct_voices_pass_every_check(self):
+        rows, split = voice_setup()
+        results = voice_checks(rows, split)
+        self.assertEqual([name for name, _ in results], VOICE_CHECKS)
+        self.assertEqual(failed(results), [])
+        self.assertEqual(failed(run_checks(rows, split)), [])
+
+    def test_each_fault_fails_only_its_rule(self):
+        def listed_twice(split):
+            split["voices"].append(dict(split["voices"][0]))
+
+        def wrong_list(split):
+            split["validation"].remove("VCTK/p225")
+            split["test"].append("VCTK/p225")
+
+        def other_speakers_clip(split):
+            split["voices"][0]["clip_id"] = "p226_1"
+
+        def emotional_clip(split):
+            split["voices"][5]["clip_id"] = "1002_ANG"
+            split["voices"][5]["voice"] = "CREMA-D/1002"
+            split["test"] = ["VCTK/p229", "CREMA-D/1002"]
+            split["unused"] = []
+
+        def too_short(split):
+            split["voices"][0]["speech_seconds"] = 2.0
+
+        def test_share(split):
+            split["voices"][0]["split"] = "test"
+            split["validation"].remove("VCTK/p225")
+            split["test"].append("VCTK/p225")
+
+        def unused_voice(split):
+            split["unused"].append({"speaker": "VCTK/p225", "why": "x"})
+
+        cases = [
+            (listed_twice, VOICE_CHECKS[0]),
+            (wrong_list, VOICE_CHECKS[1]),
+            (unused_voice, VOICE_CHECKS[2]),
+            (other_speakers_clip, VOICE_CHECKS[3]),
+            (emotional_clip, VOICE_CHECKS[4]),
+            (too_short, VOICE_CHECKS[4]),
+            (test_share, VOICE_CHECKS[5]),
+        ]
+        for fault, rule in cases:
+            rows, split = voice_setup()
+            fault(split)
+            with self.subTest(rule=rule, fault=fault.__name__):
+                self.assertEqual(failed(voice_checks(rows, split)), [rule])
 
 
 def contract_rows():

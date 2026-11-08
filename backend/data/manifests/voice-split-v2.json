@@ -1,0 +1,3619 @@
+{
+  "name": "voice-split-v2",
+  "what": "Every voice (dataset + speaker) with a usable clip, the one clip it uses, and its split.",
+  "rules": {
+    "voice": "a speaker with at least one neutral clip of 3-25 s of speech (VCTK: mic mic1, silent clips left out)",
+    "clip": "the voice's longest usable clip; on a tie, the first clip id",
+    "split": "by voice, each dataset on its own, 80 % validation and 20 % test (rounded, at least 1), shuffled with seed 42",
+    "test": "locked: unused until the final evaluation",
+    "min_seconds": 3.0,
+    "max_seconds": 25.0,
+    "seed": 42,
+    "test_fraction": 0.2
+  },
+  "clip_manifest": "voices-v1.json",
+  "clip_manifest_sha256": "fb19390224957b611be70eaa17f8c10365e7477a07c801a12571b4067abe7192",
+  "counts": {
+    "CREMA-D": {
+      "validation": 27,
+      "test": 7,
+      "unused speakers": 57,
+      "mean seconds": 3.38
+    },
+    "LibriTTS-R": {
+      "validation": 62,
+      "test": 15,
+      "unused speakers": 2,
+      "mean seconds": 20.02
+    },
+    "VCTK": {
+      "validation": 87,
+      "test": 22,
+      "unused speakers": 0,
+      "mean seconds": 10.19
+    },
+    "All": {
+      "validation": 176,
+      "test": 44,
+      "unused speakers": 59
+    }
+  },
+  "validation": [
+    "CREMA-D/1003",
+    "CREMA-D/1004",
+    "CREMA-D/1005",
+    "CREMA-D/1006",
+    "CREMA-D/1007",
+    "CREMA-D/1009",
+    "CREMA-D/1010",
+    "CREMA-D/1014",
+    "CREMA-D/1020",
+    "CREMA-D/1022",
+    "CREMA-D/1025",
+    "CREMA-D/1028",
+    "CREMA-D/1032",
+    "CREMA-D/1044",
+    "CREMA-D/1045",
+    "CREMA-D/1052",
+    "CREMA-D/1058",
+    "CREMA-D/1059",
+    "CREMA-D/1060",
+    "CREMA-D/1064",
+    "CREMA-D/1068",
+    "CREMA-D/1069",
+    "CREMA-D/1072",
+    "CREMA-D/1076",
+    "CREMA-D/1080",
+    "CREMA-D/1087",
+    "CREMA-D/1089",
+    "LibriTTS-R/1089",
+    "LibriTTS-R/1188",
+    "LibriTTS-R/121",
+    "LibriTTS-R/1221",
+    "LibriTTS-R/1272",
+    "LibriTTS-R/1284",
+    "LibriTTS-R/1320",
+    "LibriTTS-R/1462",
+    "LibriTTS-R/1673",
+    "LibriTTS-R/174",
+    "LibriTTS-R/1919",
+    "LibriTTS-R/1988",
+    "LibriTTS-R/1993",
+    "LibriTTS-R/1995",
+    "LibriTTS-R/2078",
+    "LibriTTS-R/2086",
+    "LibriTTS-R/2277",
+    "LibriTTS-R/2300",
+    "LibriTTS-R/237",
+    "LibriTTS-R/2412",
+    "LibriTTS-R/2428",
+    "LibriTTS-R/251",
+    "LibriTTS-R/260",
+    "LibriTTS-R/2803",
+    "LibriTTS-R/2830",
+    "LibriTTS-R/2902",
+    "LibriTTS-R/2961",
+    "LibriTTS-R/3536",
+    "LibriTTS-R/3570",
+    "LibriTTS-R/3576",
+    "LibriTTS-R/3729",
+    "LibriTTS-R/3853",
+    "LibriTTS-R/4077",
+    "LibriTTS-R/4507",
+    "LibriTTS-R/4970",
+    "LibriTTS-R/4992",
+    "LibriTTS-R/5105",
+    "LibriTTS-R/5142",
+    "LibriTTS-R/5639",
+    "LibriTTS-R/5694",
+    "LibriTTS-R/5895",
+    "LibriTTS-R/6295",
+    "LibriTTS-R/6313",
+    "LibriTTS-R/6319",
+    "LibriTTS-R/652",
+    "LibriTTS-R/672",
+    "LibriTTS-R/6829",
+    "LibriTTS-R/6930",
+    "LibriTTS-R/7127",
+    "LibriTTS-R/7176",
+    "LibriTTS-R/7729",
+    "LibriTTS-R/777",
+    "LibriTTS-R/7976",
+    "LibriTTS-R/8224",
+    "LibriTTS-R/8230",
+    "LibriTTS-R/8297",
+    "LibriTTS-R/84",
+    "LibriTTS-R/8455",
+    "LibriTTS-R/8463",
+    "LibriTTS-R/8555",
+    "LibriTTS-R/8842",
+    "LibriTTS-R/908",
+    "VCTK/p225",
+    "VCTK/p227",
+    "VCTK/p228",
+    "VCTK/p229",
+    "VCTK/p230",
+    "VCTK/p231",
+    "VCTK/p232",
+    "VCTK/p233",
+    "VCTK/p236",
+    "VCTK/p237",
+    "VCTK/p238",
+    "VCTK/p239",
+    "VCTK/p240",
+    "VCTK/p243",
+    "VCTK/p244",
+    "VCTK/p245",
+    "VCTK/p246",
+    "VCTK/p247",
+    "VCTK/p248",
+    "VCTK/p249",
+    "VCTK/p250",
+    "VCTK/p251",
+    "VCTK/p252",
+    "VCTK/p254",
+    "VCTK/p255",
+    "VCTK/p256",
+    "VCTK/p258",
+    "VCTK/p260",
+    "VCTK/p261",
+    "VCTK/p262",
+    "VCTK/p263",
+    "VCTK/p264",
+    "VCTK/p265",
+    "VCTK/p266",
+    "VCTK/p267",
+    "VCTK/p268",
+    "VCTK/p269",
+    "VCTK/p270",
+    "VCTK/p271",
+    "VCTK/p272",
+    "VCTK/p273",
+    "VCTK/p275",
+    "VCTK/p278",
+    "VCTK/p280",
+    "VCTK/p281",
+    "VCTK/p284",
+    "VCTK/p286",
+    "VCTK/p287",
+    "VCTK/p294",
+    "VCTK/p295",
+    "VCTK/p297",
+    "VCTK/p298",
+    "VCTK/p300",
+    "VCTK/p302",
+    "VCTK/p303",
+    "VCTK/p304",
+    "VCTK/p305",
+    "VCTK/p306",
+    "VCTK/p308",
+    "VCTK/p310",
+    "VCTK/p311",
+    "VCTK/p312",
+    "VCTK/p313",
+    "VCTK/p314",
+    "VCTK/p317",
+    "VCTK/p323",
+    "VCTK/p326",
+    "VCTK/p329",
+    "VCTK/p330",
+    "VCTK/p333",
+    "VCTK/p334",
+    "VCTK/p335",
+    "VCTK/p336",
+    "VCTK/p339",
+    "VCTK/p340",
+    "VCTK/p341",
+    "VCTK/p343",
+    "VCTK/p345",
+    "VCTK/p347",
+    "VCTK/p351",
+    "VCTK/p360",
+    "VCTK/p361",
+    "VCTK/p363",
+    "VCTK/p364",
+    "VCTK/p374",
+    "VCTK/p376",
+    "VCTK/s5"
+  ],
+  "test": [
+    "CREMA-D/1008",
+    "CREMA-D/1026",
+    "CREMA-D/1033",
+    "CREMA-D/1055",
+    "CREMA-D/1057",
+    "CREMA-D/1061",
+    "CREMA-D/1070",
+    "LibriTTS-R/1580",
+    "LibriTTS-R/2035",
+    "LibriTTS-R/3000",
+    "LibriTTS-R/3170",
+    "LibriTTS-R/3575",
+    "LibriTTS-R/3752",
+    "LibriTTS-R/422",
+    "LibriTTS-R/4446",
+    "LibriTTS-R/5338",
+    "LibriTTS-R/5536",
+    "LibriTTS-R/5683",
+    "LibriTTS-R/6241",
+    "LibriTTS-R/6345",
+    "LibriTTS-R/7021",
+    "LibriTTS-R/7850",
+    "VCTK/p226",
+    "VCTK/p234",
+    "VCTK/p241",
+    "VCTK/p253",
+    "VCTK/p257",
+    "VCTK/p259",
+    "VCTK/p274",
+    "VCTK/p276",
+    "VCTK/p277",
+    "VCTK/p279",
+    "VCTK/p282",
+    "VCTK/p283",
+    "VCTK/p285",
+    "VCTK/p288",
+    "VCTK/p292",
+    "VCTK/p293",
+    "VCTK/p299",
+    "VCTK/p301",
+    "VCTK/p307",
+    "VCTK/p316",
+    "VCTK/p318",
+    "VCTK/p362"
+  ],
+  "unused": [
+    {
+      "speaker": "CREMA-D/1001",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1002",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1011",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1012",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1013",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1015",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1016",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1017",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1018",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1019",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1021",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1023",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1024",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1027",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1029",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1030",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1031",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1034",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1035",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1036",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1037",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1038",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1039",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1040",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1041",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1042",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1043",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1046",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1047",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1048",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1049",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1050",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1051",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1053",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1054",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1056",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1062",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1063",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1065",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1066",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1067",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1071",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1073",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1074",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1075",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1077",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1078",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1079",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1081",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1082",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1083",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1084",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1085",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1086",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1088",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1090",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "CREMA-D/1091",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "LibriTTS-R/3081",
+      "why": "no neutral clip with 3-25 s of speech"
+    },
+    {
+      "speaker": "LibriTTS-R/61",
+      "why": "no neutral clip with 3-25 s of speech"
+    }
+  ],
+  "voices": [
+    {
+      "voice": "CREMA-D/1003",
+      "dataset": "CREMA-D",
+      "speaker": "1003",
+      "clip_id": "1003_ITH_NEU_XX",
+      "speech_seconds": 4.037,
+      "usable_clips": 9,
+      "transcript": "I think I have a doctor's appointment.",
+      "sha256": "6e8ac3433a346a7cb07b5a249ce2313f701967cfcb7b54ad485bfdd2a2e6ade0",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1004",
+      "dataset": "CREMA-D",
+      "speaker": "1004",
+      "clip_id": "1004_IWL_NEU_XX",
+      "speech_seconds": 3.904,
+      "usable_clips": 7,
+      "transcript": "I would like a new alarm clock.",
+      "sha256": "bb7be669c70b6b08d0e6f04ad724784458f78fca48fec03d6b5c82b81d4b2445",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1005",
+      "dataset": "CREMA-D",
+      "speaker": "1005",
+      "clip_id": "1005_ITH_NEU_XX",
+      "speech_seconds": 3.37,
+      "usable_clips": 7,
+      "transcript": "I think I have a doctor's appointment.",
+      "sha256": "650c77d67203416c5551a701ec1895de11662571bd38f0d6e3aea174d6a61106",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1006",
+      "dataset": "CREMA-D",
+      "speaker": "1006",
+      "clip_id": "1006_MTI_NEU_XX",
+      "speech_seconds": 4.071,
+      "usable_clips": 8,
+      "transcript": "Maybe tomorrow it will be cold.",
+      "sha256": "ec4c083d4298ba49f7ddf65cd045510ef7a5b1b379fd5e84817bb676f9f7541c",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1007",
+      "dataset": "CREMA-D",
+      "speaker": "1007",
+      "clip_id": "1007_ITH_NEU_XX",
+      "speech_seconds": 4.771,
+      "usable_clips": 9,
+      "transcript": "I think I have a doctor's appointment.",
+      "sha256": "6461b9d6ea837f238c6c25cc0b305ad482c2c2e5b25b8bb710dc6219b7e50a93",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1008",
+      "dataset": "CREMA-D",
+      "speaker": "1008",
+      "clip_id": "1008_TSI_NEU_XX",
+      "speech_seconds": 3.67,
+      "usable_clips": 5,
+      "transcript": "The surface is slick.",
+      "sha256": "a13a7a87cf7ae134abc028f8c6e9bfd05d988d89bfb95054b5cad2336fb8a07a",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "CREMA-D/1009",
+      "dataset": "CREMA-D",
+      "speaker": "1009",
+      "clip_id": "1009_ITH_NEU_XX",
+      "speech_seconds": 3.136,
+      "usable_clips": 1,
+      "transcript": "I think I have a doctor's appointment.",
+      "sha256": "14661ae21c75774244c2eea6da682ccd8950c535612f9891faad755d2c1f01b3",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1010",
+      "dataset": "CREMA-D",
+      "speaker": "1010",
+      "clip_id": "1010_IWL_NEU_XX",
+      "speech_seconds": 3.704,
+      "usable_clips": 2,
+      "transcript": "I would like a new alarm clock.",
+      "sha256": "7322155e857c5e7724d061bad5d71a1ebb5be8756c9bdde1db766da3f6668c98",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1014",
+      "dataset": "CREMA-D",
+      "speaker": "1014",
+      "clip_id": "1014_MTI_NEU_XX",
+      "speech_seconds": 3.103,
+      "usable_clips": 1,
+      "transcript": "Maybe tomorrow it will be cold.",
+      "sha256": "546995ce12e1848e0f71ad55941cd8a8ed789b39263f3c09decb9c075408a15b",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1020",
+      "dataset": "CREMA-D",
+      "speaker": "1020",
+      "clip_id": "1020_TIE_NEU_XX",
+      "speech_seconds": 3.003,
+      "usable_clips": 1,
+      "transcript": "That is exactly what happened.",
+      "sha256": "05177e5e17bd23ef1724396e4006d27dab02048c05397e8ab423692d8e1691a0",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1022",
+      "dataset": "CREMA-D",
+      "speaker": "1022",
+      "clip_id": "1022_TIE_NEU_XX",
+      "speech_seconds": 3.003,
+      "usable_clips": 2,
+      "transcript": "That is exactly what happened.",
+      "sha256": "7ed0337b80ab8f742920530b600b95d43b2353c1df3b0babbb6aadcf7a9e3869",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1025",
+      "dataset": "CREMA-D",
+      "speaker": "1025",
+      "clip_id": "1025_TIE_NEU_XX",
+      "speech_seconds": 3.437,
+      "usable_clips": 4,
+      "transcript": "That is exactly what happened.",
+      "sha256": "9542cb72de740a21dce0bf91061a7eec66e5e1907d14f114f6a17bdd21804fcb",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1026",
+      "dataset": "CREMA-D",
+      "speaker": "1026",
+      "clip_id": "1026_TIE_NEU_XX",
+      "speech_seconds": 3.103,
+      "usable_clips": 2,
+      "transcript": "That is exactly what happened.",
+      "sha256": "f28c2a124011e4e6b9c73192f449ed7637b32f565ad2671ac3796a8849bb8f5b",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "CREMA-D/1028",
+      "dataset": "CREMA-D",
+      "speaker": "1028",
+      "clip_id": "1028_ITH_NEU_XX",
+      "speech_seconds": 3.27,
+      "usable_clips": 1,
+      "transcript": "I think I have a doctor's appointment.",
+      "sha256": "71d7cc18cb195aba762e08c74ea543f0b2c1343f378fb85bab65522e4eb99d26",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1032",
+      "dataset": "CREMA-D",
+      "speaker": "1032",
+      "clip_id": "1032_WSI_NEU_XX",
+      "speech_seconds": 3.003,
+      "usable_clips": 1,
+      "transcript": "We'll stop in a couple of minutes.",
+      "sha256": "035d94ded6e13b36e7d4c6d35f3a3cce45db8245c6e32466b123f1e79fbcedcd",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1033",
+      "dataset": "CREMA-D",
+      "speaker": "1033",
+      "clip_id": "1033_ITH_NEU_XX",
+      "speech_seconds": 3.07,
+      "usable_clips": 1,
+      "transcript": "I think I have a doctor's appointment.",
+      "sha256": "6edc3a70cc41eaca757ef67f20418224e2cef1349d836f0c1d8e5bc401698d44",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "CREMA-D/1044",
+      "dataset": "CREMA-D",
+      "speaker": "1044",
+      "clip_id": "1044_TAI_NEU_XX",
+      "speech_seconds": 3.003,
+      "usable_clips": 1,
+      "transcript": "The airplane is almost full.",
+      "sha256": "2e253090e3570596c05f0b8ea3853c1e7bf1472360636d152c4dcb98c123525a",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1045",
+      "dataset": "CREMA-D",
+      "speaker": "1045",
+      "clip_id": "1045_WSI_NEU_XX",
+      "speech_seconds": 3.136,
+      "usable_clips": 2,
+      "transcript": "We'll stop in a couple of minutes.",
+      "sha256": "d970d5efd92ac9b11dabd3e9e084f2aa5b161a4e091ba1edf3616f5bf084f9ed",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1052",
+      "dataset": "CREMA-D",
+      "speaker": "1052",
+      "clip_id": "1052_MTI_NEU_XX",
+      "speech_seconds": 3.704,
+      "usable_clips": 5,
+      "transcript": "Maybe tomorrow it will be cold.",
+      "sha256": "9e69b4acb4e8e1f3e8fe6b20f600ffc355248970e4365b0b6fedb1386416f57e",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1055",
+      "dataset": "CREMA-D",
+      "speaker": "1055",
+      "clip_id": "1055_IWL_NEU_XX",
+      "speech_seconds": 3.303,
+      "usable_clips": 2,
+      "transcript": "I would like a new alarm clock.",
+      "sha256": "c1ec7e5fbe547e44c41f9046917b242001b035d8302c019f941c9bcf83e3885a",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "CREMA-D/1057",
+      "dataset": "CREMA-D",
+      "speaker": "1057",
+      "clip_id": "1057_MTI_NEU_XX",
+      "speech_seconds": 3.103,
+      "usable_clips": 2,
+      "transcript": "Maybe tomorrow it will be cold.",
+      "sha256": "318e919a985b65a3aa230bfbf591faf49da5ef9cb311efa7f60a7277cbc4f755",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "CREMA-D/1058",
+      "dataset": "CREMA-D",
+      "speaker": "1058",
+      "clip_id": "1058_TIE_NEU_XX",
+      "speech_seconds": 3.47,
+      "usable_clips": 4,
+      "transcript": "That is exactly what happened.",
+      "sha256": "058d84ecaafd604c06baa2bb54b151ffd60db41470e82c03a0358bbee7278445",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1059",
+      "dataset": "CREMA-D",
+      "speaker": "1059",
+      "clip_id": "1059_TIE_NEU_XX",
+      "speech_seconds": 3.403,
+      "usable_clips": 1,
+      "transcript": "That is exactly what happened.",
+      "sha256": "264869687c9ea64831ed228e936b9b30c71ff85eee0d73583cf6485069abfddd",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1060",
+      "dataset": "CREMA-D",
+      "speaker": "1060",
+      "clip_id": "1060_TIE_NEU_XX",
+      "speech_seconds": 3.503,
+      "usable_clips": 1,
+      "transcript": "That is exactly what happened.",
+      "sha256": "0aa4c6cfe802a50ce9f72c648d85dee1e248be86541eb96dd74df9c4e21c44d6",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1061",
+      "dataset": "CREMA-D",
+      "speaker": "1061",
+      "clip_id": "1061_ITH_NEU_XX",
+      "speech_seconds": 3.07,
+      "usable_clips": 2,
+      "transcript": "I think I have a doctor's appointment.",
+      "sha256": "c74e060fcef2144517ff4d95164c283773748beb6b29bc1e4c0fc023a875f905",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "CREMA-D/1064",
+      "dataset": "CREMA-D",
+      "speaker": "1064",
+      "clip_id": "1064_ITH_NEU_XX",
+      "speech_seconds": 3.503,
+      "usable_clips": 2,
+      "transcript": "I think I have a doctor's appointment.",
+      "sha256": "58e0b605cc65998222df72638b5b10e61914410b051197297b506fba84e441a5",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1068",
+      "dataset": "CREMA-D",
+      "speaker": "1068",
+      "clip_id": "1068_MTI_NEU_XX",
+      "speech_seconds": 3.27,
+      "usable_clips": 2,
+      "transcript": "Maybe tomorrow it will be cold.",
+      "sha256": "70395c98c5d4e8f564bd4c1c301700f934d5d03438d4884307759f73a838af37",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1069",
+      "dataset": "CREMA-D",
+      "speaker": "1069",
+      "clip_id": "1069_IWL_NEU_XX",
+      "speech_seconds": 3.2,
+      "usable_clips": 1,
+      "transcript": "I would like a new alarm clock.",
+      "sha256": "53b37d92a815371c89d407547611482ca22eec49af9e14c1054e2d7f140626ac",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1070",
+      "dataset": "CREMA-D",
+      "speaker": "1070",
+      "clip_id": "1070_WSI_NEU_XX",
+      "speech_seconds": 3.403,
+      "usable_clips": 1,
+      "transcript": "We'll stop in a couple of minutes.",
+      "sha256": "b70eb5d5d5c3b7a0ae81ccae875d6dfca1e5679b62474549156ca96ff6c71c59",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "CREMA-D/1072",
+      "dataset": "CREMA-D",
+      "speaker": "1072",
+      "clip_id": "1072_TIE_NEU_XX",
+      "speech_seconds": 3.47,
+      "usable_clips": 3,
+      "transcript": "That is exactly what happened.",
+      "sha256": "5b307d5f8a2f8fea1c7a6d3b59fd62fd8846a39c37f9efa5d951724ff82a0bfc",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1076",
+      "dataset": "CREMA-D",
+      "speaker": "1076",
+      "clip_id": "1076_IWL_NEU_XX",
+      "speech_seconds": 3.237,
+      "usable_clips": 2,
+      "transcript": "I would like a new alarm clock.",
+      "sha256": "83a0bb05122619d3c09b84d3d9c3d496200368d0abc1ff6f2aa52818887273c8",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1080",
+      "dataset": "CREMA-D",
+      "speaker": "1080",
+      "clip_id": "1080_MTI_NEU_XX",
+      "speech_seconds": 3.103,
+      "usable_clips": 7,
+      "transcript": "Maybe tomorrow it will be cold.",
+      "sha256": "7c89387114aefba2ca0ad1e8b3256d3a874ab645c6f9417c25371501515a3b16",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1087",
+      "dataset": "CREMA-D",
+      "speaker": "1087",
+      "clip_id": "1087_MTI_NEU_XX",
+      "speech_seconds": 3.17,
+      "usable_clips": 1,
+      "transcript": "Maybe tomorrow it will be cold.",
+      "sha256": "6861544b3df983cf66cd6ea22f3abd9e73dc9f3cd45ba4bf61dc0bec5df10edb",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "CREMA-D/1089",
+      "dataset": "CREMA-D",
+      "speaker": "1089",
+      "clip_id": "1089_IWW_NEU_XX",
+      "speech_seconds": 3.203,
+      "usable_clips": 1,
+      "transcript": "I wonder what this is about.",
+      "sha256": "64ac81bae1c33764073ced0b6e0b20b995a364da33beee8e67585a2e168ebe92",
+      "details": {
+        "emotion": "neutral",
+        "intensity": "unspecified"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/1089",
+      "dataset": "LibriTTS-R",
+      "speaker": "1089",
+      "clip_id": "1089_134686_000014_000003",
+      "speech_seconds": 23.376,
+      "usable_clips": 136,
+      "transcript": "If ever his soul, re entering her dwelling shyly after the frenzy of his body's lust had spent itself, was turned towards her whose emblem is the morning star, BRIGHT AND MUSICAL, TELLING OF HEAVEN AND INFUSING PEACE, it was when her names were murmured softly by lips whereon there still lingered foul and shameful words, the savour itself of a lewd kiss.",
+      "sha256": "104d25efe3368b6dc7a68d15ae045ce0349f24755b1e0df463d269738aa70581",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/1188",
+      "dataset": "LibriTTS-R",
+      "speaker": "1188",
+      "clip_id": "1188_133604_000006_000000",
+      "speech_seconds": 24.216,
+      "usable_clips": 40,
+      "transcript": "So that the schools of Crystal, visionary, passionate, and fantastic in purpose, are, in method, trenchantly formal and clear; and the schools of Clay, absolutely realistic, temperate, and simple in purpose, are, in method, mysterious and soft; sometimes licentious, sometimes terrific, and always obscure.",
+      "sha256": "3754473755f503b960f6963e848117fa209853336a0ead3a56b8e149aa8a6f97",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/121",
+      "dataset": "LibriTTS-R",
+      "speaker": "121",
+      "clip_id": "121_123859_000017_000001",
+      "speech_seconds": 23.878,
+      "usable_clips": 55,
+      "transcript": "now I find true That better is, by evil still made better; And ruin'd love, when it is built anew, Grows fairer than at first, more strong, far greater. So I return rebuk'd to my content, And gain by ill thrice more than I have spent.",
+      "sha256": "14fd7431aae893e2ebaaac468397d3d8f3d14e8d4574a2f288d305a1d53f5265",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/1221",
+      "dataset": "LibriTTS-R",
+      "speaker": "1221",
+      "clip_id": "1221_135766_000026_000005",
+      "speech_seconds": 4.536,
+      "usable_clips": 1,
+      "transcript": "Or, if not, thou strange and elfish child, whence didst thou come?\"",
+      "sha256": "d489cc1796cf95e73deb8620ccd18fc0040cacebeb7e78d0f04f33c45ab25b49",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/1272",
+      "dataset": "LibriTTS-R",
+      "speaker": "1272",
+      "clip_id": "1272_128104_000005_000006",
+      "speech_seconds": 22.776,
+      "usable_clips": 66,
+      "transcript": "That there is a difference between colour and colours, that an artist, be he portrait painter or dramatist, always reveals himself in his manner, are ideas that can hardly be said to occur to him; but mr Quilter really does his best and bravely faces every difficulty in modern art, with the exception of mr Whistler.",
+      "sha256": "0fba288b3b9a4097bd146957109284c588db0407b7136a5b54cafd61417aa323",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/1284",
+      "dataset": "LibriTTS-R",
+      "speaker": "1284",
+      "clip_id": "1284_1181_000014_000000",
+      "speech_seconds": 10.896,
+      "usable_clips": 49,
+      "transcript": "\"Well, that may be true,\" agreed Margolotte; \"but, on the contrary, a servant with too much brains is sure to become independent and high and mighty and feel above her work.",
+      "sha256": "6886551584878d9eacfc420b1c1856a88d20f454579ee456f669257516b7f6ea",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/1320",
+      "dataset": "LibriTTS-R",
+      "speaker": "1320",
+      "clip_id": "1320_122612_000038_000000",
+      "speech_seconds": 22.819,
+      "usable_clips": 76,
+      "transcript": "From such undeniable testimony did the practised woodsman arrive at the truth, with nearly as much certainty and precision as if he had been a witness of all those events which his ingenuity so easily elucidated. Cheered by these assurances, and satisfied by a reasoning that was so obvious, while it was so simple, the party resumed its course, after making a short halt, to take a hurried repast.",
+      "sha256": "1206997843c830e605bb982d9053cd372fa222b364ea40c76a9425eb106357ba",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/1462",
+      "dataset": "LibriTTS-R",
+      "speaker": "1462",
+      "clip_id": "1462_170145_000003_000005",
+      "speech_seconds": 19.115,
+      "usable_clips": 141,
+      "transcript": "Alexander's big work table stood in front of one of the three windows, and above the couch hung the one picture in the room, a big canvas of charming color and spirit, a study of the Luxembourg Gardens in early spring, painted in his youth by a man who had since become a portrait painter of international renown.",
+      "sha256": "5de2e469404077aedce22d865f0871a6f5c0f7a699fde9963fafa915f11347c9",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/1580",
+      "dataset": "LibriTTS-R",
+      "speaker": "1580",
+      "clip_id": "1580_141083_000001_000002",
+      "speech_seconds": 16.616,
+      "usable_clips": 136,
+      "transcript": "With due discretion the incident itself may, however, be described, since it serves to illustrate some of those qualities for which my friend was remarkable. I will endeavour, in my statement, to avoid such terms as would serve to limit the events to any particular place, or give a clue as to the people concerned.",
+      "sha256": "50c39ed4439e4fdf78c760bcbf56e9c5c93615914c4d96803bfcca284768f619",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "LibriTTS-R/1673",
+      "dataset": "LibriTTS-R",
+      "speaker": "1673",
+      "clip_id": "1673_143396_000010_000006",
+      "speech_seconds": 20.179,
+      "usable_clips": 49,
+      "transcript": "It was alleged, that when Jesus was nailed to the cross, he was endowed with a miraculous apathy of mind and body, which rendered him insensible of his apparent sufferings. It was affirmed, that these momentary, though real, pangs would be abundantly repaid by the temporal reign of a thousand years reserved for the Messiah in his kingdom of the new Jerusalem.",
+      "sha256": "d9df1c6eaf6c6206dc48002ab2dfb32baad350471b956887016e9d4e13f644c0",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/174",
+      "dataset": "LibriTTS-R",
+      "speaker": "174",
+      "clip_id": "174_84280_000015_000002",
+      "speech_seconds": 21.675,
+      "usable_clips": 102,
+      "transcript": "The blood stained organized jealousies of religious intolerance, the delusions of nationality and cult and race, that black hatred which simple people and young people and common people cherish against all that is not in the likeness of themselves, cease to be the undisputed ruling forces of our collective life.",
+      "sha256": "14e4eb850465c68725a602eaf9cd3fc7c34b71aa11b541b002e8a373a2387f79",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/1919",
+      "dataset": "LibriTTS-R",
+      "speaker": "1919",
+      "clip_id": "1919_142785_000116_000001",
+      "speech_seconds": 18.419,
+      "usable_clips": 75,
+      "transcript": "When done, moisten with two teacupfuls of white stock, boil for twenty minutes, and strain the whole through a sieve over the panada in the other stewpan. Place it over the fire, keep constantly stirring, to prevent its burning, and when quite dry, put in a small piece of butter.",
+      "sha256": "150ed8944cfa31d83b431de6fb0065ba9d41c248666ceb21a040e37266c232cb",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/1988",
+      "dataset": "LibriTTS-R",
+      "speaker": "1988",
+      "clip_id": "1988_148538_000015_000000",
+      "speech_seconds": 17.797,
+      "usable_clips": 117,
+      "transcript": "When, on the contrary, social conditions differ but little, the slightest privileges are of some importance; as every man sees around himself a million of people enjoying precisely similar or analogous advantages, his pride becomes craving and jealous, he clings to mere trifles, and doggedly defends them.",
+      "sha256": "8090ece6337470c31e8daea2f4165cfe3ef9fee760d0dc32957c653f0bc20a27",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/1993",
+      "dataset": "LibriTTS-R",
+      "speaker": "1993",
+      "clip_id": "1993_147964_000008_000000",
+      "speech_seconds": 19.64,
+      "usable_clips": 103,
+      "transcript": "I can see them now, exactly as they looked, working about the table in the lamplight: Jake with his heavy features, so rudely moulded that his face seemed, somehow, unfinished; Otto with his half ear and the savage scar that made his upper lip curl so ferociously under his twisted mustache.",
+      "sha256": "5e0e192f11bdafdda7353a6e989d8a1b2217af80caf3e51336693cc69b8d4b90",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/1995",
+      "dataset": "LibriTTS-R",
+      "speaker": "1995",
+      "clip_id": "1995_1836_000003_000004",
+      "speech_seconds": 24.491,
+      "usable_clips": 89,
+      "transcript": "Among others was one relating to child labor, another that would effect certain changes in the tariff, and a proposed law providing for a cotton bale of a shape and dimensions different from the customary-the last constituting a particularly clever artifice which, under the guise of convenience in handling, would necessitate the installation of entirely new gin and compress machinery, to be supplied, of course, by the trust.",
+      "sha256": "82eefdeda4564ec3f35617580b092a12117c019a48ac63ef609bed91845b114a",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/2035",
+      "dataset": "LibriTTS-R",
+      "speaker": "2035",
+      "clip_id": "2035_152373_000011_000002",
+      "speech_seconds": 22.136,
+      "usable_clips": 155,
+      "transcript": "In the early part of his reign Finnacta seems not to have been disposed to collect this invidious tax by force; but, yielding to other motives, he afterwards took a different view of his duty, and marched into Leinster to compel its payment. Here the holy Prelate of Ferns met him, and related a Vision in which he had been instructed to demand the abolition of the impost.",
+      "sha256": "8d856dcc63de9940e0b86806e783c7360b213d6d3fe1f13da4bbf3bed3895219",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "LibriTTS-R/2078",
+      "dataset": "LibriTTS-R",
+      "speaker": "2078",
+      "clip_id": "2078_142845_000019_000005",
+      "speech_seconds": 20.056,
+      "usable_clips": 11,
+      "transcript": "Then place the pan on a strong chair, or dresser, or table, of convenient height; pour into the sponge the remainder of the warm milk and water; stir into it as much of the flour as you can with the spoon; then wipe it out clean with your fingers, and lay it aside.",
+      "sha256": "eef6d25ae015b04678223b0bae5e1e14a187f26d906a790bc701c90c64db7215",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/2086",
+      "dataset": "LibriTTS-R",
+      "speaker": "2086",
+      "clip_id": "2086_149220_000047_000003",
+      "speech_seconds": 22.598,
+      "usable_clips": 111,
+      "transcript": "It has been my custom for more years, child, than you have lived!\" While thus dismissing her, the maiden lady stept forward, kissed Phoebe, and pressed her to her heart, which beat against the girl's bosom with a strong, high, and tumultuous swell. How came there to be so much love in this desolate old heart, that it could afford to well over thus abundantly?",
+      "sha256": "d75eb492c7f8edb909e6da02d4e972ad0017a485dc9a7042fd7acda0eb0e89c3",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/2277",
+      "dataset": "LibriTTS-R",
+      "speaker": "2277",
+      "clip_id": "2277_149897_000009_000001",
+      "speech_seconds": 10.731,
+      "usable_clips": 106,
+      "transcript": "It was with great opposition, after two or three hours of the most urgent mental affirmation and denial, that at last he got an envelope, placed in it the requested amount, and slowly sealed it up.",
+      "sha256": "3f42f21186a23cd85ca425a766a75062384e31a90bc2851f07565b565db2ee59",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/2300",
+      "dataset": "LibriTTS-R",
+      "speaker": "2300",
+      "clip_id": "2300_131720_000023_000000",
+      "speech_seconds": 24.448,
+      "usable_clips": 130,
+      "transcript": "In this connection it should be mentioned that the Association of Edison Illuminating Companies in the same year adopted resolutions unanimously to the effect that the Edison meter was accurate, and that its use was not expensive for stations above one thousand lights; and that the best financial results were invariably secured in a station selling current by meter.",
+      "sha256": "4238fcb5e7cfd9ad9a098681ed1a01d415c241c69d4692bb28c1c1c5ebfb1c96",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/237",
+      "dataset": "LibriTTS-R",
+      "speaker": "237",
+      "clip_id": "237_134493_000022_000002",
+      "speech_seconds": 21.019,
+      "usable_clips": 174,
+      "transcript": "The pleasantest rooms in the house are the kitchen-where Alexandra's three young Swedish girls chatter and cook and pickle and preserve all summer long-and the sitting room, in which Alexandra has brought together the old homely furniture that the Bergsons used in their first log house, the family portraits, and the few things her mother brought from Sweden.",
+      "sha256": "f0a31ec50a0bcdde29e637a6ba39ba26546e8e789f5a8d3a04ca452f256b1f9e",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/2412",
+      "dataset": "LibriTTS-R",
+      "speaker": "2412",
+      "clip_id": "2412_153954_000002_000002",
+      "speech_seconds": 19.637,
+      "usable_clips": 58,
+      "transcript": "Sometimes we went through forests of pine, or rather yew trees, though they looked like pine; and I remember that now and again we passed a little wayside shrine, wherein there would be a statue of great beauty, representing some figure, male or female, in the very heyday of youth, strength, and beauty, or of the most dignified maturity and old age.",
+      "sha256": "36eafd9825418a27c41b299d0c1c521a8df679dbeb8f9ec97000f42f7f8aaf31",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/2428",
+      "dataset": "LibriTTS-R",
+      "speaker": "2428",
+      "clip_id": "2428_83705_000037_000002",
+      "speech_seconds": 20.976,
+      "usable_clips": 129,
+      "transcript": "But Mary Ann does not seem to think that that matters, so why should I? Her youngest sister, Clara Louisa, has quite gratuitously informed me that she has had them by her for some considerable time, and that, not to put too fine a point on it, they were originally designed for another individual altogether-a mr Pilbeam.",
+      "sha256": "67572bee82492e36be2f19c8c92bc6e36bbcd4d075b6a087e6e730fb3baaf986",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/251",
+      "dataset": "LibriTTS-R",
+      "speaker": "251",
+      "clip_id": "251_136532_000008_000000",
+      "speech_seconds": 18.699,
+      "usable_clips": 159,
+      "transcript": "Martha and Selim were working in the museum on the second floor, scrubbing the grime from the glass cases, noting contents, and grease penciling numbers; Lattimer and a couple of Space Force officers were going through what had been the administrative offices on the other side.",
+      "sha256": "006fd71ce3f6bcbd3a46f4f465b9d526e6bff94b9f01a840ac10ddc9714cc870",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/260",
+      "dataset": "LibriTTS-R",
+      "speaker": "260",
+      "clip_id": "260_123288_000027_000003",
+      "speech_seconds": 23.96,
+      "usable_clips": 128,
+      "transcript": "Other flashes with incessant play cross their vivid fires, while others again roll themselves into balls of living fire which explode like bombshells, but the music of which scarcely adds to the din of the battle strife that almost deprives us of our senses of hearing and sight; the limit of intense loudness has been passed within which the human ear can distinguish one sound from another.",
+      "sha256": "799c731182ce2ddd47183dd04234b19759d824fb56dbfa71eec9c066639ac8a9",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/2803",
+      "dataset": "LibriTTS-R",
+      "speaker": "2803",
+      "clip_id": "2803_161169_000013_000002",
+      "speech_seconds": 21.053,
+      "usable_clips": 144,
+      "transcript": "As it floated on the surface of the water (for oil and water will not mix, you know), the boys, for mischief, set fire to it, and a stream of fire rolled along down the river; proving to everybody who saw it, that a new light, as good as gas, had come from the coal.",
+      "sha256": "d8f3a26e155e7557ad369a691d3ce76cc9f8ff41dcfca31f864896a6704c5eb0",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/2830",
+      "dataset": "LibriTTS-R",
+      "speaker": "2830",
+      "clip_id": "2830_3979_000014_000000",
+      "speech_seconds": 19.619,
+      "usable_clips": 45,
+      "transcript": "The demonstration seemed to prove convincing for it was agreed that one may as well offer Luther in the original German or Latin as expect the American church member to read any translations that would adhere to Luther's German or Latin constructions and employ the Mid Victorian type of English characteristic of the translations now on the market.",
+      "sha256": "c49a1f10b7a646bafff27b4e863c8a7b605861bf2e9a5cb0c578cb00badfd3be",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/2902",
+      "dataset": "LibriTTS-R",
+      "speaker": "2902",
+      "clip_id": "2902_9008_000002_000000",
+      "speech_seconds": 23.856,
+      "usable_clips": 65,
+      "transcript": "On the left of the garden stretched the lofty eastern front of the Museum itself, with its picture galleries, halls of statuary, dining halls, and lecture rooms; one huge wing containing that famous library, founded by the father of Philadelphus, which hold in the time of Seneca, even after the destruction of a great part of it in Caesar's siege, four hundred thousand manuscripts.",
+      "sha256": "aad8c0bc73e8ef384fbb834835387e45ed005b9b29fbebbb40846175ac5a306c",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/2961",
+      "dataset": "LibriTTS-R",
+      "speaker": "2961",
+      "clip_id": "2961_961_000009_000002",
+      "speech_seconds": 23.656,
+      "usable_clips": 85,
+      "transcript": "Now he who is the best could only create the fairest; and reflecting that of visible things the intelligent is superior to the unintelligent, he put intelligence in soul and soul in body, and framed the universe to be the best and fairest work in the order of nature, and the world became a living soul through the providence of God.",
+      "sha256": "96925cbf411793b30166f61298dced6a4c183d35fd8184785de1183712606c28",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/3000",
+      "dataset": "LibriTTS-R",
+      "speaker": "3000",
+      "clip_id": "3000_15664_000003_000002",
+      "speech_seconds": 24.238,
+      "usable_clips": 107,
+      "transcript": "Then you are free to make wide waverings and zigzags away from the roads to visit the great fountain streams of the rivers, the glaciers also, and the wildest retreats in the primeval forests, where the best plants and animals dwell, and where many a flower bell will ring against your knees, and friendly trees will reach out their fronded branches and touch you as you pass.",
+      "sha256": "3723e85858301a71b9a05f72bc0a2e9fd074cd18b82423d01882bf3ae4d54d32",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "LibriTTS-R/3170",
+      "dataset": "LibriTTS-R",
+      "speaker": "3170",
+      "clip_id": "3170_137482_000022_000003",
+      "speech_seconds": 22.277,
+      "usable_clips": 99,
+      "transcript": "The complaint was candidly written and contained nothing but the truth, but the criminal portion of the truth was veiled by a circumstance which must have brought a smile on the grave countenances of the judges, and highly amused the public at large: the complaint setting forth that the eight masked men had not rendered themselves guilty of any act disagreeable to the wife.",
+      "sha256": "37951597f2a7cd518ff1344e524db8d0ced2a3bf8dbfadb2d291577eabbdf400",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "LibriTTS-R/3536",
+      "dataset": "LibriTTS-R",
+      "speaker": "3536",
+      "clip_id": "3536_8226_000005_000008",
+      "speech_seconds": 17.957,
+      "usable_clips": 31,
+      "transcript": "But now, when a demand was made upon Bozzle to violate the sanctity of the clergyman's house, and withdraw the child by force or stratagem, she began to perceive that the palmy days of the Trevelyan affair were over for them, and that it would be wise on her husband's part gradually to back out of the gentleman's employment.",
+      "sha256": "84299ab1ee024a82ee12b7426c077ee343efaa1e5600639d0726c8a6d9afda93",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/3570",
+      "dataset": "LibriTTS-R",
+      "speaker": "3570",
+      "clip_id": "3570_5696_000004_000006",
+      "speech_seconds": 21.64,
+      "usable_clips": 183,
+      "transcript": "In so far as it comes into conflict with the law of conspicuous waste, the instinct of workmanship expresses itself not so much in insistence on substantial usefulness as in an abiding sense of the odiousness and aesthetic impossibility of what is obviously futile. Being of the nature of an instinctive affection, its guidance touches chiefly and immediately the obvious and apparent violations of its requirements.",
+      "sha256": "66fc66adab9632ff9821b5b1747586d424d22818226369da4c2c8f3438883612",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/3575",
+      "dataset": "LibriTTS-R",
+      "speaker": "3575",
+      "clip_id": "3575_170457_000041_000003",
+      "speech_seconds": 24.157,
+      "usable_clips": 31,
+      "transcript": "The former from reserve, the latter from timidity, avoided all friendships and intimacies beyond their family. Emily was impervious to influence; she never came in contact with public opinion, and her own decision of what was right and fitting was a law for her conduct and appearance, with which she allowed no one to interfere. Her love was poured out on Anne, as Charlotte's was on her.",
+      "sha256": "7c9a22610583eef8fc22b1b70b1c992fc208eb1bd1811e71c59e27698f76d1f6",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "LibriTTS-R/3576",
+      "dataset": "LibriTTS-R",
+      "speaker": "3576",
+      "clip_id": "3576_138058_000048_000000",
+      "speech_seconds": 22.616,
+      "usable_clips": 13,
+      "transcript": "\"So then,\" said Roque Guinart, \"we have got here nine hundred crowns and sixty reals; my soldiers must number some sixty; see how much there falls to each, for I am a bad arithmetician.\" As soon as the robbers heard this they raised a shout of \"Long life to Roque Guinart, in spite of the lladres that seek his ruin!\"",
+      "sha256": "27c76a868f09c35e4cf2fe801ddc58fb7dde44b5d5a753301e61175a44b45687",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/3729",
+      "dataset": "LibriTTS-R",
+      "speaker": "3729",
+      "clip_id": "3729_6852_000066_000001",
+      "speech_seconds": 18.965,
+      "usable_clips": 18,
+      "transcript": "The 'badauds', who never fail to congregate near the carriage of princes, no matter if they have seen them a hundred times, or if they know them to be as ugly as monkeys, repeated the words of the duchess everywhere, and that was enough to send here all the snuff takers of the capital in a hurry.",
+      "sha256": "923f8bfdec2d3fca385c19601f0800ae83b2e8191e3f159ec71616f6adf12f19",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/3752",
+      "dataset": "LibriTTS-R",
+      "speaker": "3752",
+      "clip_id": "3752_4944_000015_000001",
+      "speech_seconds": 16.176,
+      "usable_clips": 121,
+      "transcript": "\"I have a headache.\" His manner of speech and action was so awkward that a silence fell upon the party, caused by each one wondering why mr North should grow confused, and drum his fingers on the table, and stare everywhere but at the decanter.",
+      "sha256": "eb8189580dbda0c3a1063bcd0379433e694d8ae17e04eb801c6388398d3082dc",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "LibriTTS-R/3853",
+      "dataset": "LibriTTS-R",
+      "speaker": "3853",
+      "clip_id": "3853_163249_000060_000000",
+      "speech_seconds": 22.016,
+      "usable_clips": 63,
+      "transcript": "When mr Power presently came in, followed by the others, they found their soldier standing very erect in his old place on the rug, with the firelight gleaming on his bright buttons, and Bran staring at him with a perplexed aspect; for the uniform, shorn hair, trimmed beard, and a certain lofty carriage of the head so changed his master that the sagacious beast was disturbed.",
+      "sha256": "bf64749bb13cf2040470dd478234dacdbf5a73c8f138c011dcd59ab476b9353d",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/4077",
+      "dataset": "LibriTTS-R",
+      "speaker": "4077",
+      "clip_id": "4077_13751_000006_000004",
+      "speech_seconds": 24.339,
+      "usable_clips": 61,
+      "transcript": "At that time there may have been and probably were many times that number who had professed adherence to the newly restored faith; but as the requirements of the law governing the formation of religious societies were satisfied by the application of six, only the specified number formally took part. Such was the beginning of the Church, soon to be so universally maligned.",
+      "sha256": "a646eb38e923c1f40c1c9a3c8f593635f541b262786ce414537910d9768ed206",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/422",
+      "dataset": "LibriTTS-R",
+      "speaker": "422",
+      "clip_id": "422_122949_000013_000010",
+      "speech_seconds": 15.739,
+      "usable_clips": 1,
+      "transcript": "One must appeal to immense opposing forces, in order to thwart this natural, all too natural PROGRESSUS IN SIMILE, the evolution of man to the similar, the ordinary, the average, the gregarious-to the IGNOBLE-!",
+      "sha256": "2216f62dd5be64a557344d609892c0b73401c655bd48e3f762c0d88a95e51394",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "LibriTTS-R/4446",
+      "dataset": "LibriTTS-R",
+      "speaker": "4446",
+      "clip_id": "4446_2271_000008_000000",
+      "speech_seconds": 16.438,
+      "usable_clips": 162,
+      "transcript": "The second act opened before Philly Doyle's underground still, with Peggy and her battered donkey come in to smuggle a load of potheen across the bog, and to bring Philly word of what was doing in the world without, and of what was happening along the roadsides and ditches with the first gleam of fine weather.",
+      "sha256": "a3dd858d3d69fca73aee936e0e6b255206e7e4abeb193bda9b6520d15528423a",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "LibriTTS-R/4507",
+      "dataset": "LibriTTS-R",
+      "speaker": "4507",
+      "clip_id": "4507_16021_000023_000000",
+      "speech_seconds": 21.517,
+      "usable_clips": 61,
+      "transcript": "We may be stopped; the fact may be put to us in general terms, which is one way of attenuating it; we may be told, that all trades, professions, it may be added, all the accidents of the social hierarchy and all forms of intelligence, have their own slang.",
+      "sha256": "f48ac4d375e4a643686d34c3f257200d0d0f8c39d405d5e2626134b00f10c46b",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/4970",
+      "dataset": "LibriTTS-R",
+      "speaker": "4970",
+      "clip_id": "4970_29095_000054_000002",
+      "speech_seconds": 20.837,
+      "usable_clips": 116,
+      "transcript": "She also had a history, possibly, and had sometime beaten her young wings against the cage of custom, and indulged in dreams of a new social order, and had passed through that fiery period when it seems possible for one mind, which has not yet tried its limits, to break up and re arrange the world.",
+      "sha256": "398c4035a92ad65d8ce95d2da1fcdf45e1720e602d5abd2bbca3afac68ae7dba",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/4992",
+      "dataset": "LibriTTS-R",
+      "speaker": "4992",
+      "clip_id": "4992_41806_000011_000000",
+      "speech_seconds": 24.096,
+      "usable_clips": 93,
+      "transcript": "peter crouched on the hearth and lighted the fire in three places, then handed the torch to Kathleen as he crept again into his mother's lap, awed into complete silence by the influence of his own mystic rite. Kathleen waved the torch to and fro as she recited some beautiful lines written for some such purpose as that which called them together to night.",
+      "sha256": "58f10614b0e20c98796da4ea2e0dc5f649d42f78313f7b71fb694f2934cc2008",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/5105",
+      "dataset": "LibriTTS-R",
+      "speaker": "5105",
+      "clip_id": "5105_28241_000005_000004",
+      "speech_seconds": 22.936,
+      "usable_clips": 54,
+      "transcript": "Nor did these waves in the usual way partially unfurl themselves and rebound against the sides of the vessel; they might rather be described as long undulations carrying the schooner (its weight diminished from the same cause as that of the water) alternately to such heights and depths, that if Captain Servadac had been subject to seasickness he must have found himself in sorry plight.",
+      "sha256": "14415d2880b38ab35bef8f8b6d2cd8f82d2282739fde10e7dc536f15b937af5d",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/5142",
+      "dataset": "LibriTTS-R",
+      "speaker": "5142",
+      "clip_id": "5142_36600_000004_000004",
+      "speech_seconds": 21.416,
+      "usable_clips": 69,
+      "transcript": "Even a slight degree of sterility between any two forms when first crossed, or in their offspring, is generally considered as a decisive test of their specific distinctness; and their continued persistence without blending within the same area, is usually accepted as sufficient evidence, either of some degree of mutual sterility, or in the case of animals of some mutual repugnance to pairing.",
+      "sha256": "5e797f9ce28fb6a71998bea1766feda76c8096a4a8417ca9ca8ef62578a14d95",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/5338",
+      "dataset": "LibriTTS-R",
+      "speaker": "5338",
+      "clip_id": "5338_24615_000001_000007",
+      "speech_seconds": 21.896,
+      "usable_clips": 73,
+      "transcript": "The children also, whose skins were burnt black, and whose hair was bleached white, by the influence of the sun, had a look and manner of life and interest. It seemed, upon the whole, as if poverty, and indolence, its too frequent companion, were combining to depress the natural genius and acquired information of a hardy, intelligent, and reflecting peasantry.",
+      "sha256": "5e8da684b526032cd5e869b51f0c0872f47ab92071c60db2a9eba06e97b359ba",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "LibriTTS-R/5536",
+      "dataset": "LibriTTS-R",
+      "speaker": "5536",
+      "clip_id": "5536_43358_000014_000003",
+      "speech_seconds": 19.576,
+      "usable_clips": 90,
+      "transcript": "At the solemn hour of sunrise or sunset he took up his position, overlooking the glories of earth and facing the \"Great Mystery,\" and there he remained, naked, erect, silent, and motionless, exposed to the elements and forces of His arming, for a night and a day to two days and nights, but rarely longer.",
+      "sha256": "aca67ebc8393a4447703addbed8fcd577e9540c07d61f0944268c36408697163",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "LibriTTS-R/5639",
+      "dataset": "LibriTTS-R",
+      "speaker": "5639",
+      "clip_id": "5639_40744_000026_000005",
+      "speech_seconds": 22.915,
+      "usable_clips": 79,
+      "transcript": "As for high birth, thank Heaven and my ancestors I am well enough off in that respect; as for understanding, provided a woman is neither a dolt nor a simpleton, there is no need of her having a very subtle wit; in point of wealth, I am amply provided by my parents; but beauty is what I covet, with no other addition than virtue and good breeding.",
+      "sha256": "ab0acec1013d6de7e1a44eb3e0c08bdc6c3e118511f6bb89561388d9c6bb219e",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/5683",
+      "dataset": "LibriTTS-R",
+      "speaker": "5683",
+      "clip_id": "5683_32865_000018_000000",
+      "speech_seconds": 23.477,
+      "usable_clips": 142,
+      "transcript": "Well, it was pretty-French, I dare say-a little set of tablets-a toy-the cover of enamel, studded in small jewels, with a slender border of symbolic flowers, and with a heart in the centre, a mosaic of little carbuncles, rubies, and other red and crimson stones, placed with a view to light and shade.",
+      "sha256": "af2af7b0a5b555bc3ca2cf2a6afe60d450ca846b11ca9092f83bcab941fcc296",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "LibriTTS-R/5694",
+      "dataset": "LibriTTS-R",
+      "speaker": "5694",
+      "clip_id": "5694_64038_000008_000000",
+      "speech_seconds": 19.296,
+      "usable_clips": 110,
+      "transcript": "We passed all those glorious battlefields, that have been made classic in history, frequently coming across the skull of some poor fellow sitting on top of a stump, grinning a ghastly smile; also the bones of horses along the road, and fences burned and destroyed, and occasionally the charred remains of a once fine dwelling house.",
+      "sha256": "fd8a7ac4ad9b289d2394b6ea627287c044be774c69ccbd6eec9c714e11780213",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/5895",
+      "dataset": "LibriTTS-R",
+      "speaker": "5895",
+      "clip_id": "5895_34615_000023_000005",
+      "speech_seconds": 24.997,
+      "usable_clips": 135,
+      "transcript": "For Gwynplaine the postscript was this: by the force of his will, and by concentrating all his attention, and on condition that no emotion should come to distract and turn away the fixedness of his effort, he could manage to suspend the everlasting rictus of his face, and to throw over it a kind of tragic veil, and then the spectator laughed no longer; he shuddered.",
+      "sha256": "07f4a7757a050a72994fae828431f89275567944ec056ca1fe6467c9ce33039e",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/6241",
+      "dataset": "LibriTTS-R",
+      "speaker": "6241",
+      "clip_id": "6241_61943_000037_000000",
+      "speech_seconds": 17.878,
+      "usable_clips": 94,
+      "transcript": "I had soon seen all I wanted of these weary and dismal thoroughfares. Here and there was a strip of discolored turf, like an old worn out bit of woolen carpet; and now and then a bit of kitchen garden, in which grew potatoes, cabbage, and lettuce, almost diminutive enough to suggest the idea of Lilliput.",
+      "sha256": "acf4774d28b60e5db2cbccd72412ccaa0d12701456283eb0c7ef1be3ccf45e97",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "LibriTTS-R/6295",
+      "dataset": "LibriTTS-R",
+      "speaker": "6295",
+      "clip_id": "6295_64301_000014_000003",
+      "speech_seconds": 19.677,
+      "usable_clips": 30,
+      "transcript": "On the bough of an apple tree, in the fair moonlight, sat a nightingale, swaying to and fro like one mad with the wine of his own music, singing as if he wanted to break his heart and have done, for the delight was too much for mortal creature to endure.",
+      "sha256": "5265738074df99eee06f0ca326fcbce2bfb40df3d7a07374306cd6b5846c2bb8",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/6313",
+      "dataset": "LibriTTS-R",
+      "speaker": "6313",
+      "clip_id": "6313_66125_000050_000000",
+      "speech_seconds": 13.499,
+      "usable_clips": 162,
+      "transcript": "The guide, without further delay, and giving no heed to Professor Zepplin's nervous protests, slipped the noose over Tad's shoulders, and, drawing it down and up under his arms, secured the knot so that the loop might not tighten under the weight of the boy's body.",
+      "sha256": "a419b44107eb39be85673e2381031b4952d07bbfdeec04f62abda3754300f81b",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/6319",
+      "dataset": "LibriTTS-R",
+      "speaker": "6319",
+      "clip_id": "6319_64726_000004_000002",
+      "speech_seconds": 24.758,
+      "usable_clips": 103,
+      "transcript": "The youngest, for her gift, decreed that she should be the most beautiful person in the world; the next that she should have the mind of an angel; the third that she should be perfectly graceful; the fourth that she should dance admirably well; the fifth, that she should sing like a nightingale; the sixth, that she should play charmingly upon every musical instrument.",
+      "sha256": "5f2fd1511951655d14a23bd6dfe55598e0c3d518636c4626f0be20db90009251",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/6345",
+      "dataset": "LibriTTS-R",
+      "speaker": "6345",
+      "clip_id": "6345_93306_000003_000000",
+      "speech_seconds": 20.016,
+      "usable_clips": 127,
+      "transcript": "THE last strains of the ill treated, ill fated \"Intermezzo\" had died away, and after them had died away also the rumbling of the wheels of the murderous barrel organ that had so gaily executed that, along with the nine other tunes of its repertory, to the admiration of the housemaid at the window of the house opposite, and the crowing delight of the two babies next door.",
+      "sha256": "0d717991a9ce45cb308f4fbf7569799240c0284c95f7bfdf0bb479e0796db016",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "LibriTTS-R/652",
+      "dataset": "LibriTTS-R",
+      "speaker": "652",
+      "clip_id": "652_130737_000012_000000",
+      "speech_seconds": 4.04,
+      "usable_clips": 5,
+      "transcript": "Amontillado, Montilo and Olorosa sherries.",
+      "sha256": "0b494aebe1bd9aec9be5e4d9722c63ef2e760ff49a82c74fc1e0d0400ffdfa04",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/672",
+      "dataset": "LibriTTS-R",
+      "speaker": "672",
+      "clip_id": "672_122797_000057_000002",
+      "speech_seconds": 7.997,
+      "usable_clips": 2,
+      "transcript": "All passed so quickly, there was so much going on around him, the Tree quite forgot to look to himself.",
+      "sha256": "7da15ab3ee7f8bbc8abfce73ce65936a80a535ae4a86db2d9c4756caba69e9c3",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/6829",
+      "dataset": "LibriTTS-R",
+      "speaker": "6829",
+      "clip_id": "6829_68771_000009_000000",
+      "speech_seconds": 19.6,
+      "usable_clips": 106,
+      "transcript": "But, to offset this cheering condition, the Democratic agents who made the canvass reported that there was an air of uncertainty throughout the district, and that many of those who declared for Hopkins were lukewarm and faint hearted, and might easily be induced to change their votes. This was what must be prevented.",
+      "sha256": "5fec005c7d7493eb05bb0f777f4f4c06992dea531f8880b45dbd3e94fa57d0f5",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/6930",
+      "dataset": "LibriTTS-R",
+      "speaker": "6930",
+      "clip_id": "6930_81414_000046_000004",
+      "speech_seconds": 8.88,
+      "usable_clips": 17,
+      "transcript": "Undoubtedly the Egyptian knew too much for Voltaire, and so I was made a tool whereby he could be freed from troublesome obstacles.",
+      "sha256": "970594287c3ee21ff85b626c0b1fcc8c2b8f6204a5bb33593301494e27ecda85",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/7021",
+      "dataset": "LibriTTS-R",
+      "speaker": "7021",
+      "clip_id": "7021_79740_000003_000000",
+      "speech_seconds": 24.819,
+      "usable_clips": 98,
+      "transcript": "This book may, perhaps, sometimes fall into the hands of persons who have, temporarily or otherwise, the charge of young children without any absolute authority over them, or any means, or even any right, to enforce their commands, as was the case, in fact, with the older brothers or sister referred to in the preceding illustrations.",
+      "sha256": "41a2962eba73a8737c68c533c473594ba177eb52a0a53013f05861df5f75a4f0",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "LibriTTS-R/7127",
+      "dataset": "LibriTTS-R",
+      "speaker": "7127",
+      "clip_id": "7127_75947_000006_000004",
+      "speech_seconds": 23.16,
+      "usable_clips": 106,
+      "transcript": "The victim, however, of all these royal affections and affectations, was poor De Guiche. Every one could observe his agitation and prostration-a prostration which was, indeed, the more remarkable since people were not accustomed to see him with his arms hanging listlessly by his side, his head bewildered, and his eyes with all their bright intelligence bedimmed.",
+      "sha256": "fee6a6a0c814f8e6087e5413515831ad4a2e8ac847daca0cef172e008ca6a7dd",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/7176",
+      "dataset": "LibriTTS-R",
+      "speaker": "7176",
+      "clip_id": "7176_88083_000007_000001",
+      "speech_seconds": 20.84,
+      "usable_clips": 115,
+      "transcript": "A watcher directly overhead, escaping the baffling reflections, might have seen him swimming, head outstretched, mastering the tremendous rush of the stream with mighty strokes, fairly out speeding the fish in their own element. Near the limit of the clear water he overtook and seized the quarry which he had marked-a trout not far from seven inches in length.",
+      "sha256": "3446f7295591bc7110a4b9f389517f7a51c4a6dfc556f231a9f33596f55ae1a4",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/7729",
+      "dataset": "LibriTTS-R",
+      "speaker": "7729",
+      "clip_id": "7729_102255_000005_000000",
+      "speech_seconds": 19.797,
+      "usable_clips": 91,
+      "transcript": "Among other instrumentalities for executing the bogus laws, the bogus Legislature had appointed one Samuel j Jones sheriff of Douglas county kansas Territory, although that individual was at the time of his appointment, and long afterwards, United States postmaster of the town of Westport, Missouri.",
+      "sha256": "5d84d3c3245c485e5af34623c82ea0668d2e426be7eebac0f81c9c5eea1b9de8",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/777",
+      "dataset": "LibriTTS-R",
+      "speaker": "777",
+      "clip_id": "777_126732_000076_000008",
+      "speech_seconds": 8.555,
+      "usable_clips": 4,
+      "transcript": "The other day Stevie got hold of one, and there was a story in it of a German soldier officer tearing half off the ear of a recruit, and nothing was done to him for it.",
+      "sha256": "48feb83ff8b0750bddc80a08557ae1d9dadfd527af0eb12f47eb3f12bada4e9f",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/7850",
+      "dataset": "LibriTTS-R",
+      "speaker": "7850",
+      "clip_id": "7850_73752_000005_000001",
+      "speech_seconds": 22.496,
+      "usable_clips": 152,
+      "transcript": "Everything that had occurred previously seemed of another life; all his experience was concentrated in that wonderful drama that had commenced at Bath, the last scene of which was now approaching; the characters, his parents, Glastonbury, Katherine, Henrietta, Lord Montfort, Count Mirabel, himself, and mr Temple!",
+      "sha256": "8294c1a694be1acd5f4f0f3194ea4cc9c3831c55a0e91c6560ab8e06aa7f26bb",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "LibriTTS-R/7976",
+      "dataset": "LibriTTS-R",
+      "speaker": "7976",
+      "clip_id": "7976_105575_000001_000000",
+      "speech_seconds": 23.147,
+      "usable_clips": 204,
+      "transcript": "Iuka, the fiercest battle of the war, two hundred seventeen men out of four hundred eighty two of my regiment are shot-The awful Rebel charge at Corinth-Moonlight on the battlefield-Bushels of arms and legs-Tombstones for fireplaces-One of Grant's mistakes.",
+      "sha256": "b19a6174be18fa04b83ddf5625e2ace7d35817a54e5a7f7d9051afd846acc4b6",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/8224",
+      "dataset": "LibriTTS-R",
+      "speaker": "8224",
+      "clip_id": "8224_274384_000037_000002",
+      "speech_seconds": 23.837,
+      "usable_clips": 26,
+      "transcript": "Fully sensible of the excesses to which affairs had been carried, and of the worse consequences which were still to be apprehended, he had resolved to conciliate a peace, and to remedy, as far as possible, all those ills to which, from mistake rather than any bad intentions, he had himself so much contributed.",
+      "sha256": "5d68ff13d130b4dafc43228977f3347cc735c3d2ca834835e3152a1ec0b73f1b",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/8230",
+      "dataset": "LibriTTS-R",
+      "speaker": "8230",
+      "clip_id": "8230_279154_000029_000005",
+      "speech_seconds": 24.014,
+      "usable_clips": 107,
+      "transcript": "Of course, the words \"this has existed before\" are a very inadequate translation of what actually happens when we form a judgment of recognition, but that is unavoidable: words are framed to express a level of thought which is by no means primitive, and are quite incapable of expressing such an elementary occurrence as recognition.",
+      "sha256": "ae807bc09b2d54874b52d931615360ba74dc61a43fdbddfe6ceee3fa9f247956",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/8297",
+      "dataset": "LibriTTS-R",
+      "speaker": "8297",
+      "clip_id": "8297_275154_000006_000002",
+      "speech_seconds": 20.299,
+      "usable_clips": 169,
+      "transcript": "Her residence at the sea side, helped by the lapse of time, had restored to her personal attractions almost all they had lost under the deteriorating influences of care and grief; and her change of name must have protected her from a discovery of the Divorce which would have shocked a man so sincerely religious as Bennydeck.",
+      "sha256": "5c094b5a30c600b1b28df468b3a58cd4214a453bc790bda818fec64583f2b0eb",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/84",
+      "dataset": "LibriTTS-R",
+      "speaker": "84",
+      "clip_id": "84_121123_000017_000000",
+      "speech_seconds": 16.656,
+      "usable_clips": 198,
+      "transcript": "\"Gentlemen,\" said Morrel, reading all that passed through the minds of the witnesses to the scene, \"I know what I am saying, and you know as well as I do what I am about to say-Valentine has been assassinated!\" Villefort hung his head, d'Avrigny approached nearer, and Noirtier said \"Yes\" with his eyes.",
+      "sha256": "9513bfd363db947acaaedc277a7208a4f02b55e5f003640d3f18001cd74d44a5",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/8455",
+      "dataset": "LibriTTS-R",
+      "speaker": "8455",
+      "clip_id": "8455_210777_000003_000003",
+      "speech_seconds": 20.779,
+      "usable_clips": 82,
+      "transcript": "And even had I succeeded in carrying my success so far as that, should I not have appeared a murderer to my fellow citizens had not his departure been followed in regular sequence by that of all others till it had come to my turn? Had Crasweller departed, and had the system then been stopped, should I not have appeared a murderer even to myself?",
+      "sha256": "60afb799adf9cad6cce291e894c123eae82e57a84e0d27ad0f37303fa7043d0d",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/8463",
+      "dataset": "LibriTTS-R",
+      "speaker": "8463",
+      "clip_id": "8463_294828_000020_000002",
+      "speech_seconds": 22.699,
+      "usable_clips": 110,
+      "transcript": "Never did he object to buckling up his suitcase for any country whatever, China or the Congo, no matter how far off it was. He went here, there, and everywhere in perfect contentment. Moreover, he enjoyed excellent health that defied all ailments, owned solid muscles, but hadn't a nerve in him, not a sign of nerves- the mental type, I mean.",
+      "sha256": "b112a49ef3a30302de5f3bb181327a9e766397f9c7c2ec330f673ac4a3334cb4",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/8555",
+      "dataset": "LibriTTS-R",
+      "speaker": "8555",
+      "clip_id": "8555_292519_000045_000000",
+      "speech_seconds": 20.157,
+      "usable_clips": 137,
+      "transcript": "A little pagan child god plays Beyond the far horizon haze, And underneath the twilight trees He blows a bubble to the breeze, Which is borne upward in the night And makes the heavens shine with light. But soon it sinks to earth again, And, hitting hills, it bursts!",
+      "sha256": "2a76dd9e92b0b1517f6cab6c64cc1cead6c68e601be8d19d36baa1d45a3fc19d",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/8842",
+      "dataset": "LibriTTS-R",
+      "speaker": "8842",
+      "clip_id": "8842_302201_000008_000000",
+      "speech_seconds": 18.358,
+      "usable_clips": 41,
+      "transcript": "Then I, being almost put to shame because of her answer, went out from among them; and as I walked, I said within myself: \"Seeing that there is so much beatitude in those words which do praise my lady, wherefore hath my speech of her been different?\" And then I resolved that thenceforward I would choose for the theme of my writings only the praise of this most gracious being.",
+      "sha256": "07cc23452cced35cc8988659fc62637ed0b02b1f9a178559cbba94fe52c5b077",
+      "details": {
+        "split": "dev-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "LibriTTS-R/908",
+      "dataset": "LibriTTS-R",
+      "speaker": "908",
+      "clip_id": "908_31957_000011_000001",
+      "speech_seconds": 23.419,
+      "usable_clips": 19,
+      "transcript": "Shall I never miss Home talk and blessing and the common kiss That comes to each in turn, nor count it strange, When I look up, to drop on a new range Of walls and floors, another home than this? Nay, wilt thou fill that place by me which is Filled by dead eyes too tender to know change That's hardest.",
+      "sha256": "1bd8512969d92b177745eb2a9b6925519a90d5216f3fa9f47152fa634fffdf33",
+      "details": {
+        "split": "test-clean"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p225",
+      "dataset": "VCTK",
+      "speaker": "p225",
+      "clip_id": "p225_023_mic1",
+      "speech_seconds": 9.518,
+      "usable_clips": 56,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "bf31f68d76a806f688f6450d27757baa09f49e33bc89c830e11d32dcc1d212ee",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p226",
+      "dataset": "VCTK",
+      "speaker": "p226",
+      "clip_id": "p226_023_mic1",
+      "speech_seconds": 11.022,
+      "usable_clips": 92,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "ef98b96fd104fec484857278f0f393b942a397056640d1e777ecdf5995d772b9",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p227",
+      "dataset": "VCTK",
+      "speaker": "p227",
+      "clip_id": "p227_023_mic1",
+      "speech_seconds": 11.502,
+      "usable_clips": 53,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "9c9e5034c334cdc12286a669bfb8a023bc75956c08f9c11ecffe8d4449e6f5fc",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p228",
+      "dataset": "VCTK",
+      "speaker": "p228",
+      "clip_id": "p228_023_mic1",
+      "speech_seconds": 11.342,
+      "usable_clips": 99,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "4811841c84b1da6e8317aa7f756f96b54780fe658df353a8beebdae8e1438f10",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p229",
+      "dataset": "VCTK",
+      "speaker": "p229",
+      "clip_id": "p229_023_mic1",
+      "speech_seconds": 9.89,
+      "usable_clips": 66,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "43ffea5e707fda916337ff4fc7339c6c44c5fb553e95f40e2f22fe640be872bc",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p230",
+      "dataset": "VCTK",
+      "speaker": "p230",
+      "clip_id": "p230_023_mic1",
+      "speech_seconds": 12.941,
+      "usable_clips": 103,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "9bcfdebaabc9b32b039468e4d33f97d5383f0ce0b2cc09cc8e5854380b8ec6a7",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p231",
+      "dataset": "VCTK",
+      "speaker": "p231",
+      "clip_id": "p231_023_mic1",
+      "speech_seconds": 8.27,
+      "usable_clips": 16,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "62a64ae995633ef9a0adf4dec5d31ed145efedd49f21d10e861631abfa6fc67e",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p232",
+      "dataset": "VCTK",
+      "speaker": "p232",
+      "clip_id": "p232_023_mic1",
+      "speech_seconds": 9.038,
+      "usable_clips": 39,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "6dd943d1b9d781df04f4ae5f163f1e43a8bac56c0a417163d93c36629b681cd7",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p233",
+      "dataset": "VCTK",
+      "speaker": "p233",
+      "clip_id": "p233_023_mic1",
+      "speech_seconds": 9.422,
+      "usable_clips": 62,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "4443d66d588c769e1c57838074a72842b9ba6704d9a81e6107ed6ac96d03dbf7",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p234",
+      "dataset": "VCTK",
+      "speaker": "p234",
+      "clip_id": "p234_023_mic1",
+      "speech_seconds": 8.046,
+      "usable_clips": 36,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "385940fb0e874687928b21fe5985e3763ed89a1ab553d29f3040e4d3a16ba752",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p236",
+      "dataset": "VCTK",
+      "speaker": "p236",
+      "clip_id": "p236_023_mic1",
+      "speech_seconds": 9.134,
+      "usable_clips": 30,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "6bf70637255db10fdb68e66388e68393f8b0d1cb008b8e3291979d12c299790d",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p237",
+      "dataset": "VCTK",
+      "speaker": "p237",
+      "clip_id": "p237_023_mic1",
+      "speech_seconds": 8.622,
+      "usable_clips": 37,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "2333dd37795a8208eaf284aa5a95a7810eb6ddd29e0dc48c049ace16c96f9553",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p238",
+      "dataset": "VCTK",
+      "speaker": "p238",
+      "clip_id": "p238_023_mic1",
+      "speech_seconds": 11.694,
+      "usable_clips": 111,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "5e2e160919e84d16ab98faee47453a584cdfb5b19ce50b5331e92d4c52bf0b12",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p239",
+      "dataset": "VCTK",
+      "speaker": "p239",
+      "clip_id": "p239_023_mic1",
+      "speech_seconds": 8.366,
+      "usable_clips": 33,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "9e21da273b20101abc29aba4d97e8db806ba8ca889f47d8ddba9bd3a6b081f53",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p240",
+      "dataset": "VCTK",
+      "speaker": "p240",
+      "clip_id": "p240_023_mic1",
+      "speech_seconds": 9.07,
+      "usable_clips": 71,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "75a3fc6ca608765b09d7ece5f4d39f79306d8f3f1f0b108089f4cd47cb8a5015",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p241",
+      "dataset": "VCTK",
+      "speaker": "p241",
+      "clip_id": "p241_023_mic1",
+      "speech_seconds": 9.198,
+      "usable_clips": 61,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "cd9d15968cca398c0afc32427e5b3eb5954e0e880a68149d166830141de5d70d",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p243",
+      "dataset": "VCTK",
+      "speaker": "p243",
+      "clip_id": "p243_023_mic1",
+      "speech_seconds": 10.318,
+      "usable_clips": 95,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "6faac459d32bc9fec908ccf28ed7434802fe57553bde8b2aebc3ab0dfca851a7",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p244",
+      "dataset": "VCTK",
+      "speaker": "p244",
+      "clip_id": "p244_023_mic1",
+      "speech_seconds": 9.71,
+      "usable_clips": 49,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "ccb6844eff6b3b335939fa282365ba8dc5b86960efac9fe45ef586433760ae97",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p245",
+      "dataset": "VCTK",
+      "speaker": "p245",
+      "clip_id": "p245_023_mic1",
+      "speech_seconds": 12.014,
+      "usable_clips": 108,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "70fef92ac5a331395e1488b2e99cdc350c96666873ed806b3ba7c7426b4061dd",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p246",
+      "dataset": "VCTK",
+      "speaker": "p246",
+      "clip_id": "p246_023_mic1",
+      "speech_seconds": 11.317,
+      "usable_clips": 127,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "6b06e8fbfdfaeefe20936236bfb57e010effc28a2a0136f84f4737dd57bc937a",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p247",
+      "dataset": "VCTK",
+      "speaker": "p247",
+      "clip_id": "p247_023_mic1",
+      "speech_seconds": 9.134,
+      "usable_clips": 33,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "bcf8b0b23cbc638b42729a63b8eac2cfeed54b636c6917033fac028a5bdb7d7d",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p248",
+      "dataset": "VCTK",
+      "speaker": "p248",
+      "clip_id": "p248_023_mic1",
+      "speech_seconds": 12.582,
+      "usable_clips": 104,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "657d7f4e76954d8006227256c6b5cb25090e6392199d91d1461336147a6c11cc",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p249",
+      "dataset": "VCTK",
+      "speaker": "p249",
+      "clip_id": "p249_023_mic1",
+      "speech_seconds": 10.414,
+      "usable_clips": 100,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "9a75aba6fd7fbc79a4792a04d6e1acea890650e348b60f2cc78c6b1c337e038d",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p250",
+      "dataset": "VCTK",
+      "speaker": "p250",
+      "clip_id": "p250_023_mic1",
+      "speech_seconds": 8.977,
+      "usable_clips": 31,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "123b6e75871cdbe8bc5612af97bdc944e97b58992fd32649f957a32987c8cae5",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p251",
+      "dataset": "VCTK",
+      "speaker": "p251",
+      "clip_id": "p251_023_mic1",
+      "speech_seconds": 9.966,
+      "usable_clips": 67,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "aacae68870add18a40fe2b9f0f8982b173a183fb649675a05bf20fc045c2b34b",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p252",
+      "dataset": "VCTK",
+      "speaker": "p252",
+      "clip_id": "p252_023_mic1",
+      "speech_seconds": 10.254,
+      "usable_clips": 46,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "facfc36a4fef3210d6ae6f59ef9ee2ac4b0c710c880440e5dee44c7e3b1690b2",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p253",
+      "dataset": "VCTK",
+      "speaker": "p253",
+      "clip_id": "p253_023_mic1",
+      "speech_seconds": 9.678,
+      "usable_clips": 79,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "7912e2419e7d11fdadc865948eca91d97d31ceed4f230f8b90bd562a8f5212ce",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p254",
+      "dataset": "VCTK",
+      "speaker": "p254",
+      "clip_id": "p254_023_mic1",
+      "speech_seconds": 9.076,
+      "usable_clips": 63,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "9767a66b72de82edffd2918e1d3caab370fdca59d9139a6a9f1cc2e712238ac5",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p255",
+      "dataset": "VCTK",
+      "speaker": "p255",
+      "clip_id": "p255_023_mic1",
+      "speech_seconds": 11.895,
+      "usable_clips": 99,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "f4ab4f42e426a45159395473d1a216a2a5b658c260e07f2b7af3d18355038dcf",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p256",
+      "dataset": "VCTK",
+      "speaker": "p256",
+      "clip_id": "p256_023_mic1",
+      "speech_seconds": 10.542,
+      "usable_clips": 80,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "71e4e6074433aba9b3cfb9e776e8f1c5f6d03e987f7e82afe19c6a569578a941",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p257",
+      "dataset": "VCTK",
+      "speaker": "p257",
+      "clip_id": "p257_023_mic1",
+      "speech_seconds": 7.701,
+      "usable_clips": 22,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "6e97057baa3e133a5cb06f01c1a2e2d96561e10c8791f09d77b1086202bbeaa0",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p258",
+      "dataset": "VCTK",
+      "speaker": "p258",
+      "clip_id": "p258_023_mic1",
+      "speech_seconds": 9.742,
+      "usable_clips": 60,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "f66ff3f2db0753570d36d6bbfcd109eeace645c5bb92ec7cc557ae1fabcc5a35",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p259",
+      "dataset": "VCTK",
+      "speaker": "p259",
+      "clip_id": "p259_023_mic1",
+      "speech_seconds": 10.094,
+      "usable_clips": 66,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "3f9f54deafa57cde79253de0d7173d014bec7e1f86ba50b83adf1e111e78bd6d",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p260",
+      "dataset": "VCTK",
+      "speaker": "p260",
+      "clip_id": "p260_023_mic1",
+      "speech_seconds": 9.102,
+      "usable_clips": 54,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "cce4dc7021e42f4dbcbbf670a827ac65c3c91ec3144557ab13dba904859cf21d",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p261",
+      "dataset": "VCTK",
+      "speaker": "p261",
+      "clip_id": "p261_023_mic1",
+      "speech_seconds": 9.033,
+      "usable_clips": 55,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "cd6c6f331af91b17f74633d4b466f4ea2c9254548fe9ba5356e2a703d6fd8f79",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p262",
+      "dataset": "VCTK",
+      "speaker": "p262",
+      "clip_id": "p262_023_mic1",
+      "speech_seconds": 10.28,
+      "usable_clips": 102,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "0f0ce1a15ce551484137f4f218af5310eae7d929fbcd660d0b9b4e1ff53ad335",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p263",
+      "dataset": "VCTK",
+      "speaker": "p263",
+      "clip_id": "p263_023_mic1",
+      "speech_seconds": 9.294,
+      "usable_clips": 66,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "3a2affd4acae524cdc5d0ebff30d8e93c06ab4eb1a14af700d91be4f2aa4bc6f",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p264",
+      "dataset": "VCTK",
+      "speaker": "p264",
+      "clip_id": "p264_023_mic1",
+      "speech_seconds": 10.926,
+      "usable_clips": 64,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "94aad45ecf3b79292aa2a3d415489e0047ca775894ec3ddcf523eaf119d1c3a8",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p265",
+      "dataset": "VCTK",
+      "speaker": "p265",
+      "clip_id": "p265_023_mic1",
+      "speech_seconds": 13.326,
+      "usable_clips": 147,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "51b2259c1435bc7bd6048eb3ab195132a751cf8a0e72946a93c76d75cfdcc73f",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p266",
+      "dataset": "VCTK",
+      "speaker": "p266",
+      "clip_id": "p266_023_mic1",
+      "speech_seconds": 9.262,
+      "usable_clips": 74,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "a9fec3031c38fd9f693c207fdcb0d6284b61064ece7ef2f76b395a9ac98101a2",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p267",
+      "dataset": "VCTK",
+      "speaker": "p267",
+      "clip_id": "p267_023_mic1",
+      "speech_seconds": 10.448,
+      "usable_clips": 37,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "46f0c9ea079750b6a47f7869e6410f2aa5693dcb6831bf346e8e49e09bf67d3d",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p268",
+      "dataset": "VCTK",
+      "speaker": "p268",
+      "clip_id": "p268_021_mic1",
+      "speech_seconds": 8.654,
+      "usable_clips": 72,
+      "transcript": "The difference in the rainbow depends considerably upon the size of the drops, and the width of the colored band increases as the size of the drops increases.",
+      "sha256": "205df23274769d5018b7a561f779bf67792e2c82026d3089fe6f28753c960b58",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p269",
+      "dataset": "VCTK",
+      "speaker": "p269",
+      "clip_id": "p269_023_mic1",
+      "speech_seconds": 9.358,
+      "usable_clips": 69,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "d8cf8ff0f0e8a8a67c04ee769c58063d2bea26f828dcecdd1820ebdc7cad1b40",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p270",
+      "dataset": "VCTK",
+      "speaker": "p270",
+      "clip_id": "p270_023_mic1",
+      "speech_seconds": 11.918,
+      "usable_clips": 81,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "afd13d1289fadbeeafc685793203c52162d348ade37013ac39ad009b3bbdc663",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p271",
+      "dataset": "VCTK",
+      "speaker": "p271",
+      "clip_id": "p271_023_mic1",
+      "speech_seconds": 15.246,
+      "usable_clips": 138,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "1ec5824145a6f82e9aa4e9b8e9fd023b8b38ca2827cd247311cb323882e21701",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p272",
+      "dataset": "VCTK",
+      "speaker": "p272",
+      "clip_id": "p272_023_mic1",
+      "speech_seconds": 9.406,
+      "usable_clips": 91,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "48058b10096ab104ce79f2eb09868ddb337b29a5b93d7b4324e211540eab86f5",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p273",
+      "dataset": "VCTK",
+      "speaker": "p273",
+      "clip_id": "p273_023_mic1",
+      "speech_seconds": 11.054,
+      "usable_clips": 31,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "91804b064650f74dc917d9189658b42d40fd4673e210f15594712f956e4b236b",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p274",
+      "dataset": "VCTK",
+      "speaker": "p274",
+      "clip_id": "p274_023_mic1",
+      "speech_seconds": 10.83,
+      "usable_clips": 81,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "d58139cc62625c1d3813b3a5600c95b9ba67d55b94cc23958ad604ac7623aa6e",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p275",
+      "dataset": "VCTK",
+      "speaker": "p275",
+      "clip_id": "p275_023_mic1",
+      "speech_seconds": 9.55,
+      "usable_clips": 81,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "24ebb8841d6dd757f2794492747924d9e4d3a68ab213efea2ae8ed7740918639",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p276",
+      "dataset": "VCTK",
+      "speaker": "p276",
+      "clip_id": "p276_023_mic1",
+      "speech_seconds": 10.19,
+      "usable_clips": 73,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "a490b82a12dbaeaf4dc77bcc513950ba65086d40bd068f0596427a4577e1bea0",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p277",
+      "dataset": "VCTK",
+      "speaker": "p277",
+      "clip_id": "p277_023_mic1",
+      "speech_seconds": 11.086,
+      "usable_clips": 113,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "a67e3d552679118e29647221f8523b06c8a34004eed1e62940e4ebedbd2cdc71",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p278",
+      "dataset": "VCTK",
+      "speaker": "p278",
+      "clip_id": "p278_023_mic1",
+      "speech_seconds": 9.454,
+      "usable_clips": 37,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "f638f4d3d69204f3adeba55c5be40ed4f5a88e66db1d4982eda6fb6eb7e45ac2",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p279",
+      "dataset": "VCTK",
+      "speaker": "p279",
+      "clip_id": "p279_023_mic1",
+      "speech_seconds": 8.206,
+      "usable_clips": 25,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "3f69a3aaaa2850c35be510536fbf35ab1a04567478dcf43d88d11470bd0c87c0",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p280",
+      "dataset": "VCTK",
+      "speaker": "p280",
+      "clip_id": "p280_023_mic1",
+      "speech_seconds": 10.766,
+      "usable_clips": 82,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "18116b19f2df85d9c553d8dfafa83464bacb9f8b4b3b3994558c18af28148a19",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p281",
+      "dataset": "VCTK",
+      "speaker": "p281",
+      "clip_id": "p281_023_mic1",
+      "speech_seconds": 10.286,
+      "usable_clips": 61,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "2db1c95513b9da47488f379967753d510b53122a57327b8d1317dcd04c79ce9f",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p282",
+      "dataset": "VCTK",
+      "speaker": "p282",
+      "clip_id": "p282_024_mic1",
+      "speech_seconds": 10.478,
+      "usable_clips": 80,
+      "transcript": "This is a very common type of bow, one showing mainly red and yellow, with little or no green or blue.She is given a new deputy minister for transport and planning.",
+      "sha256": "abdd3bdc4bf285f6369367867e013c70338908570f694e94727c6e3c55dcaf75",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p283",
+      "dataset": "VCTK",
+      "speaker": "p283",
+      "clip_id": "p283_023_mic1",
+      "speech_seconds": 10.126,
+      "usable_clips": 31,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "b4f0f1ed4a268ec556810b7bd557cd5b7aa3fcb6a1d6e912025fb80291a2f1ec",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p284",
+      "dataset": "VCTK",
+      "speaker": "p284",
+      "clip_id": "p284_023_mic1",
+      "speech_seconds": 8.654,
+      "usable_clips": 64,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "34bc52ddb751c4a17dbe39df2bbf2b853aae411b874d1b9cd6eff397e2830899",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p285",
+      "dataset": "VCTK",
+      "speaker": "p285",
+      "clip_id": "p285_023_mic1",
+      "speech_seconds": 9.007,
+      "usable_clips": 56,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "b4504a8b3a8c13558e2cd3460ec6db19fbacff8095c3273474a0eb30a2caa8c2",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p286",
+      "dataset": "VCTK",
+      "speaker": "p286",
+      "clip_id": "p286_023_mic1",
+      "speech_seconds": 11.246,
+      "usable_clips": 65,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "2694100777101f91735daf22a936d98c765019b68d4f03c529e76e15b309c936",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p287",
+      "dataset": "VCTK",
+      "speaker": "p287",
+      "clip_id": "p287_023_mic1",
+      "speech_seconds": 10.306,
+      "usable_clips": 42,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "b33297b3cbaee8c691bad2886d8978d5b40a690c8a6a9ced9e0cad1f42a6b563",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p288",
+      "dataset": "VCTK",
+      "speaker": "p288",
+      "clip_id": "p288_023_mic1",
+      "speech_seconds": 9.966,
+      "usable_clips": 86,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "ecfe9176661e18f2cba694e0b2cc50c4e926ea1e8af71c0977c521e52cdfc962",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p292",
+      "dataset": "VCTK",
+      "speaker": "p292",
+      "clip_id": "p292_023_mic1",
+      "speech_seconds": 10.19,
+      "usable_clips": 14,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "7a565171c78bd9da2950bf9b96c9a6e5b619af2daaa812cd62f689bd0a93f0fd",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p293",
+      "dataset": "VCTK",
+      "speaker": "p293",
+      "clip_id": "p293_023_mic1",
+      "speech_seconds": 9.966,
+      "usable_clips": 20,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "8f1ec5ea01146ba60eba35648e0aa82c2d3662ece120b46d0df0f79e9373b502",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p294",
+      "dataset": "VCTK",
+      "speaker": "p294",
+      "clip_id": "p294_023_mic1",
+      "speech_seconds": 11.886,
+      "usable_clips": 21,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "5af4e90223a7596eb4cd24c5b13c4e077c31d8d2049a8a3bfeb2656e0c312344",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p295",
+      "dataset": "VCTK",
+      "speaker": "p295",
+      "clip_id": "p295_021_mic1",
+      "speech_seconds": 8.59,
+      "usable_clips": 20,
+      "transcript": "The difference in the rainbow depends considerably upon the size of the drops, and the width of the colored band increases as the size of the drops increases.",
+      "sha256": "aa8fe12b73346cac762f9ea4998fb089eff264c924988d78f439d2be81fca42a",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p297",
+      "dataset": "VCTK",
+      "speaker": "p297",
+      "clip_id": "p297_023_mic1",
+      "speech_seconds": 11.31,
+      "usable_clips": 34,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "5334297218f5453bf0e6a56dd3337bd8fb80f414c8db69e4cecb7cbaefefc870",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p298",
+      "dataset": "VCTK",
+      "speaker": "p298",
+      "clip_id": "p298_023_mic1",
+      "speech_seconds": 8.494,
+      "usable_clips": 39,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "089d4ee2fbaf518500a8d4bb19b712d6fbd37a1703a47f6e16f3da1f565c1148",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p299",
+      "dataset": "VCTK",
+      "speaker": "p299",
+      "clip_id": "p299_023_mic1",
+      "speech_seconds": 9.07,
+      "usable_clips": 29,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "54619f27c86c6ea63a1fe453808bbbf84878211ddbb587d758243e18c954ad6a",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p300",
+      "dataset": "VCTK",
+      "speaker": "p300",
+      "clip_id": "p300_023_mic1",
+      "speech_seconds": 11.15,
+      "usable_clips": 59,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "a6b5b7d3bcdb8e2f2a7c8d7c594522a3e750974ab9caa76ddf783e3c4ea27140",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p301",
+      "dataset": "VCTK",
+      "speaker": "p301",
+      "clip_id": "p301_023_mic1",
+      "speech_seconds": 9.742,
+      "usable_clips": 55,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "62796d23d98a7aeec9e9c96ca7165ee725ce2ebdb2c97fcdc3d713e154be3da1",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p302",
+      "dataset": "VCTK",
+      "speaker": "p302",
+      "clip_id": "p302_023_mic1",
+      "speech_seconds": 9.55,
+      "usable_clips": 15,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green yellow light when mixed form yellow.",
+      "sha256": "f2a557e97670384aeb802b71c21e25bc62f07273a2e4c440f5397088663557ff",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p303",
+      "dataset": "VCTK",
+      "speaker": "p303",
+      "clip_id": "p303_023_mic1",
+      "speech_seconds": 10.67,
+      "usable_clips": 66,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "ad963b349eeaddc6ec9da740b33ee7701d27157b999a7757ccc48637c67dd2f8",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p304",
+      "dataset": "VCTK",
+      "speaker": "p304",
+      "clip_id": "p304_023_mic1",
+      "speech_seconds": 9.518,
+      "usable_clips": 20,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "c7714b7a26366202b9ea4efbbf5c4764203ff138f374ffa45e823777defc13e8",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p305",
+      "dataset": "VCTK",
+      "speaker": "p305",
+      "clip_id": "p305_023_mic1",
+      "speech_seconds": 10.158,
+      "usable_clips": 49,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "d2c45912712ee26baf95263483c93a3349986d706a9f3a24e5c654985d0f0097",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p306",
+      "dataset": "VCTK",
+      "speaker": "p306",
+      "clip_id": "p306_023_mic1",
+      "speech_seconds": 13.358,
+      "usable_clips": 110,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "98190f242f8ee2f7a16dde98d10d615f6a1e0a8017993e30b6a945decaeff8d4",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p307",
+      "dataset": "VCTK",
+      "speaker": "p307",
+      "clip_id": "p307_023_mic1",
+      "speech_seconds": 10.414,
+      "usable_clips": 60,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "dcad8fcc3cbed9b712b1c871e1b6eebeff341ba99d23674fa839d55d01b549da",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p308",
+      "dataset": "VCTK",
+      "speaker": "p308",
+      "clip_id": "p308_023_mic1",
+      "speech_seconds": 8.878,
+      "usable_clips": 28,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "d5d2df6dd00fad0cb08c92ea4cb3f7c7ad17ab77a303e8e259ed63e1952ddb21",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p310",
+      "dataset": "VCTK",
+      "speaker": "p310",
+      "clip_id": "p310_023_mic1",
+      "speech_seconds": 11.886,
+      "usable_clips": 45,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "d8213d1f00bae3e9550135172a1aec1ed23cbf28569ed9beb177b0616b23feb6",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p311",
+      "dataset": "VCTK",
+      "speaker": "p311",
+      "clip_id": "p311_023_mic1",
+      "speech_seconds": 9.486,
+      "usable_clips": 22,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "5a9b21f53a51ad6a04d901ab11721d9542b6be9566ad268263542fd53caf69a4",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p312",
+      "dataset": "VCTK",
+      "speaker": "p312",
+      "clip_id": "p312_023_mic1",
+      "speech_seconds": 10.286,
+      "usable_clips": 20,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "6d38b22090af22f7d61e85e87e5a97b80de31f7ba6500d7c50467e2c76206fab",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p313",
+      "dataset": "VCTK",
+      "speaker": "p313",
+      "clip_id": "p313_023_mic1",
+      "speech_seconds": 9.038,
+      "usable_clips": 20,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "3b956be325c97dca0642ae10e93a76e37c1e7ba8247f9746d585ced9d727fbfa",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p314",
+      "dataset": "VCTK",
+      "speaker": "p314",
+      "clip_id": "p314_023_mic1",
+      "speech_seconds": 10.222,
+      "usable_clips": 52,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "aa0ca3145e7acc1465b453f62e0ca56f5f02a0be3ea938ec57d2152c0bfb01cc",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p316",
+      "dataset": "VCTK",
+      "speaker": "p316",
+      "clip_id": "p316_023_mic1",
+      "speech_seconds": 10.478,
+      "usable_clips": 26,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "fbef12a0712276ddf883700b9be87d70a5c114ceb31fb8354970858084dfe56e",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p317",
+      "dataset": "VCTK",
+      "speaker": "p317",
+      "clip_id": "p317_023_mic1",
+      "speech_seconds": 9.998,
+      "usable_clips": 44,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "f13f9f70d3cb2f4fec2d3012f77b333cf92367301adb5472554bd6a2111462c2",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p318",
+      "dataset": "VCTK",
+      "speaker": "p318",
+      "clip_id": "p318_023_mic1",
+      "speech_seconds": 10.574,
+      "usable_clips": 21,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "9fca4f4945837256b3edd4004949ae17fc8dd94c83ecaf1be0ed1bdc017471ce",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p323",
+      "dataset": "VCTK",
+      "speaker": "p323",
+      "clip_id": "p323_023_mic1",
+      "speech_seconds": 12.686,
+      "usable_clips": 108,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "e8aaf52143f137723824b37c97a23b1fb1b594c2ef33696efdfa91e055f59080",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p326",
+      "dataset": "VCTK",
+      "speaker": "p326",
+      "clip_id": "p326_023_mic1",
+      "speech_seconds": 9.454,
+      "usable_clips": 25,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "ed14ebb1ce034b41d38ab028417ec10996aeb52b3e97c0aa8c9a889e558cbce8",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p329",
+      "dataset": "VCTK",
+      "speaker": "p329",
+      "clip_id": "p329_023_mic1",
+      "speech_seconds": 11.982,
+      "usable_clips": 53,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "ff40744c13862b95ef0b0e62809cd75bed4571287a70c2be9847ffe9a6b72bbc",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p330",
+      "dataset": "VCTK",
+      "speaker": "p330",
+      "clip_id": "p330_023_mic1",
+      "speech_seconds": 10.862,
+      "usable_clips": 74,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "b53cdde289571cdb330bb3885cc7ef797af78226206bba432d01dd120a29c8f7",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p333",
+      "dataset": "VCTK",
+      "speaker": "p333",
+      "clip_id": "p333_023_mic1",
+      "speech_seconds": 9.166,
+      "usable_clips": 26,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "5a0ad8484b12c60e5812a120c4c7ed59f9d5f82f03d32f3c144f499a58ccb1e2",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p334",
+      "dataset": "VCTK",
+      "speaker": "p334",
+      "clip_id": "p334_023_mic1",
+      "speech_seconds": 8.686,
+      "usable_clips": 24,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "c1caa0f5d743f3f9526643fb12c9f642ab9f13328bd1c49cf00dc8e82f7119e7",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p335",
+      "dataset": "VCTK",
+      "speaker": "p335",
+      "clip_id": "p335_023_mic1",
+      "speech_seconds": 13.917,
+      "usable_clips": 80,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "a73d38296578651ecccae5dfd18a2ff9565e6610b0cdf029576a117b1f8c474b",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p336",
+      "dataset": "VCTK",
+      "speaker": "p336",
+      "clip_id": "p336_023_mic1",
+      "speech_seconds": 10.158,
+      "usable_clips": 22,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed forms yellow.",
+      "sha256": "f0ac9a93ad2edcc9a90c7bbee772bf72f7ad76992c017953b57441797e183eba",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p339",
+      "dataset": "VCTK",
+      "speaker": "p339",
+      "clip_id": "p339_023_mic1",
+      "speech_seconds": 10.952,
+      "usable_clips": 21,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "478acaba2cd54e73536bfebb843eb3e985383714ec4fe77f2cb52fcfef576f8f",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p340",
+      "dataset": "VCTK",
+      "speaker": "p340",
+      "clip_id": "p340_021_mic1",
+      "speech_seconds": 7.15,
+      "usable_clips": 18,
+      "transcript": "The difference in the rainbow depends considerably upon the size of the drops, and the width of the colored band increases as the size of the drops increases.",
+      "sha256": "7bdb7981b4ee48ece3f21467b19a9ed8dc5fe1c68de79376b6e320ab50e1c178",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p341",
+      "dataset": "VCTK",
+      "speaker": "p341",
+      "clip_id": "p341_023_mic1",
+      "speech_seconds": 11.758,
+      "usable_clips": 66,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "9a3973f17f2f76c6a40045d9cc0682f0e97b9bd93ca8fb56056339f7f6732f8c",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p343",
+      "dataset": "VCTK",
+      "speaker": "p343",
+      "clip_id": "p343_023_mic1",
+      "speech_seconds": 11.278,
+      "usable_clips": 29,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "5d355082f7d054083bd3714a69811dc803642101e57979d8f6c3c7c6ba1a2cf1",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p345",
+      "dataset": "VCTK",
+      "speaker": "p345",
+      "clip_id": "p345_023_mic1",
+      "speech_seconds": 10.19,
+      "usable_clips": 21,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "e2be2e0ecbfbef0ae3fe9fae004c05636855cc610ea464acf7af1517223ec614",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p347",
+      "dataset": "VCTK",
+      "speaker": "p347",
+      "clip_id": "p347_023_mic1",
+      "speech_seconds": 11.726,
+      "usable_clips": 43,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "573530960af77d5b14c58f8b731086c05b3fb1e3e245f74adfb877589f502376",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p351",
+      "dataset": "VCTK",
+      "speaker": "p351",
+      "clip_id": "p351_023_mic1",
+      "speech_seconds": 8.858,
+      "usable_clips": 20,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "630f51406d82ae62b86b0f08910c3b39f4c11f36b850de51bcfa7d730e5d57d2",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p360",
+      "dataset": "VCTK",
+      "speaker": "p360",
+      "clip_id": "p360_023_mic1",
+      "speech_seconds": 10.35,
+      "usable_clips": 19,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "a228ed25fd34f601eb82c4b4b417ce229eca5665148aa75e2492f35280d4df5e",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p361",
+      "dataset": "VCTK",
+      "speaker": "p361",
+      "clip_id": "p361_023_mic1",
+      "speech_seconds": 8.974,
+      "usable_clips": 20,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "344573fdbe27c68fcc1fdc9af56ac6e12e706008e17dcbfdafacbe419580fa63",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p362",
+      "dataset": "VCTK",
+      "speaker": "p362",
+      "clip_id": "p362_019_mic1",
+      "speech_seconds": 7.534,
+      "usable_clips": 14,
+      "transcript": "Since then physicists have found that it is not reflection, but refraction by the raindrops which causes the rainbows.",
+      "sha256": "941d06ff32e90434067fbf97d754b7ffbd6c642fb533901fa306f9de09f60d65",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "test"
+    },
+    {
+      "voice": "VCTK/p363",
+      "dataset": "VCTK",
+      "speaker": "p363",
+      "clip_id": "p363_023_mic1",
+      "speech_seconds": 8.718,
+      "usable_clips": 19,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "e19d69ca9678423e8dbbe9b47773c6cae951bb6a92a62701a2072b3d3cf35bba",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p364",
+      "dataset": "VCTK",
+      "speaker": "p364",
+      "clip_id": "p364_023_mic1",
+      "speech_seconds": 12.366,
+      "usable_clips": 22,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "eaa9d921f1fec74254463bb4f253f2542645c616ac46212da8506ffe689d9bed",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p374",
+      "dataset": "VCTK",
+      "speaker": "p374",
+      "clip_id": "p374_023_mic1",
+      "speech_seconds": 11.79,
+      "usable_clips": 31,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "e13b5661c2e5745ba08f85de90aa07dbc22105be403c7a68eb2b22bd368fbc4a",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/p376",
+      "dataset": "VCTK",
+      "speaker": "p376",
+      "clip_id": "p376_023_mic1",
+      "speech_seconds": 9.294,
+      "usable_clips": 24,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "57898ff4f94d918ea6caf9aa7aad2d6a5831bd97b8978212a21af2095743e84c",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    },
+    {
+      "voice": "VCTK/s5",
+      "dataset": "VCTK",
+      "speaker": "s5",
+      "clip_id": "s5_023_mic1",
+      "speech_seconds": 10.286,
+      "usable_clips": 118,
+      "transcript": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+      "sha256": "95267489479572c88a35be6fcb2ddb1cce21aca24faa79e0600c6967aeaba0c5",
+      "details": {
+        "mic": "mic1"
+      },
+      "split": "validation"
+    }
+  ]
+}

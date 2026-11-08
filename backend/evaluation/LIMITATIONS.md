@@ -10,7 +10,18 @@ The datasets do not contain recording dates that could order the clips in time. 
 
 ## Split
 
-Each dataset is split on its own, by speaker, with seed 42 into 80 % validation and 20 % test. The result is 223 validation speakers (VCTK 87, CREMA-D 73, LibriTTS-R 63) and 56 test speakers (VCTK 22, CREMA-D 18, LibriTTS-R 16). The split is made once from the full library and saved to a file. It refuses to overwrite itself, and the checks confirm that no speaker is in both sets.
+The split is made over **voices**: speakers with at least one neutral clip of 3-25 s of speech. Each voice uses one clip, its longest, because a short reference gives a clone that is less like the speaker and is heard less reliably. Each dataset is split on its own with seed 42 into 80 % validation and 20 % test. All of it is in the voice manifest, `backend/data/manifests/voice-split-v2.json`: every voice, its clip and its split. It refuses to overwrite itself, and the checks confirm that no voice is in both sets and that each voice's clip is a usable one.
+
+| | Validation voices | Test voices | Unused speakers | Mean clip length |
+|---|---|---|---|---|
+| VCTK | 87 | 22 | 0 | 10.2 s |
+| CREMA-D | 27 | 7 | 57 | 3.4 s |
+| LibriTTS-R | 62 | 15 | 2 | 20.0 s |
+| **All** | **176** | **44** | **59** | |
+
+- **CREMA-D is the weak dataset.** 57 of its 91 actors have no neutral clip of 3 s or more (its sentences are short), and even its longest clips are only 3.0-4.8 s. Its clones are expected to be less like the speaker, whatever is changed later.
+- **The clip lengths differ by dataset** (CREMA-D about 3 s, LibriTTS-R about 20 s). A gap between datasets can come from the reference length, not only from the dataset.
+- **The first split was replaced on 8 Nov 2026.** It split every speaker, usable or not (223 / 56), so CREMA-D had only 5 usable test voices, and each run picked a voice's clip at random. The test set had never been used, so it could still be redrawn. Baselines v1 to v3 were made with the first split and are kept as history; v4 is the first baseline on the voice split.
 
 Validation is used for all development and for the baseline. The test speakers are locked and unused, so no result in this milestone has been measured on them.
 
@@ -48,7 +59,40 @@ Known-answer checks, all passed: a reference compared with itself has similarity
 
 What it shows: plain CosyVoice 3 keeps the words almost perfectly, so WER leaves little room to improve and is mainly a guard for later changes. Similarity and quality differ by dataset, so later results must be reported per dataset as well.
 
-### Baseline v2 (8 Nov 2026): the current baseline
+### Baseline v4 (8 Nov 2026): the voice split, longest clips
+
+The same 6 lines and render seed 0, on 12 validation voices of the new voice split, each with its longest neutral clip (VCTK 8-10 s, CREMA-D 3.0-3.9 s, LibriTTS-R 17-24 s). 72 clips. All 4 known-answer checks passed (70 of 72 renders are most like their own voice). Logged in MLflow as `baseline-v4`. It ran on uncommitted code (`git_dirty: true`).
+
+| | WER | Heard exactly | Similarity to the reference | PESQ (SQUIM estimate) |
+|---|---|---|---|---|
+| All | 0.028 (0.007-0.058) | 78 % | 0.869 (0.828-0.904) | 3.59 (3.21-3.93) |
+| VCTK | 0.022 (0.012-0.034) | 71 % | 0.900 (0.887-0.914) | 4.02 (3.89-4.15) |
+| CREMA-D | 0.023 (0.000-0.062) | 88 % | 0.781 (0.752-0.826) | 2.70 (2.40-2.88) |
+| LibriTTS-R | 0.039 (0.000-0.116) | 75 % | 0.925 (0.915-0.941) | 4.04 (3.96-4.12) |
+
+- **The longest clip did not lower the WER: it rose from 0.005 (v3) to 0.028.** The voices are different from v3's, so this is not a controlled comparison, but the errors have a clear cause.
+- **A very long reference leaks into the render.** LibriTTS-R 7127's reference (23 s) ends on "bedimmed", and all 6 of its renders begin with "be dimmed" or "be damned" before the line. CosyVoice warns that the line is much shorter than the reference text. Without this voice, WER is 0.016 and 85 % of clips are heard exactly.
+- **VCTK drops small words** ("had", "to", "on"). All four VCTK voices use one of the long "rainbow passage" sentences, the longest a VCTK speaker reads.
+- **Similarity rose for LibriTTS-R** (0.925, against 0.914 in v2) and stayed the same for VCTK (0.900 against 0.903). CREMA-D fell (0.781 against 0.829), but its longest clips are still only about 3 s and the actors are different, so this says more about the voices than about the rule.
+- **What follows:** the longest clip is not automatically the best reference. A length cap (for example the longest clip up to about 12-15 s), tested on the same voices, is the next thing to check.
+
+### Baseline v3 (8 Nov 2026): the reference baseline on the first split
+
+The same run as v2 (12 voices x 6 lines, render seed 0), rendered again from the committed code, commit `2f99315`, with no uncommitted changes. It gives **exactly the same numbers as v2 on all 72 clips** (WER, similarity and PESQ, checked clip by clip), so the table below is v3's too. All 4 known-answer checks passed. It is logged in MLflow as `baseline-v3`.
+
+It was the reference baseline of the first split (see Split above), and the Milestone 2 search was compared with v2 on that split. Its record points at code anyone can check out:
+
+| Run record (`output/baseline/v3/record.json`) | |
+|---|---|
+| Code | git `2f99315`, clean (`git_dirty: false`) |
+| Data | manifest SHA-256 `4873e073…`, split SHA-256 `3be1b163…` |
+| Voice model | CosyVoice 3, weights Fun-CosyVoice3-0.5B, CosyVoice code `074ca6d` |
+| Judges | Whisper base (WER), Resemblyzer (similarity), SQUIM (quality) |
+| Seeds | render 0, voice pick 0 |
+| Machine | NVIDIA GeForce RTX 3080, CUDA 12.1 |
+| Versions | torch 2.3.1, torchaudio 2.3.1, transformers 4.51.3, openai-whisper 20231117, resemblyzer 0.1.4, jiwer 4.0.0, numpy 1.26.4, mlflow 3.18.0 |
+
+### Baseline v2 (8 Nov 2026)
 
 The same 12 voices and render seed, with a sixth line added: the shared comparison sentence "Well, you really did it this time, and I honestly didn't think you had it in you, so I'll be waiting." (21 words), which reads as praise, sarcasm or a threat depending on the delivery. 72 clips:
 
@@ -74,7 +118,9 @@ Three routes are checked: a voice on both sides of the split, a check or a stati
 
 ## Run record
 
-Each run records the manifest hash, the split file hash, the seed, the device and the library versions. Where a known-answer check exists, its result is recorded too. The baseline also records the git commit (and whether there were uncommitted changes), the CosyVoice weights and code commit, the judges, the render and pick seeds, the CUDA version and the non-secret settings, in `output/baseline/<name>/record.json`, and logs them in MLflow (`baseline-v1`, `baseline-v2`). Both baselines ran on uncommitted code (`git_dirty` is true in their records), so the commit in the record is the last commit, not the exact code. Once the code is committed, run `python main_backend.py baseline --name v3` to render it again from the commit. Because v2 already reproduces v1 exactly, v3 should give the same numbers, and its record will then point at code anyone can check out.
+Each run records the manifest hash, the split file hash, the seed, the device and the library versions. Where a known-answer check exists, its result is recorded too. The baseline also records the git commit (and whether there were uncommitted changes), the CosyVoice weights and code commit, the judges, the render and pick seeds, the CUDA version and the non-secret settings, in `output/baseline/<name>/record.json`, and logs them in MLflow (`baseline-v1` to `baseline-v4`). v1 and v2 ran on uncommitted code (`git_dirty` is true in their records), so the commit in their records is the last commit, not the exact code. v3 ran from commit `2f99315` with no uncommitted changes and gives the same numbers as v2 on every clip, so the results can be repeated from code anyone can check out: `git checkout 2f99315`, then `python main_backend.py baseline --name <new name>`.
+
+What the record cannot pin down: the voice library itself is not in git (it is identified by the manifest's hash), the model weights are identified by name only, and the timings depend on the machine.
 
 ## Ethics and licences
 

@@ -172,15 +172,18 @@ _library_lock = threading.Lock()
 
 
 def library():
-    """{dataset: {"clips": [...], "by_id": {...}}} of validation speakers, read once (a few seconds)."""
+    """
+    {dataset: {"clips": [...], "by_id": {...}}} of the validation voices, read once (a few seconds).
+    Each voice offers one clip: the one the voice manifest chose for it, its longest neutral clip.
+    """
     with _library_lock:
         if _library["clips"] is None:
             from backend.voice_data import split_voice_data
 
-            validation = set(split_voice_data.load_splits()["validation"])
+            chosen = set(split_voice_data.voice_clips("validation").items())
             out = {name: {"clips": [], "by_id": {}} for name in DATASETS}
             for clip in split_voice_data.read_library():
-                if clip.dataset in out and f"{clip.dataset}/{clip.speaker}" in validation:
+                if clip.dataset in out and (f"{clip.dataset}/{clip.speaker}", clip.clip_id) in chosen:
                     out[clip.dataset]["clips"].append(clip)
                     out[clip.dataset]["by_id"][clip.clip_id] = clip
             _library["clips"] = out

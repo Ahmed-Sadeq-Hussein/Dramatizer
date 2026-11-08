@@ -79,11 +79,26 @@ Rules that follow from this:
 
 ## The split
 
-`backend/data/manifests/split-validation-test.json`: speaker keys
-(`dataset/speaker`) in `validation` and `test`. It is made once by
-`split_voice_data.py` (seed 42, 20 % test, per dataset) and refuses to be
-overwritten. Rules: both sets present, no speaker in both, every clip's
-speaker in one of them **(all checked)**.
+`backend/data/manifests/voice-split-v2.json`, the voice manifest. A **voice** is
+a speaker (`dataset/speaker`) with at least one neutral clip of 3-25 s of speech
+(VCTK: mic1, silent clips left out). Each voice uses **one clip, its longest**
+usable one (on a tie, the first clip id), because a longer reference gives a
+clone that is more like the speaker and is heard more reliably. The voices, not
+all speakers, are split: per dataset, 20 % test (rounded, at least one) and the
+rest validation, seed 42. Speakers with no usable clip are listed as `unused`.
+For every voice the file gives its clip id, speech length, transcript, the
+audio's SHA-256 and its split. It is made once by `python main_backend.py split`
+and refuses to be overwritten.
+
+Rules **(all checked)**: both sets present; no voice in both; every clip's
+speaker is a validation voice, a test voice or unused; every voice listed once
+with one clip; the lists match each voice's split; no unused speaker is a voice;
+each voice's clip is its own speaker's, neutral and within the length limits;
+each dataset's test share is 20 %.
+
+It replaced the first split (`split-validation-test.json`, 8 Nov 2026), which
+split every speaker, usable or not, and left CREMA-D with only 5 usable test
+voices. The test set had never been used, so it could still be redrawn.
 
 ## Changing the contract
 

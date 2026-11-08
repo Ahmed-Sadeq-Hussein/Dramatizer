@@ -22,9 +22,10 @@ Anything on the internet can reach a tunnel, including scanners that connect and
 then say nothing. Each connection does its HTTPS handshake on its own thread, so
 one of those cannot hold up the others, and is closed after IDLE_SECONDS of silence.
 
-Random voices: a panel above the clips picks a number of random neutral voices,
-one per actor, from one dataset or an even share of all (split_voice_data.py). It
-can stay inside the validation speakers (80%) or the final test speakers (20%). Press Use on a voice to make it the reference; the list
+Random voices: a panel above the clips picks a number of random voices, each with
+its longest neutral clip, from one dataset or an even share of all
+(split_voice_data.py). It can stay inside the validation voices (80%) or the final
+test voices (20%), and shows how the voice manifest splits each dataset. Press Use on a voice to make it the reference; the list
 stays while you go through them. The seed is shown, and the same settings and seed
 give the same voices. Custom voices are never picked.
 
@@ -103,10 +104,12 @@ LOGIN_HOURS = 12
 IDLE_SECONDS = 30           # a connection silent for this long is closed
 
 VOICES_FROM_ALL = "all"     # the random voices come from an even share of every dataset
-# The speakers are split once, per dataset (split_voice_data.py): most for validation, the rest
-# locked away as the final test. The page says which is which, and how big each part is.
+# The voices are split once, per dataset (split_voice_data.py, the voice manifest): most for
+# validation, the rest locked away as the final test. The page says which is which, and how big each part is.
 TEST_PERCENT = round(100 * split_voice_data.TEST_FRACTION)
 SPLIT_SIZES = {name: len(keys) for name, keys in split_voice_data.load_splits().items()}
+SPLIT_COUNTS = split_voice_data.load_voice_manifest()["counts"]   # per dataset: validation, test, unused speakers
+SPLIT_FILE = split_voice_data.SPLITS_FILE.name
 VOICE_SPLITS = {
     "validation": f"Validation {100 - TEST_PERCENT}%",
     "test": f"Final test {TEST_PERCENT}%",
@@ -156,6 +159,9 @@ PHONE_STYLE = """<style>
   .sampler { --test: #9a5b00; --test-soft: #fbefd9; }
   @media (prefers-color-scheme: dark) { .sampler { --test: #f0b45a; --test-soft: #3a2a10; } }
   .split-group + .split-group { margin-top: 16px; }
+  .split-counts { margin: 4px 0 10px; font-size: 0.88rem; }
+  .split-counts table { border-collapse: collapse; margin-top: 6px; }
+  .split-counts th, .split-counts td { padding: 3px 10px; text-align: left; border-bottom: 1px solid var(--rule); }
   .split-head { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 0.88rem; font-weight: 400; color: var(--muted); }
   .split-tag { padding: 2px 9px; border-radius: 999px; font-weight: 600; background: var(--accent-soft); color: var(--accent); }
   .split-test .split-tag { background: var(--test-soft); color: var(--test); }
@@ -333,9 +339,17 @@ SAMPLER = """{% set sample = random_voices(s) %}
       <button type="submit">Pick voices</button>
       {% if s.voices %}<a class="button" href="/?{{ q(voices=0) }}">Clear</a>{% endif %}
     </form>
-    <p class="summary">Every dataset's speakers are split once: {{ 100 - test_percent }}% for validation ({{ split_sizes.validation }} speakers),
-      to tune and listen with, and {{ test_percent }}% for the final test ({{ split_sizes.test }} speakers), kept for the end.
-      A speaker is only ever in one of them.</p>
+    <p class="summary">Every dataset's voices are split once: {{ 100 - test_percent }}% for validation ({{ split_sizes.validation }} voices),
+      to tune and listen with, and {{ test_percent }}% for the final test ({{ split_sizes.test }} voices), kept for the end.
+      A voice is only ever in one of them, and always uses its longest neutral clip.</p>
+    <details class="split-counts"><summary>The split, per dataset ({{ split_file }})</summary>
+      <table>
+        <tr><th>Dataset</th><th>Validation voices</th><th>Test voices</th><th>Unused speakers</th><th>Mean clip length</th></tr>
+        {% for dataset, n in split_counts.items() %}<tr><td>{{ dataset }}</td><td>{{ n.validation }}</td><td>{{ n.test }}</td>
+          <td>{{ n['unused speakers'] }}</td><td>{{ '%.1f s' % n['mean seconds'] if 'mean seconds' in n else '' }}</td></tr>{% endfor %}
+      </table>
+      <p class="summary">An unused speaker has no neutral clip with 3-25 s of speech, so it can never be a reference.</p>
+    </details>
     {% if sample.error %}<p class="note error">{{ sample.error }}</p>{% endif %}
     {% if sample.rows %}
       <p class="summary">Seed {{ s.voices_seed }}, {{ 'from the ' ~ split_names[s.voices_split] if s.voices_split in split_names else 'from both splits, shown apart below' }}. The same settings and seed give the same voices.</p>
@@ -876,6 +890,8 @@ def sampler_helpers():
         "split_names": SPLIT_NAMES,
         "test_percent": TEST_PERCENT,
         "split_sizes": SPLIT_SIZES,
+        "split_counts": SPLIT_COUNTS,
+        "split_file": SPLIT_FILE,
         "from_all": VOICES_FROM_ALL,
         "voices_shown": VOICES_SHOWN,
     }

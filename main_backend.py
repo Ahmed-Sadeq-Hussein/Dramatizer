@@ -2,7 +2,7 @@
 
     python main_backend.py                          # what can be run, and how
     python main_backend.py wer clone.wav "the words that should be heard"
-    python main_backend.py split                    # make the validation/test split (once)
+    python main_backend.py split                    # make the voice manifest and its split (once)
     python main_backend.py test                     # every test that needs no GPU
 
 Everything after the command's name goes to that command as it is, so each one
@@ -46,7 +46,7 @@ COMMANDS = {
         "voices": ("Browse a dataset: list clips, hear one, read its script", "backend.voice_data.Voice_Importer"),
         "pick": ("Choose which clips of a dataset to use as references", "backend.voice_data.Picky_voice"),
         "manifest": ("Build the data manifest", "backend.voice_data.build_manifest"),
-        "split": ("Make the validation/test split (once; never overwritten)", "backend.voice_data.split_voice_data"),
+        "split": ("Make the voice manifest: each voice's longest clip and its validation/test split (once)", "backend.voice_data.split_voice_data"),
     },
     "Speech": {
         "speak": ("Speak a line in a cloned voice (CosyVoice 3)", "backend.speech.Voice_model"),

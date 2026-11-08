@@ -18,7 +18,9 @@ Milestone 1, a reproducible baseline, is in place:
 
 - The data: three public datasets, one manifest, a data contract with checks
   ([`backend/evaluation/DATA_CONTRACT.md`](backend/evaluation/DATA_CONTRACT.md)).
-- A locked split by speaker: 80 % validation, 20 % final test, never touched.
+- A locked split by voice: each usable voice uses its longest neutral clip, and the
+  voices are split 80 % validation, 20 % final test (176 / 44), never touched. The
+  voice manifest is `backend/data/manifests/voice-split-v2.json`.
 - The baseline: plain CosyVoice 3 renders of fixed lines in validation voices,
   measured, with known-answer checks and a full run record in MLflow.
 - What it does not show: [`backend/evaluation/LIMITATIONS.md`](backend/evaluation/LIMITATIONS.md).

@@ -11,6 +11,13 @@
 *.key
 *.pem
 *.p12
+*.crt
+*.cer
+# V4's HTTPS certificate and private key (Voice_model_example_UI_V4.py)
+/certs/
+# A client's saved API address, key and fingerprint (frontend/client/client.py),
+# in case someone points it into the project folder
+.dramatizer_client.json
 *secret*
 *credentials*
 *token*.txt
@@ -49,6 +56,10 @@ imported_voices/
 /runs/
 /history/
 ratings.json
+# MLflow's default folders, if it is ever run without the project's database (track.py)
+mlruns/
+mlartifacts/
+mlflow.db
 /plots/
 # Every measurement of every recording (measurements.py): local paths and the
 # metrics of real people's cloned voices

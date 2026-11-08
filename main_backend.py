@@ -16,6 +16,7 @@ The back end lives in backend/:
     backend/metrics/          WER, similarity, quality, the rewards, the measurement log
     backend/voice_data/       the datasets: reading, picking, the manifest, the split
     backend/speech/           cloning a voice (CosyVoice 3), cleaning and combining references
+    backend/genome/           genomes (delivery edits) and the search for good ones
     backend/emphasis/         word emphasis chosen by a small LLM, and its tests
     backend/evaluation/       checks of the manifest and the split, and run tracking
     backend/mcp_server/       the knowledge graph of the generated clips, for an assistant
@@ -38,6 +39,8 @@ COMMANDS = {
         "similarity": ("How alike two voices sound", "backend.metrics.Similarity"),
         "quality": ("Estimated quality of one recording (PESQ, STOI, SI-SDR)", "backend.metrics.PERQ"),
         "calibrate": ("Find the same/different speaker similarity limits", "backend.metrics.calibrate_similarity"),
+        "calibrate-sanity": ("Measure how plain renders differ by chance, to set the sanity limits (renders)",
+                             "backend.metrics.calibrate_sanity"),
     },
     "Voices and data": {
         "voices": ("Browse a dataset: list clips, hear one, read its script", "backend.voice_data.Voice_Importer"),
@@ -51,12 +54,27 @@ COMMANDS = {
         "combine": ("Combine two recordings into one reference", "backend.speech.Combine_audio"),
         "format": ("Add paralinguistic tags to a line", "backend.speech.tts_formatter"),
     },
+    "Genomes": {
+        "genome": ("Find genomes for a voice (random search of 10), judged by the sanity check",
+                   "backend.genome.search"),
+        "ratings": ("Review listener scores (MOS) of genome searches; --named, --export FILE.csv",
+                    "backend.genome.ratings"),
+    },
+    "API (for others' PCs, through playit.gg)": {
+        "api": ("Start the back end as a web API on https://127.0.0.1:5005; tunnel only this port",
+                "backend.api.server"),
+        "api-key": ("Who may use the API: api-key add NAME | list | remove NAME", "backend.api.keys"),
+    },
     "Emphasis": {
         "emphasis-test": ("Which small LLM picks the right words to stress", "backend.emphasis.test_emphasis_llms"),
         "emphasis-plot": ("Graphs of the emphasis test", "backend.emphasis.plot_emphasis_results"),
     },
     "Evaluation": {
-        "checks": ("Deterministic checks of the manifest and the split", "backend/evaluation/checks.py"),
+        "checks": ("Deterministic checks of the manifest, the split and the data contract", "backend/evaluation/checks.py"),
+        "baseline": ("The reproducible baseline: plain renders of validation voices, measured and checked (renders)",
+                     "backend/evaluation/baseline.py"),
+        "compare-search": ("Milestone 2: random genome search on the baseline's voices and lines, against the baseline "
+                           "(renders with --run)", "backend/evaluation/compare_search.py"),
         "eval-manifest": ("List every clip once, in a fixed order (history/eval)", "backend/evaluation/make_manifest.py"),
         "track": ("Record an evaluation run with MLflow", "backend/evaluation/track.py"),
         "graph": ("Build the knowledge graph of the generated clips", "backend/mcp_server/build_graph.py"),
@@ -64,8 +82,11 @@ COMMANDS = {
     },
 }
 
-# The tests that need no models or GPU, run as they are run by hand
-TESTS = ["backend/evaluation/test_checks.py", "backend/mcp_server/test_graph.py"]
+# The tests that need no models or GPU, run as they are run by hand, with the
+# package each needs beyond requirements.txt (None: nothing more). The MCP server
+# has its own environment (see requirements.txt), so its test is skipped where
+# "mcp" is not installed.
+TESTS = [("backend/evaluation/test_checks.py", None), ("backend/mcp_server/test_graph.py", "mcp")]
 
 
 def all_commands():
@@ -77,7 +98,7 @@ def show_help():
     for group, commands in COMMANDS.items():
         print(f"\n{group}:")
         for name, (what, _) in commands.items():
-            print(f"  {name:15s} {what}")
+            print(f"  {name:17s} {what}")
     print(f"\n  {'test':15s} Run every test that needs no GPU")
 
 
@@ -93,12 +114,19 @@ def run(target, args):
 
 
 def run_tests():
-    failed = []
-    for test in TESTS:
+    import importlib.util
+
+    failed, skipped = [], []
+    for test, needs in TESTS:
         print(f"\n=== {test}", flush=True)
+        if needs and importlib.util.find_spec(needs) is None:
+            print(f"skipped: needs the package {needs!r}, which is not in this environment")
+            skipped.append(test)
+            continue
         if subprocess.run([sys.executable, str(PROJECT_DIR / test)], cwd=PROJECT_DIR).returncode:
             failed.append(test)
-    print("\nAll tests passed." if not failed else f"\nFailed: {', '.join(failed)}")
+    print(("\nAll tests passed." if not failed else f"\nFailed: {', '.join(failed)}.")
+          + (f" Skipped: {', '.join(skipped)}." if skipped else ""))
     return 1 if failed else 0
 
 

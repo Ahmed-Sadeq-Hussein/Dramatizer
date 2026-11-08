@@ -6,6 +6,10 @@ The split is the one made by split_voice_data.py, saved in
 data/manifests/split-validation-test.json. It is locked there: that file is never
 overwritten, so the checks here only read it.
 
+It also checks the data contract (backend/evaluation/DATA_CONTRACT.md): the
+manifest's columns, the allowed value of every label, and that each dataset has
+its own licence.
+
 Prints one line per check and exits with an error if any check fails.
 """
 import csv
@@ -29,6 +33,45 @@ def sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+# The data contract, as DATA_CONTRACT.md writes it out. "" means the dataset has no such label.
+FIELDS = ["dataset", "clip_id", "speaker", "text", "emotion", "intensity", "mic", "licence", "source"]
+LICENCE = {"CREMA-D": "ODbL", "VCTK": "CC BY 4.0", "LibriTTS-R": "CC BY 4.0"}
+ALLOWED = {
+    "emotion": {"CREMA-D": {"anger", "disgust", "fear", "happy", "neutral", "sad"}},
+    "intensity": {"CREMA-D": {"low", "medium", "high", "unspecified"}},
+    "mic": {"VCTK": {"mic1", "mic2"}},
+}
+
+
+def contract_checks(rows, fields=None, audio_exists=None):
+    """
+    The data contract, one (name, passed) pair per rule. `fields` are the manifest's
+    columns (the keys of the first row when not given). `audio_exists` is a function
+    that says whether a source file is there; None skips that check (no files needed).
+    """
+    fields = list(fields if fields is not None else (rows[0].keys() if rows else []))
+
+    def label_ok(row, label):
+        allowed = ALLOWED[label].get(row.get("dataset"))
+        value = row.get(label) or ""
+        return value in allowed if allowed else value == ""
+
+    keys = [(r.get("dataset"), r.get("clip_id")) for r in rows]
+    results = [
+        ("the manifest has exactly the contract's columns", fields == FIELDS),
+        ("every clip comes from a known dataset", all(r.get("dataset") in LICENCE for r in rows)),
+        ("every clip carries its dataset's licence", all(r.get("licence") == LICENCE.get(r.get("dataset")) for r in rows)),
+        ("no clip is listed twice", len(keys) == len(set(keys))),
+        ("every clip has a speaker", all((r.get("speaker") or "").strip() for r in rows)),
+        ("emotion is an allowed label (CREMA-D only)", all(label_ok(r, "emotion") for r in rows)),
+        ("intensity is an allowed label (CREMA-D only)", all(label_ok(r, "intensity") for r in rows)),
+        ("mic is an allowed label (VCTK only)", all(label_ok(r, "mic") for r in rows)),
+    ]
+    if audio_exists is not None:
+        results.append(("every clip's audio file exists", all(audio_exists(r.get("source") or "") for r in rows)))
+    return results
+
+
 def run_checks(rows, split):
     validation = set(split.get("validation", []))
     test = set(split.get("test", []))
@@ -45,7 +88,7 @@ def main():
         rows = list(csv.DictReader(f))
     split = json.loads(SPLIT.read_text(encoding="utf-8"))
 
-    results = run_checks(rows, split)
+    results = run_checks(rows, split) + contract_checks(rows, audio_exists=lambda p: Path(p).is_file())
     for name, ok in results:
         print(f"{'ok  ' if ok else 'FAIL'}  {name}")
 

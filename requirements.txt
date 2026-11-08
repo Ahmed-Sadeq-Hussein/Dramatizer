@@ -68,6 +68,10 @@ tensorrt-cu12==10.13.3.9; sys_platform == 'linux'
 tensorrt-cu12-bindings==10.13.3.9; sys_platform == 'linux'
 tensorrt-cu12-libs==10.13.3.9; sys_platform == 'linux'
 
+# --- Evaluation ------------------------------------------------------------
+# Records the checks and the baseline runs (backend/evaluation/track.py)
+mlflow
+
 # --- Build tools ----------------------------------------------------------
 # setuptools 81 and newer removed pkg_resources, which openai-whisper and
 # lightning still use. Without this pin CosyVoice fails to load.
@@ -77,8 +81,11 @@ wheel
 # Only for the MCP server in mcp_server/. Install it in its own environment:
 #   conda create -n dramatizer-mcp python=3.10 -y
 #   pip install -r mcp_server/requirements.txt
-mcp==1.30.0
-networkx==3.4.2
+# Its two packages are kept here as comments, not as requirements: networkx 3.4.2
+# clashes with the networkx==3.1 above (pip refuses a file that asks for both),
+# and they belong in a backend/mcp_server/requirements.txt, which does not exist yet.
+#   mcp==1.30.0
+#   networkx==3.4.2
 
 # ===========================================================================
 # Setting up the conda environment

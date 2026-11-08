@@ -39,9 +39,14 @@ genomes**, not "genome sequencing". Sequencing means reading DNA. Use
 7. No tests. Audio and results were committed to git on one branch.
 8. Voices are copyrighted characters: not publishable, and a responsible-use problem.
 
-**Dramatizer 2 has so far:** CosyVoice 3 installed and working, `Voice_model.py`
+**Dramatizer 2 had at the start:** CosyVoice 3 installed and working, `Voice_model.py`
 (`generate_speech`), `Voice_Importer.py` and `Voice_UI.py` over CREMA-D and
-VCTK, `.env`, `requirements.txt`, `Voice library.txt`.
+VCTK, `.env`, `requirements.txt`, `Voice library.txt`. Since the back end / front
+end split these live in `backend/speech/Voice_model.py`,
+`backend/voice_data/Voice_Importer.py` and `frontend/ui_versions/` (the
+`Voice_UI.py` of then is `Voice_Importer_UI.py`; the newest interface is
+`Voice_model_example_UI_V4.py`). Run things through `main_backend.py` and
+`main_frontend.py`; the README lists the commands.
 
 ---
 
@@ -72,7 +77,7 @@ before the check passes.
 - Check: swapping the judge changes numbers, not conclusions (section 5).
 
 ### Phase 5: review tools
-- Flask UI (`Voice_UI.py` exists) gets a review page: play the shortlist, rate, pick a winner, blind A/B mode for the listening test.
+- Flask UI (`frontend/ui_versions/Voice_model_example_UI_V4.py` exists) gets a review page: play the shortlist, rate, pick a winner, blind A/B mode for the listening test.
 - Voice map ported; run on the new library (VCTK, CREMA-D) so clusters reflect voices, not recording sources.
 
 ### Phase 6: tests, docs, CI

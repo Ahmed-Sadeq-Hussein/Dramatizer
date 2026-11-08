@@ -1,6 +1,7 @@
 """main_frontend.py | One place to start the front end: the website and logging in.
 
-    python main_frontend.py             # the current site, V4: password login, HTTPS, phone layout
+    python main_frontend.py connect https://ADDRESS:PORT   # on anyone's PC: use the host's API (frontend/client/)
+    python main_frontend.py             # the current site, V4, on the host's PC: login, HTTPS, phone layout
     python main_frontend.py v3          # an older version, without a login (this PC only)
     python main_frontend.py --list      # every version
 
@@ -23,7 +24,9 @@ from pathlib import Path
 PROJECT_DIR = Path(__file__).resolve().parent
 
 VERSIONS = {
-    "v4": ("The current site: password login, HTTPS, phone layout, random voices, Examine",
+    "connect": ("On anyone's PC: use the host's API in the browser (connect https://ADDRESS:PORT)",
+                "frontend.client.client"),
+    "v4":("The current site: password login, HTTPS, phone layout, random voices, Examine",
            "frontend.ui_versions.Voice_model_example_UI_V4"),
     "v3": ("V2, plus cleaning and combining the reference", "frontend.ui_versions.Voice_model_example_UI_V3"),
     "v2": ("Picking voices with Picky_voice's options", "frontend.ui_versions.Voice_model_example_UI_V2"),

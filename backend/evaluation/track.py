@@ -8,10 +8,11 @@ import csv
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import mlflow
 
-from checks import EVAL_DIR, MANIFEST, SPLIT, run_checks, sha256
+from checks import EVAL_DIR, MANIFEST, SPLIT, contract_checks, run_checks, sha256
 
 DB_PATH = EVAL_DIR / "mlflow.db"
 ARTIFACT_DIR = EVAL_DIR / "mlartifacts"
@@ -45,7 +46,7 @@ if __name__ == "__main__":
     with MANIFEST.open(encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
     split = json.loads(SPLIT.read_text(encoding="utf-8"))
-    results = run_checks(rows, split)
+    results = run_checks(rows, split) + contract_checks(rows, audio_exists=lambda p: Path(p).is_file())
 
     log_run(
         name="data-checks",
@@ -62,6 +63,6 @@ if __name__ == "__main__":
             "checks_total": len(results),
         },
         artifacts=[SPLIT],
-        limitations="Checks the data and the split only. No model has been evaluated yet.",
+        limitations="Checks the data, the data contract and the split only; the baseline is logged by baseline.py.",
     )
     print(f"logged data-checks: {sum(ok for _, ok in results)}/{len(results)} checks passed")

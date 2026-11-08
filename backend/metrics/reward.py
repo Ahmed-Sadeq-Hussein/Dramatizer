@@ -102,17 +102,38 @@ class RewardConfig:
     sim_emotion_margin: float = 0.08
 
     # --- Sanity check (a test clip against the baseline of the same line) ----
-    # Most word differences allowed between the test clip and the baseline. It is a
-    # limit and not a goal, so nothing is gained by speaking slowly to get below it.
-    sanity_wer_limit: float = 0.05
-    # Least speaker similarity between the test clip and the baseline.
-    # Measured 5 Nov 2026 on fresh CosyVoice 3 clones of 12 train voices (4 per dataset):
-    #   same voice, same line, made twice:   0.893 to 0.971
-    #   same voice, with [laughter] [breath]: 0.922 to 0.967
-    #   different voices, same line:         0.354 to 0.871 (66 pairs)
-    # It is higher than sim_full because two clones of one line are closer to each
-    # other than a clone is to its reference clip (0.793 to 0.931).
-    sanity_similarity: float = 0.88
+    # Most words that may be heard differently in the test clip than in the baseline:
+    # sanity_wer_limit of the words, but never fewer than sanity_wer_words. On a short
+    # line a percentage alone would allow no difference at all (one word of ten is
+    # already 10 %). Fillers ("uh", "ha", "hmm") are left out first: a [laughter] or
+    # [mn] gene is often written down as one, and that is not a word gone wrong.
+    # Calibrated 6 Nov 2026 with calibrate_sanity.py: 10 validation voices (4 VCTK,
+    # 3 CREMA-D, 3 LibriTTS-R) x 2 lines x 5 seeds, no genes, 400 pairs of renders:
+    #   8-word line:  89 % heard identically, 99 % within 1 word (a flat 5 % passed 89 %)
+    #   22-word line: 96 % heard identically, 100 % within 1 word
+    sanity_wer_limit: float = 0.10
+    sanity_wer_words: int = 1
+    # Least pace of the test clip against the baseline, after allowing for the speed
+    # the genome asked for. Pace is the baseline's speaking time (pauses removed)
+    # divided by the test clip's, so 0.70 means 30 % slower than it should be. This
+    # is what stops a clip from buying clear words by dragging them out.
+    # Plain renders alone vary a lot (same calibration): lowest 0.63, 5 % below 0.75;
+    # 0.70 lets 98 % of them through (96 % on the short line).
+    sanity_pace_min: float = 0.70
+    # Least speaker similarity between the test clip and the baseline. The speaker
+    # encoder is unsteady on little speech, so a short baseline gets a lower limit.
+    # Calibrated 6 Nov 2026 (calibrate_sanity.py, plain renders as above), by the
+    # baseline's speech time:
+    #   6 s or more:  98 % of same-voice pairs at least 0.90 (lowest 0.851)
+    #   4.5 to 6 s:   79 % at least 0.90, 100 % at least 0.80
+    #   under 4.5 s:  as low as 0.751; 0.80 lets 87 to 100 % through
+    # Different voices on the same line (5 Nov 2026, 132 pairs, 3.8 to 7.7 s):
+    #   highest 0.889; 6 % at least 0.80, under 1 % at least 0.88.
+    # So below sanity_long_seconds the similarity check is weaker: use lines of
+    # about 20 words or more for a search where it matters.
+    sanity_similarity: float = 0.90
+    sanity_similarity_short: float = 0.80
+    sanity_long_seconds: float = 6.0
 
 
 CONFIG = RewardConfig()
@@ -227,45 +248,73 @@ def clone_metrics(reference_audio, clone_audio, text, reference_text=None, confi
 # --------------------------------------------------------------------------- #
 
 
-def sanity_check(reference_audio, baseline_audio, test_audio, config=CONFIG):
+def sanity_words_allowed(words, config=CONFIG):
+    """How many words of a line of `words` words may be heard differently: 10 %, but at least 1."""
+    return max(config.sanity_wer_words, math.floor(config.sanity_wer_limit * words))
+
+
+def sanity_check(reference_audio, baseline_audio, test_audio, config=CONFIG, baseline_heard=None, speed=1.0):
     """
     Is a test clip acceptable next to the baseline of the same line in the same voice?
 
     reference_audio  the recording of the voice being cloned
     baseline_audio   the line made with default settings
     test_audio       the same line, to judge
+    baseline_heard   what the recogniser hears in the baseline, if already known
+                     (a search judges many clips against one baseline)
+    speed            the speaking rate the test clip was asked for (a genome's speed gene),
+                     so asking for slower speech is not counted against it
 
-    Acceptable means both of:
-      - WER: what is heard in the test clip differs from what is heard in the
-        baseline by at most sanity_wer_limit
-      - its speaker similarity to the baseline is at least sanity_similarity
+    Acceptable means all three of:
+      - words: what is heard in the test clip differs from what is heard in the
+        baseline by at most sanity_words_allowed words (fillers left out of both)
+      - similarity: its speaker similarity to the baseline is at least sanity_similarity,
+        or sanity_similarity_short when the baseline speaks for less than sanity_long_seconds
+      - pace: it is not much slower than asked (pace / speed at least sanity_pace_min)
 
-    The similarities to the reference and the pace are reported but do not decide
-    the result. Pace is the baseline's speaking time divided by the test clip's:
-    below 1 the test clip speaks more slowly.
+    The similarities to the reference are reported but do not decide the result.
 
     Returns a dict with "acceptable" (a bool) and every number behind it.
     """
     from backend.metrics.Similarity import speaker_similarity
-    from backend.metrics.WER import transcribe, word_error_rate
+    from backend.metrics.WER import transcribe, word_differences
 
-    baseline_heard = transcribe(baseline_audio)
-    wer = word_error_rate(test_audio, baseline_heard)
+    if baseline_heard is None:
+        baseline_heard = transcribe(baseline_audio)
+    test_heard = transcribe(test_audio)
+    words = word_differences(baseline_heard, test_heard)
+    allowed = sanity_words_allowed(words["words"], config)
     similarity = speaker_similarity(test_audio, baseline_audio)
+    baseline_seconds = speech_seconds(baseline_audio, config)
+    pace = baseline_seconds / speech_seconds(test_audio, config)
+    pace_vs_asked = pace / speed
+    short = baseline_seconds < config.sanity_long_seconds
+    similarity_limit = config.sanity_similarity_short if short else config.sanity_similarity
 
-    wer_ok = wer <= config.sanity_wer_limit
-    similarity_ok = similarity >= config.sanity_similarity
+    wer_ok = words["errors"] <= allowed
+    similarity_ok = similarity >= similarity_limit
+    pace_ok = pace_vs_asked >= config.sanity_pace_min
 
     return {
-        "acceptable": wer_ok and similarity_ok,
+        "acceptable": wer_ok and similarity_ok and pace_ok,
         "wer_ok": wer_ok,
         "similarity_ok": similarity_ok,
-        "wer": wer,
+        "pace_ok": pace_ok,
+        "wer": words["wer"],
+        "word_errors": words["errors"],
+        "words": words["words"],
+        "words_allowed": allowed,
         "wer_limit": config.sanity_wer_limit,
         "baseline_heard": baseline_heard,
+        "test_heard": test_heard,
         "similarity": similarity,
-        "similarity_limit": config.sanity_similarity,
-        "pace": speech_seconds(baseline_audio, config) / speech_seconds(test_audio, config),
+        "similarity_limit": similarity_limit,
+        "short_baseline": short,
+        "baseline_speech_seconds": baseline_seconds,
+        "pace": pace,
+        "speed": speed,
+        "pace_vs_asked": pace_vs_asked,
+        "pace_limit": config.sanity_pace_min,
         "baseline_to_reference": speaker_similarity(baseline_audio, reference_audio),
         "test_to_reference": speaker_similarity(test_audio, reference_audio),
     }

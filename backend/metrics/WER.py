@@ -63,6 +63,38 @@ def word_error_rate(audio, text, language="en"):
     return wer_of(text, transcribe(audio, language))
 
 
+# Sounds the recogniser writes down as words, but that say nothing: a laugh, a hum, a hesitation.
+# A genome's [laughter] or [mn] often comes out as one of these, and that is not a word gone wrong.
+FILLERS = frozenset({
+    "ha", "haha", "hahaha", "heh", "hehe", "hah", "ah", "aah", "ahh", "oh", "ooh",
+    "uh", "uhh", "um", "umm", "hm", "hmm", "hmmm", "mm", "mmm", "mhm", "er", "erm", "eh",
+    "huh", "phew", "ugh", "tsk", "shh", "psst",
+})
+
+
+def content_words(text):
+    """The words of a text, normalised, without fillers: "Uh, I can't!" -> ["i", "can't"]."""
+    return [word for word in normalise(text).split() if word not in FILLERS]
+
+
+def word_differences(expected, heard):
+    """
+    How many words differ between two texts, fillers left out of both:
+    {"errors": replaced + missing + extra words, "words": words in `expected`, "wer": errors / words}.
+    With no words expected, every heard word is an error and wer is 1.0 if there are any.
+    """
+    expected, heard = content_words(expected), content_words(heard)
+
+    if not expected:
+        return {"errors": len(heard), "words": 0, "wer": 1.0 if heard else 0.0}
+    if not heard:
+        return {"errors": len(expected), "words": len(expected), "wer": 1.0}
+
+    result = jiwer.process_words(" ".join(expected), " ".join(heard))
+    errors = result.substitutions + result.deletions + result.insertions
+    return {"errors": errors, "words": len(expected), "wer": errors / len(expected)}
+
+
 def wer_of(text, heard):
     """The word error rate of what was heard against the script, without listening again."""
     expected = normalise(text)

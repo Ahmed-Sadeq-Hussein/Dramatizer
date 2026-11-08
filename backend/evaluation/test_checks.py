@@ -12,7 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from checks import run_checks, speaker_key  # noqa: E402
+from checks import FIELDS, contract_checks, run_checks, speaker_key  # noqa: E402
 
 CHECK_NAMES = [
     "validation and test are both present",
@@ -82,6 +82,54 @@ class KnownAnswers(unittest.TestCase):
             speaker_key({"dataset": "VCTK", "speaker": "1001"}),
             speaker_key({"dataset": "CREMA-D", "speaker": "1001"}),
         )
+
+
+def contract_rows():
+    """One clip of each dataset, with the labels the contract allows."""
+    base = dict.fromkeys(FIELDS, "")
+    return [
+        {**base, "dataset": "VCTK", "clip_id": "p225_001", "speaker": "p225", "text": "hi", "mic": "mic1",
+         "licence": "CC BY 4.0", "source": "a.wav"},
+        {**base, "dataset": "CREMA-D", "clip_id": "1001_DFA_ANG_XX", "speaker": "1001", "text": "hi",
+         "emotion": "anger", "intensity": "unspecified", "licence": "ODbL", "source": "b.wav"},
+        {**base, "dataset": "LibriTTS-R", "clip_id": "19_198_000000_000000", "speaker": "19", "text": "hi",
+         "licence": "CC BY 4.0", "source": "c.wav"},
+    ]
+
+
+class Contract(unittest.TestCase):
+    def test_good_rows_pass_every_rule(self):
+        self.assertEqual(failed(contract_checks(contract_rows(), audio_exists=lambda p: True)), [])
+
+    def test_each_fault_fails_only_its_rule(self):
+        cases = [
+            (lambda rows: rows[0].update(licence="ODbL"), "every clip carries its dataset's licence"),
+            (lambda rows: rows.append(dict(rows[0])), "no clip is listed twice"),
+            (lambda rows: rows[1].update(emotion="joy"), "emotion is an allowed label (CREMA-D only)"),
+            (lambda rows: rows[0].update(emotion="anger"), "emotion is an allowed label (CREMA-D only)"),
+            (lambda rows: rows[1].update(intensity="extreme"), "intensity is an allowed label (CREMA-D only)"),
+            (lambda rows: rows[2].update(mic="mic1"), "mic is an allowed label (VCTK only)"),
+            (lambda rows: rows[2].update(speaker=" "), "every clip has a speaker"),
+        ]
+        for fault, rule in cases:
+            rows = contract_rows()
+            fault(rows)
+            with self.subTest(rule=rule):
+                self.assertEqual(failed(contract_checks(rows)), [rule])
+
+    def test_unknown_dataset_fails_dataset_and_licence(self):
+        rows = contract_rows()
+        rows[0]["dataset"] = "Other"
+        self.assertIn("every clip comes from a known dataset", failed(contract_checks(rows)))
+
+    def test_columns_must_match(self):
+        rows = [{k: v for k, v in r.items() if k != "mic"} for r in contract_rows()]
+        self.assertIn("the manifest has exactly the contract's columns", failed(contract_checks(rows)))
+
+    def test_missing_audio_fails_only_when_checked(self):
+        self.assertEqual(failed(contract_checks(contract_rows())), [])
+        self.assertEqual(failed(contract_checks(contract_rows(), audio_exists=lambda p: p != "b.wav")),
+                         ["every clip's audio file exists"])
 
 
 if __name__ == "__main__":

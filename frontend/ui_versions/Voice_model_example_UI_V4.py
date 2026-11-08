@@ -38,6 +38,20 @@ speaking rate and the rewards. The numbers go in the clip's node in measurements
 (measurements.py, never committed), and the clip's .json links to it, so they show
 again without measuring. "Measure again" adds a new run and keeps the old ones.
 
+Find a genome: under Generate, choose a voice (the reference in use, or one of the
+random voices), a method (for now a random search of 10 genomes, as the first
+Dramatizer), how many genes each genome has, and the line. The line is rendered
+once plain and once per genome in the background (backend/genome/search.py), and
+each genome is judged fine or terrible by reward.sanity_check against the plain
+one. The page fills in as the clips come, and a stopped run can be continued.
+
+Rating a run (backend/genome/ratings.py): once a search has stopped, up to 4
+listeners each move a slider from 0 to 5 under every clip, and Save scores and
+rank shows the genomes ranked by mean opinion score (MOS). Any genome can then
+be picked and named; named genomes are listed under the runs. Runs with scores
+have a "ranked by MOS" link in Earlier runs. Every score is kept for review in
+history/ratings/mos.jsonl (python main_backend.py ratings).
+
     python -m frontend.ui_versions.Voice_model_example_UI_V4
     then open https://127.0.0.1:5004
 
@@ -63,13 +77,16 @@ from ipaddress import ip_address
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
-from flask import abort, redirect, render_template_string, request, session
+from flask import abort, redirect, render_template_string, request, send_file, session
 from werkzeug.datastructures import MultiDict
 from werkzeug.serving import WSGIRequestHandler
 
 from frontend.ui_versions import Voice_model_example_UI_V3 as v3
 from backend import model
+from backend.genome import search as genome_search
+from backend.genome import ratings as genome_ratings
 from backend.metrics import measurements
+from backend.metrics.reward import CONFIG as REWARD_CONFIG
 from backend.voice_data import split_voice_data
 from backend.voice_data.Picky_voice import MAX_SECONDS, MIN_SECONDS
 from backend.voice_data.Voice_Importer import get_clip, read_custom_voices
@@ -415,13 +432,321 @@ EXAMINE_SCRIPT = """<script>
 </script>
 """
 
+# Find a genome: the method, the genes per genome and the voice, then the run's clips and verdicts
+GENOME_PANEL = """{% set finder = genome_finder(s, first) %}
+    {%- macro rate_block(finder, clip) -%}
+      <div class="rate-row">
+        {%- for i in range(1, finder.max_raters + 1) %}
+          {%- set rater = finder.raters[i - 1] if finder.raters|length >= i else '' %}
+          {%- set given = finder.ratings.scores.get(rater, {}).get(clip) if rater else none %}
+          <label class="rate" data-rater="{{ i }}" {{ 'hidden' if i > finder.rater_count }}>
+            <span class="rate-who">{{ rater or 'Listener ' ~ i }}</span>
+            <input type="range" name="score_{{ i }}_{{ clip }}" min="0" max="5" step="0.5"
+                   value="{{ given if given is not none else 2.5 }}" aria-label="Score 0 to 5">
+            <output>{{ '%g' % given if given is not none else '–' }}</output>
+            <input type="checkbox" name="rated_{{ i }}_{{ clip }}" value="1" {{ 'checked' if given is not none }}
+                   title="Count this score" aria-label="Count this score">
+          </label>
+        {%- endfor %}
+      </div>
+    {%- endmacro %}
+    <details class="finder" id="genome" {{ 'open' if finder.running or request.args.get('genome') or request.args.get('genome_error') }}
+             {{ 'data-running' if finder.running }}>
+      <summary>Find a genome</summary>
+      {% if request.args.get('genome_error') %}<p class="note error">{{ request.args.get('genome_error') }}</p>{% endif %}
+      {% if request.args.get('genome_note') %}<p class="note">{{ request.args.get('genome_note') }}</p>{% endif %}
+      <form method="post" action="/genome" class="finder-form" autocomplete="off">
+        <input type="hidden" name="state" value="{{ q() }}">
+        <label class="wide">Voice
+          <select name="genome_voice" {{ 'disabled' if not finder.voices }}>
+            {% for value, label in finder.voices %}<option value="{{ value }}">{{ label }}</option>
+            {% else %}<option>Press Use on a clip, or pick random voices</option>{% endfor %}
+          </select>
+        </label>
+        <label class="wide">Method
+          <select name="genome_method">
+            {% for key, method in finder.methods.items() %}<option value="{{ key }}">{{ method.label }} ({{ method.genomes }} genomes)</option>{% endfor %}
+          </select>
+        </label>
+        <label>Genes per genome <input type="number" name="genome_genes" min="1" max="{{ finder.max_genes }}" value="{{ finder.genes }}" required></label>
+        <label>Genome seed <input type="number" name="genome_seed" min="0" placeholder="new"></label>
+        <label class="wide">Line to speak
+          <textarea name="genome_text" rows="2" maxlength="300" required>{{ finder.text }}</textarea></label>
+        <button type="submit" {{ 'disabled' if finder.busy or not finder.voices }}>Find genomes</button>
+        <p class="hint wide">Renders the line once plain (the baseline) and once with each genome, all with render seed
+          {{ finder.render_seed }}, so they differ only by the genome. Each genome is then judged by the sanity check
+          against the baseline: <strong>fine</strong> when at most {{ '%g' % (100 * finder.limits.wer) }}% of the words
+          (and at least {{ finder.limits.words }}) are heard differently, leaving out fillers such as "uh" and "ha",
+          the similarity is at least {{ '%g' % finder.limits.similarity }}
+          ({{ '%g' % finder.limits.similarity_short }} when the baseline speaks for under {{ '%g' % finder.limits.long_seconds }} s,
+          so use a line of about 20 words or more), and it is at most
+          {{ '%g' % (100 - 100 * finder.limits.pace) }}% slower than its speed gene asks;
+          otherwise <strong>terrible</strong>. It takes a few minutes, and saves after every clip.
+          Voices of the final test are not offered here, so the test stays untouched.</p>
+      </form>
+
+      {% set run = finder.run %}
+      {% if run %}
+        {% set count = finder.summary %}
+        <div class="finder-run">
+          <p class="meta"><strong>{{ run.method_label }}</strong> · {{ run.voice }}{% if finder.origin %} · {{ finder.origin }}{% endif %}
+            · {{ run.genes_per_genome }} gene{{ 's' if run.genes_per_genome != 1 }} per genome · genome seed {{ run.seed }}
+            · {{ run.created }}</p>
+          <p class="finder-line">{{ run.text }}</p>
+          <p class="finder-status">
+            {% if finder.running %}Working: {{ count.done }} of {{ count.total }} judged{% if not run.baseline.audio %}, making the baseline{% endif %}…
+            {% elif finder.state == 'finished' %}Finished: <span class="verdict fine">{{ count.fine }} fine</span>
+              <span class="verdict terrible">{{ count.terrible }} terrible</span>{% if count.failed %} <span class="verdict failed">{{ count.failed }} failed</span>{% endif %}
+            {% elif finder.state == 'ready' %}Ready: {{ count.total }} genomes drawn, nothing rendered yet.
+            {% else %}Stopped after {{ count.done }} of {{ count.total }}{% if run.error %}: {{ run.error }}{% endif %}.{% endif %}
+          </p>
+          {% if not finder.busy and finder.state != 'finished' %}
+            <form method="post" action="/genome/continue">
+              <input type="hidden" name="state" value="{{ q() }}">
+              <input type="hidden" name="run" value="{{ run.id }}">
+              <button type="submit">{{ 'Start' if finder.state == 'ready' else 'Continue' }}</button>
+            </form>
+          {% endif %}
+          {% if finder.can_rate %}
+            <nav class="finder-views" aria-label="View">
+              <a href="/?{{ q() }}&amp;genome={{ run.id }}#genome" class="{{ 'on' if finder.view != 'ranked' }}">Rate</a>
+              <a href="/?{{ q() }}&amp;genome={{ run.id }}&amp;genome_view=ranked#genome" class="{{ 'on' if finder.view == 'ranked' }}">
+                Ranked by MOS{% if finder.ranking.rated %} ({{ finder.ranking.rated }} rated){% endif %}</a>
+            </nav>
+          {% endif %}
+
+          {% if finder.view == 'ranked' %}
+          {% set rank = finder.ranking %}
+          <p class="meta">Mean opinion score (MOS, 0 to 5) of {{ rank.raters|length }} listener{{ 's' if rank.raters|length != 1 }}
+            {%- if rank.raters %}: {{ rank.raters|join(', ') }}{% endif %}.
+            Baseline: {% if rank.baseline %}<strong>{{ '%.2f' % rank.baseline.mos }}</strong>{% else %}not rated{% endif %}.</p>
+          {% if not rank.rated %}<p class="details">No genome is rated yet: rate them under Rate.</p>{% endif %}
+          <ol class="genomes ranked">
+            {% for genome in rank.genomes %}
+              <li class="genome {{ genome.verdict or 'waiting' }} {{ 'picked' if genome.picked }}">
+                <p class="genome-head">
+                  <strong>{% if genome.rank %}#{{ genome.rank }} · {% endif %}Genome {{ genome.number }}
+                    {% if genome.picked %}<span class="picked-name">“{{ genome.picked }}”</span>{% endif %}</strong>
+                  <span>
+                    {% if genome.mos %}<span class="mos">MOS {{ '%.2f' % genome.mos.mos }}</span>{% else %}<span class="details">not rated</span>{% endif %}
+                    {% if genome.verdict %}<span class="verdict {{ genome.verdict }}">{{ genome.verdict|capitalize }}</span>{% endif %}
+                  </span>
+                </p>
+                {% if genome.mos %}<p class="details">
+                  {% for rater, score in genome.mos.scores.items() %}{{ rater }} {{ '%g' % score }}{{ ' · ' if not loop.last }}{% endfor %}
+                  {% if genome.above_baseline is not none %} · {{ '%+.2f' % genome.above_baseline }} against the baseline{% endif %}</p>{% endif %}
+                <p>{{ genome.described|join(' · ') }}</p>
+                <p class="markup">{{ genome.markup }}{% if genome.speed != 1 %} · speed {{ '%g' % genome.speed }}{% endif %}</p>
+                {% if genome.audio %}<audio controls preload="none" src="/genome/{{ run.id }}/{{ genome.audio }}"></audio>{% endif %}
+                <form method="post" action="/genome/pick" class="pick-form">
+                  <input type="hidden" name="state" value="{{ q() }}">
+                  <input type="hidden" name="run" value="{{ run.id }}">
+                  <input type="hidden" name="genome_number" value="{{ genome.number }}">
+                  <input type="text" name="genome_name" maxlength="60" required placeholder="Name this genome"
+                         value="{{ genome.picked or '' }}" aria-label="Name of genome {{ genome.number }}">
+                  <button type="submit">{{ 'Rename' if genome.picked else 'Pick and name' }}</button>
+                  {% if genome.picked %}<button type="submit" formaction="/genome/unpick" formnovalidate class="quiet">Remove name</button>{% endif %}
+                </form>
+              </li>
+            {% endfor %}
+          </ol>
+          {% else %}
+          {% if finder.can_rate %}<form method="post" action="/genome/rate" class="rate-form" id="rate-form">
+            <input type="hidden" name="state" value="{{ q() }}">
+            <input type="hidden" name="run" value="{{ run.id }}">
+            <fieldset class="raters">
+              <legend>Listeners</legend>
+              <label>How many <select name="rater_count" class="rater-count">
+                {% for i in range(1, finder.max_raters + 1) %}<option value="{{ i }}" {{ 'selected' if i == finder.rater_count }}>{{ i }}</option>{% endfor %}
+              </select></label>
+              {% for i in range(1, finder.max_raters + 1) %}
+                <label class="rater-name" data-rater="{{ i }}" {{ 'hidden' if i > finder.rater_count }}>Listener {{ i }}
+                  <input type="text" name="rater_{{ i }}" maxlength="40" value="{{ finder.raters[i - 1] if finder.raters|length >= i else '' }}"
+                         placeholder="Name"></label>
+              {% endfor %}
+              <p class="hint">Each listener moves their slider from 0 (bad) to 5 (excellent) for every clip they heard; a
+                slider counts once it is moved (or its box is ticked). The mean of the listeners is the clip's MOS.
+                Up to {{ finder.max_raters }} listeners per run; scores are kept for review in history/ratings.</p>
+            </fieldset>
+          {% endif %}
+          <ol class="genomes">
+            <li class="genome baseline">
+              <p class="genome-head"><strong>Baseline</strong> <span class="details">the line with no genes</span></p>
+              {% if run.baseline.audio %}<audio controls preload="none" src="/genome/{{ run.id }}/{{ run.baseline.audio }}"></audio>
+              {% else %}<p class="details">Not made yet.</p>{% endif %}
+              {% if run.baseline.heard %}<p class="details">Heard: {{ run.baseline.heard }}</p>{% endif %}
+              {% if finder.can_rate and run.baseline.audio %}{{ rate_block(finder, 'baseline') }}{% endif %}
+            </li>
+            {% for genome in run.genomes %}
+              {% set check = genome.sanity %}
+              <li class="genome {{ genome.verdict or 'waiting' }}">
+                <p class="genome-head"><strong>Genome {{ genome.number }}</strong>
+                  {% if genome.verdict %}<span class="verdict {{ genome.verdict }}">{{ genome.verdict|capitalize }}</span>
+                  {% else %}<span class="details">waiting</span>{% endif %}</p>
+                <p>{{ genome.described|join(' · ') }}</p>
+                <p class="markup">{{ genome.markup }}{% if genome.speed != 1 %} · speed {{ '%g' % genome.speed }}{% endif %}</p>
+                {% if genome.audio %}<audio controls preload="none" src="/genome/{{ run.id }}/{{ genome.audio }}"></audio>{% endif %}
+                {% if check %}<p class="details">
+                  {% if check.word_errors is defined %}{{ check.word_errors }} of {{ check.words }} words differ
+                    {%- if not check.wer_ok %} (more than {{ check.words_allowed }}){% endif %}
+                  {% else %}WER {{ '%.3f' % check.wer }}{% if not check.wer_ok %} (too high){% endif %}{% endif %}
+                  · similarity {{ '%.3f' % check.similarity }}{% if not check.similarity_ok %} (below {{ '%g' % check.similarity_limit|default(run.limits.similarity) }}){% endif %}
+                  {% if check.pace_vs_asked is defined %}· pace {{ '%.2f' % check.pace_vs_asked }}{% if not check.pace_ok %} (below {{ '%g' % check.pace_limit }}){% endif %}{% endif %}</p>
+                  {% if check.test_heard %}<p class="details">Heard: {{ check.test_heard }}</p>{% endif %}{% endif %}
+                {% if genome.error %}<p class="details">{{ genome.error }}</p>{% endif %}
+                {% if finder.can_rate and genome.audio %}{{ rate_block(finder, 'genome_%02d' % genome.number) }}{% endif %}
+              </li>
+            {% endfor %}
+          </ol>
+          {% if finder.can_rate %}<div class="rate-save"><button type="submit">Save scores and rank</button></div>
+          </form>{% endif %}
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {% if finder.runs %}
+        <p class="meta">Earlier runs</p>
+        <ul class="finder-runs">
+          {% for item in finder.runs %}
+            <li><a href="/?{{ q() }}&amp;genome={{ item.id }}#genome" class="{{ 'on' if run and item.id == run.id }}">{{ item.voice }} · {{ item.created }}</a>
+              {% if item.id in finder.rated_runs %}<a class="mos-link" href="/?{{ q() }}&amp;genome={{ item.id }}&amp;genome_view=ranked#genome">ranked by MOS</a>{% endif %}
+              <span class="details">{{ item.text }}</span></li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if finder.named %}
+        <details class="named">
+          <summary>Named genomes ({{ finder.named|length }})</summary>
+          <ul class="finder-runs">
+            {% for entry in finder.named %}
+              <li><a href="/?{{ q() }}&amp;genome={{ entry.run }}&amp;genome_view=ranked#genome"><strong>{{ entry.name }}</strong></a>
+                · genome {{ entry.genome }} of {{ entry.voice }}{% if entry.mos %} · MOS {{ '%.2f' % entry.mos.mos }}{% endif %}
+                <span class="details markup">{{ entry.markup }}</span></li>
+            {% endfor %}
+          </ul>
+        </details>
+      {% endif %}
+    </details>
+"""
+
+GENOME_STYLE = """<style>
+  .finder { margin-top: 18px; padding: 10px 12px; background: var(--band); border: 1px solid var(--rule); border-radius: 8px;
+            --fine: #1f7a3d; --fine-soft: #dcf1e2; --terrible: #a8322a; --terrible-soft: #f9e1df; }
+  @media (prefers-color-scheme: dark) { .finder { --fine: #7ad19a; --fine-soft: #17321f; --terrible: #f08a80; --terrible-soft: #3a1c1a; } }
+  .finder summary { cursor: pointer; font-weight: 600; }
+  .finder-form { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; margin: 10px 0; }
+  .finder-form label { display: grid; gap: 3px; font-size: 0.8rem; color: var(--muted); }
+  .finder-form .wide { flex-basis: 100%; }
+  .finder-form input[type=number] { width: 6.5em; min-width: 0; }
+  .finder-form select, .finder-form textarea { width: 100%; box-sizing: border-box; }
+  .finder-form .hint { margin: 0; }
+  .finder-run { display: grid; gap: 6px; margin-top: 8px; }
+  .finder-run p { margin: 0; }
+  .finder-line { font-style: italic; }
+  .genomes { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; }
+  .genome { display: grid; gap: 4px; padding: 8px 10px; background: var(--surface); border: 1px solid var(--rule);
+            border-left: 4px solid var(--rule); border-radius: 6px; font-size: 0.85rem; }
+  .genome p { margin: 0; }
+  .genome.fine { border-left-color: var(--fine); }
+  .genome.terrible, .genome.failed { border-left-color: var(--terrible); }
+  .genome.baseline { background: var(--band); }
+  .genome-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .genome .markup { font-family: ui-monospace, monospace; font-size: 0.8rem; overflow-wrap: anywhere; }
+  .genome audio { width: 100%; height: 32px; }
+  .verdict { display: inline-block; padding: 1px 8px; border-radius: 999px; font-weight: 600; font-size: 0.8rem; }
+  .verdict.fine { background: var(--fine-soft); color: var(--fine); }
+  .verdict.terrible, .verdict.failed { background: var(--terrible-soft); color: var(--terrible); }
+  .finder-runs { margin: 0; padding-left: 18px; font-size: 0.85rem; }
+  .finder-runs a.on { font-weight: 600; }
+  .finder-runs .mos-link { margin-left: 6px; font-size: 0.8rem; }
+  .finder-views { display: flex; gap: 4px; }
+  .finder-views a { padding: 3px 12px; border: 1px solid var(--rule); border-radius: 999px; text-decoration: none;
+                    font-size: 0.85rem; color: inherit; }
+  .finder-views a.on { background: var(--surface); font-weight: 600; border-color: currentColor; }
+  .raters { display: flex; flex-wrap: wrap; align-items: end; gap: 8px 12px; margin: 0; padding: 8px 10px;
+            border: 1px solid var(--rule); border-radius: 6px; }
+  .raters legend { font-weight: 600; font-size: 0.85rem; padding: 0 4px; }
+  .raters label { display: grid; gap: 3px; font-size: 0.8rem; color: var(--muted); }
+  .raters input[type=text] { width: 9em; }
+  .raters .hint { flex-basis: 100%; margin: 0; }
+  .rate-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 4px 12px; }
+  .rate { display: grid; grid-template-columns: minmax(4.5em, auto) 1fr 2.2em auto; align-items: center; gap: 6px;
+          font-size: 0.8rem; }
+  .rate[hidden], .rater-name[hidden] { display: none; }
+  .rate-who { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rate input[type=range] { width: 100%; min-width: 0; margin: 0; }
+  .rate output { font-variant-numeric: tabular-nums; text-align: right; font-weight: 600; }
+  .rate:not(.counted) output { color: var(--muted); font-weight: 400; }
+  .rate-save { position: sticky; bottom: 8px; margin-top: 8px; display: flex; justify-content: flex-end; }
+  .mos { display: inline-block; padding: 1px 8px; border-radius: 999px; font-weight: 700; font-size: 0.8rem;
+         font-variant-numeric: tabular-nums; background: var(--surface); border: 1px solid currentColor; }
+  .genome.picked { outline: 2px solid var(--fine); outline-offset: -1px; }
+  .picked-name { font-weight: 600; color: var(--fine); }
+  .pick-form { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pick-form input[type=text] { flex: 1 1 12em; min-width: 0; }
+  .named { margin-top: 8px; }
+  .named summary { font-weight: 400; font-size: 0.85rem; }
+  .named .markup { display: block; font-family: ui-monospace, monospace; font-size: 0.75rem; overflow-wrap: anywhere; }
+  @media (max-width: 860px) {
+    .finder-form label { flex: 1 1 40%; }
+    .finder-form input[type=number] { width: 100%; box-sizing: border-box; }
+    .finder-form button { flex: 1 1 100%; }
+  }
+</style>
+"""
+
+# While a search runs, the page shows each new clip as it comes (but never reloads under someone listening)
+GENOME_SCRIPT = """<script>
+(function () {
+  var finder = document.querySelector(".finder[data-running]");
+  if (!finder) return;
+  setInterval(function () {
+    var playing = Array.prototype.some.call(document.querySelectorAll("audio"), function (a) { return !a.paused; });
+    var typing = document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+    if (!playing && !typing) location.reload();
+  }, 6000);
+})();
+// Rating: a slider shows its number and counts once moved; the listener count shows that many sliders per clip
+(function () {
+  var form = document.getElementById("rate-form");
+  if (!form) return;
+  function mark(rate) {
+    var box = rate.querySelector("input[type=checkbox]"), out = rate.querySelector("output");
+    var range = rate.querySelector("input[type=range]");
+    rate.classList.toggle("counted", box.checked);
+    out.textContent = box.checked ? String(Number(range.value)) : "\\u2013";
+  }
+  form.querySelectorAll(".rate").forEach(function (rate) {
+    var box = rate.querySelector("input[type=checkbox]");
+    rate.querySelector("input[type=range]").addEventListener("input", function () { box.checked = true; mark(rate); });
+    box.addEventListener("change", function () { mark(rate); });
+    mark(rate);
+  });
+  function names() {
+    form.querySelectorAll(".rater-name").forEach(function (label) {
+      var i = label.dataset.rater, name = label.querySelector("input").value.trim() || "Listener " + i;
+      form.querySelectorAll('.rate[data-rater="' + i + '"] .rate-who').forEach(function (who) { who.textContent = name; });
+    });
+  }
+  var count = form.querySelector(".rater-count");
+  count.addEventListener("change", function () {
+    var n = Number(count.value);
+    form.querySelectorAll("[data-rater]").forEach(function (el) { el.hidden = Number(el.dataset.rater) > n; });
+  });
+  form.querySelectorAll(".rater-name input").forEach(function (input) { input.addEventListener("input", names); });
+})();
+</script>
+"""
+
 assert v3.PAGE.count(RECENT_ITEM_V3) == 1, "V3's Recent list has changed"
 
 # The page is V3's, with its own name, a Log out button, the random voices, Examine and the phone tabs
 v3.PAGE = (v3.PAGE
            .replace("<body>", "<body>\n" + NUMBER, 1)
            .replace(RECENT_ITEM_V3, RECENT_ITEM, 1)
-           .replace("</body>", EXAMINE_SCRIPT + "</body>", 1)
+           .replace("</body>", EXAMINE_SCRIPT + GENOME_SCRIPT + "</body>", 1)
+           .replace("</head>", GENOME_STYLE + "</head>", 1)
            .replace("<title>Voice Generator V3</title>", "<title>Voice Generator V4</title>")
            .replace('<span class="version">V3</span>', '<span class="version">V4</span>')
            .replace("</header>", """  <form method="post" action="/logout"><button type="submit">Log out</button></form>
@@ -432,7 +757,7 @@ v3.PAGE = (v3.PAGE
                     '  <form method="get" action="/" class="picky"', 1)
            .replace('<input type="hidden" name="sent" value="1">',
                     SAMPLER_KEPT + '<input type="hidden" name="sent" value="1">', 1)
-           .replace("<h3>Recent</h3>", '</section>\n  <section class="recent-part" aria-label="Recent">\n    <h3>Recent</h3>', 1)
+           .replace("<h3>Recent</h3>", GENOME_PANEL + '</section>\n  <section class="recent-part" aria-label="Recent">\n    <h3>Recent</h3>', 1)
            .replace("</body>", PHONE_TABS + "</body>", 1))
 
 
@@ -692,6 +1017,258 @@ def examine():
 
     message = "Already measured with the same inputs: shown from its saved node, nothing was run." if result["cached"] else ""
     return v3.back(s, examined=relative, message=message)
+
+
+# --------------------------------------------------------------------------- #
+# Find a genome: a search on one voice, in the background, judged by the sanity check
+# --------------------------------------------------------------------------- #
+
+# The one search that may run at a time: {"thread": Thread, "run": run id}
+genome_job = {"thread": None, "run": None}
+genome_job_lock = threading.Lock()
+RUNS_SHOWN = 8
+
+
+def searching():
+    """The id of the run being searched now, or None."""
+    thread = genome_job["thread"]
+    return genome_job["run"] if thread is not None and thread.is_alive() else None
+
+
+def final_test_voice(clip):
+    """True for a speaker of the final test: those are never searched on, so the test stays untouched."""
+    return split_voice_data.split_of(clip.dataset, clip.speaker) == "test"
+
+
+def genome_voices(s, first):
+    """
+    The voices a search can be for: the reference in use, then the random voices, as (dataset/clip id, label).
+    Final test speakers are left out (DATA_CONTRACT.md, feature timing rule 4).
+    """
+    voices, seen = [], set()
+    if first is not None and not final_test_voice(first):
+        voices.append((f"{first.dataset}/{first.clip_id}", f"{first.speaker} · {first.dataset} · {first.clip_id} (the reference in use)"))
+        seen.add(voices[0][0])
+    for clip in random_voices(s)["rows"]:
+        key = f"{clip.dataset}/{clip.clip_id}"
+        if key not in seen and not final_test_voice(clip):
+            seen.add(key)
+            voices.append((key, f"{clip.speaker} · {clip.dataset} · {clip.clip_id} (random voices)"))
+    return voices
+
+
+def genome_finder(s, first):
+    """Everything the Find a genome panel shows."""
+    runs = genome_search.list_runs()
+    wanted = request.args.get("genome", "")
+    shown = next((run for _, run in runs if run["id"] == wanted), None) or (runs[0][1] if runs else None)
+    running = shown is not None and searching() == shown["id"]
+
+    # A run that says "running" with no search behind it was stopped (for example by a restart)
+    state = shown["status"] if shown else None
+    if state == "running" and not running:
+        state = "stopped"
+
+    origin = origin_text(shown.get("origin")) if shown and shown.get("origin") else ""
+    folder = genome_search.run_folder(shown["id"]) if shown else None
+    ratings = genome_ratings.load(folder) if folder else {"raters": [], "scores": {}, "picked": []}
+    # Rating needs clips to hear, and no search writing to the run at the same time
+    can_rate = bool(shown and not running and (shown["baseline"].get("audio")
+                                               or any(g.get("audio") for g in shown["genomes"])))
+    try:
+        rater_count = int(request.args.get("raters") or len(ratings["raters"]) or 1)
+    except ValueError:
+        rater_count = 1
+    listed = [run for _, run in runs[:RUNS_SHOWN]]
+    return {
+        "voices": genome_voices(s, first),
+        "methods": genome_search.METHODS,
+        "max_genes": genome_search.MAX_OPERATIONS,
+        "genes": shown["genes_per_genome"] if shown else genome_search.GENES,
+        "text": request.args.get("target") or (shown["text"] if shown else (first.text if first else "")),
+        "render_seed": genome_search.render_seed_default(),
+        "limits": {"wer": REWARD_CONFIG.sanity_wer_limit, "words": REWARD_CONFIG.sanity_wer_words,
+                   "similarity": REWARD_CONFIG.sanity_similarity, "similarity_short": REWARD_CONFIG.sanity_similarity_short,
+                   "long_seconds": REWARD_CONFIG.sanity_long_seconds, "pace": REWARD_CONFIG.sanity_pace_min},
+        "run": shown,
+        "running": running,
+        "busy": searching() is not None,
+        "state": state,
+        "origin": origin,
+        "summary": genome_search.summary(shown) if shown else None,
+        "runs": listed,
+        # Listener ratings (MOS): backend/genome/ratings.py
+        "can_rate": can_rate,
+        "view": "ranked" if request.args.get("genome_view") == "ranked" and can_rate else "rate",
+        "ratings": ratings,
+        "raters": ratings["raters"],
+        "max_raters": genome_ratings.MAX_RATERS,
+        "rater_count": max(1, min(genome_ratings.MAX_RATERS, rater_count)),
+        "ranking": genome_ratings.ranked(folder, shown, ratings) if can_rate else None,
+        "rated_runs": {run["id"] for run in listed if genome_ratings.is_rated(genome_search.run_folder(run["id"]))},
+        "named": list(reversed(genome_ratings.load_named()["genomes"])),
+    }
+
+
+@app.context_processor
+def genome_helpers():
+    return {"genome_finder": genome_finder}
+
+
+def start_search(run_id):
+    """Run a search in the background. It shares the GPU lock with Generate and Examine, one clip at a time."""
+    def work():
+        try:
+            genome_search.run_search(genome_search.run_folder(run_id), lock=v3.generate_lock)
+        except Exception:
+            import traceback
+            traceback.print_exc()
+
+    with genome_job_lock:
+        if searching():
+            raise RuntimeError("A search is already running: wait for it to finish.")
+        thread = threading.Thread(target=work, name=f"genome search {run_id}", daemon=True)
+        genome_job.update(thread=thread, run=run_id)
+        thread.start()
+
+
+def genome_back(s, run_id=None, error="", view="", note=""):
+    params = {key: value for key, value in (("genome", run_id), ("genome_error", error), ("genome_view", view),
+                                            ("genome_note", note)) if value}
+    return redirect(f"/?{query_string(s)}" + (f"&{urlencode(params)}" if params else "") + "#genome")
+
+
+@app.route("/genome", methods=["POST"])
+def genome_start():
+    """Draw the genomes for the chosen voice, save the run, then render and judge them in the background."""
+    s = read_settings(MultiDict(parse_qsl(request.form.get("state", ""))))
+    first, _ = v3.reference_clips(s)
+    voice = request.form.get("genome_voice", "")
+    text = request.form.get("genome_text", "").strip()
+    method = request.form.get("genome_method", "random")
+    seed = request.form.get("genome_seed", "").strip()
+
+    if searching():
+        return genome_back(s, searching(), "A search is already running: wait for it to finish.")
+    if voice not in dict(genome_voices(s, first)):
+        return genome_back(s, error="Choose a voice: press Use on a clip, or pick random voices. "
+                                    "Final test voices cannot be searched on.")
+    if not text:
+        return genome_back(s, error="Type the line to speak.")
+
+    try:
+        genes = int(request.form.get("genome_genes", genome_search.GENES))
+        dataset, _, clip_id = voice.partition("/")
+        clip = v3.library_ui.library[dataset]["by_id"][clip_id]
+        if first is not None and voice == f"{first.dataset}/{first.clip_id}":
+            # The reference in use, prepared the way Generate prepares it (combined, cleaned)
+            with v3.generate_lock:
+                reference_audio, reference_text, _ = v3.prepare_reference(s)
+        else:
+            reference_audio, reference_text = get_clip(clip)
+        run = genome_search.new_run(reference_audio, reference_text, text=text, voice=clip.speaker, method=method,
+                                    genes=genes, seed=int(seed) if seed else None,
+                                    origin=split_voice_data.voice_origin(clip))
+        start_search(run.name)
+    except Exception as error:
+        import traceback
+        traceback.print_exc()
+        return genome_back(s, error=f"{type(error).__name__}: {error}")
+
+    return genome_back(s, run.name)
+
+
+@app.route("/genome/continue", methods=["POST"])
+def genome_continue():
+    """Start a run that was only prepared, or continue one that stopped, from its first clip not yet judged."""
+    s = read_settings(MultiDict(parse_qsl(request.form.get("state", ""))))
+    run_id = request.form.get("run", "")
+    try:
+        if not (genome_search.run_folder(run_id) / "run.json").is_file():
+            raise ValueError("That run cannot be found.")
+        start_search(run_id)
+    except Exception as error:
+        return genome_back(s, run_id if genome_search.RUN_ID.match(run_id) else None, str(error))
+    return genome_back(s, run_id)
+
+
+def rated_run(run_id):
+    """The folder of a run that can be rated now: it exists and no search is writing to it."""
+    folder = genome_search.run_folder(run_id)
+    if not (folder / "run.json").is_file():
+        raise ValueError("That run cannot be found.")
+    if searching() == run_id:
+        raise ValueError("This run is still being searched: rate it when it has finished.")
+    return folder
+
+
+@app.route("/genome/rate", methods=["POST"])
+def genome_rate():
+    """Save the listeners' scores (0 to 5) of a run's clips, then show the genomes ranked by MOS."""
+    s = read_settings(MultiDict(parse_qsl(request.form.get("state", ""))))
+    run_id = request.form.get("run", "")
+    try:
+        folder = rated_run(run_id)
+        count = max(1, min(genome_ratings.MAX_RATERS, int(request.form.get("rater_count", 1))))
+        scores, unnamed = {}, []
+        for i in range(1, count + 1):
+            prefix = f"score_{i}_"
+            given = {key[len(prefix):]: value for key, value in request.form.items()
+                     if key.startswith(prefix) and request.form.get(f"rated_{i}_{key[len(prefix):]}")}
+            name = request.form.get(f"rater_{i}", "").strip()
+            if given and not name:
+                unnamed.append(str(i))
+            elif given:
+                scores.setdefault(genome_ratings.clean_rater(name), {}).update(given)
+        if unnamed:
+            raise ValueError(f"Give listener {' and '.join(unnamed)} a name, so their scores can be kept apart.")
+        if not scores:
+            raise ValueError("No score to save: move a slider for at least one clip.")
+        genome_ratings.save_scores(folder, scores)
+    except ValueError as error:
+        return genome_back(s, run_id if genome_search.RUN_ID.match(run_id) else None, str(error))
+    total = sum(len(clips) for clips in scores.values())
+    return genome_back(s, run_id, view="ranked",
+                       note=f"Saved {total} score{'s' if total != 1 else ''} from {', '.join(scores)}.")
+
+
+@app.route("/genome/pick", methods=["POST"])
+def genome_pick():
+    """Pick a genome of a run and give it a name (kept in history/genomes/named.json)."""
+    s = read_settings(MultiDict(parse_qsl(request.form.get("state", ""))))
+    run_id = request.form.get("run", "")
+    try:
+        entry = genome_ratings.pick(rated_run(run_id), int(request.form.get("genome_number", "")),
+                                    request.form.get("genome_name", ""))
+    except ValueError as error:
+        return genome_back(s, run_id if genome_search.RUN_ID.match(run_id) else None, str(error), view="ranked")
+    return genome_back(s, run_id, view="ranked", note=f"Genome {entry['genome']} is now named “{entry['name']}”.")
+
+
+@app.route("/genome/unpick", methods=["POST"])
+def genome_unpick():
+    s = read_settings(MultiDict(parse_qsl(request.form.get("state", ""))))
+    run_id = request.form.get("run", "")
+    try:
+        number = int(request.form.get("genome_number", ""))
+        genome_ratings.unpick(rated_run(run_id), number)
+    except ValueError as error:
+        return genome_back(s, run_id if genome_search.RUN_ID.match(run_id) else None, str(error), view="ranked")
+    return genome_back(s, run_id, view="ranked", note=f"Genome {number} has no name any more.")
+
+
+@app.route("/genome/<run_id>/<name>")
+def genome_audio(run_id, name):
+    """A clip of a run: baseline.wav or genome_NN.wav, only inside that run's folder."""
+    if not re.fullmatch(r"baseline\.wav|genome_\d{2}\.wav", name):
+        abort(404)
+    try:
+        path = genome_search.run_folder(run_id) / name
+    except ValueError:
+        abort(404)
+    if not path.is_file():
+        abort(404)
+    return send_file(path, mimetype="audio/wav")
 
 
 failed_logins = 0

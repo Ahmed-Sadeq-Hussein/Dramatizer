@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dramatizer</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">Dramatizer <span class="tag">client</span></div>
+  <div class="conn" id="conn">Connecting…</div>
+</header>
+
+<div class="chosen" id="chosen" hidden>
+  <span class="label">Voice</span> <strong id="chosen-name"></strong>
+  <span class="muted" id="chosen-text"></span>
+  <audio id="chosen-audio" controls preload="none"></audio>
+</div>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-tab="voices" class="on">1 · Choose a voice</button>
+  <button role="tab" data-tab="speak">2 · Speak</button>
+  <button role="tab" data-tab="genomes">3 · Genomes</button>
+  <button role="tab" data-tab="results">Results</button>
+</nav>
+
+<main>
+  <!-- 1. Voices -->
+  <section class="tab" id="tab-voices">
+    <p class="intro">Pick the voice to clone. Only validation speakers are offered; the final test speakers stay locked.</p>
+    <form class="row" id="voice-search">
+      <label>Dataset <select id="dataset"></select></label>
+      <label class="grow">Speaker or words <input type="search" id="voice-q" placeholder="e.g. p231, or: the door"></label>
+      <button type="submit">Search</button>
+    </form>
+    <p class="muted" id="voice-count"></p>
+    <ul class="list" id="voice-list"></ul>
+    <div class="pager"><button id="prev" class="quiet">‹ Earlier</button><span id="page"></span><button id="next" class="quiet">Later ›</button></div>
+  </section>
+
+  <!-- 2. Speak -->
+  <section class="tab" id="tab-speak" hidden>
+    <p class="intro">Type a line; the host's PC speaks it in the chosen voice. Jobs wait in one queue.</p>
+    <form id="speak-form" class="stack">
+      <label>Line to speak <textarea id="speak-text" rows="3" maxlength="300" required></textarea></label>
+      <div class="row"><label>Seed <input type="number" id="speak-seed" min="0" placeholder="default"></label>
+        <button type="submit">Speak</button></div>
+    </form>
+    <div id="speak-jobs" class="list"></div>
+  </section>
+
+  <!-- 3. Genomes -->
+  <section class="tab" id="tab-genomes" hidden>
+    <div id="genome-home">
+      <p class="intro">A genome is a few delivery edits: stress, pauses, sounds, speed. A search tries 10 random genomes on
+        one line and judges each against the plain line. Then listeners rate them and the best one gets a name.</p>
+      <details class="card" open>
+        <summary>New search with the chosen voice</summary>
+        <form id="search-form" class="stack">
+          <label>Line <textarea id="search-text" rows="2" maxlength="300" required>Well, you really did it this time, and I honestly didn't think you had it in you, so I'll be waiting.</textarea></label>
+          <div class="row"><label>Genes per genome <input type="number" id="search-genes" min="1" max="6" value="3"></label>
+            <label>Genome seed <input type="number" id="search-seed" min="0" placeholder="new"></label>
+            <button type="submit">Start search</button></div>
+          <p class="muted small">Takes a few minutes (11 clips). Lines of about 20 words judge best.</p>
+        </form>
+      </details>
+      <h3>Searches</h3>
+      <ul class="list" id="search-list"></ul>
+      <h3>Named genomes</h3>
+      <ul class="list" id="named-list"></ul>
+    </div>
+
+    <div id="run-view" hidden>
+      <button class="quiet" id="back">‹ All searches</button>
+      <h2 id="run-title"></h2>
+      <p class="line" id="run-line"></p>
+      <p class="muted" id="run-state"></p>
+      <div class="views" role="tablist">
+        <button data-view="rate" class="on">Rate</button>
+        <button data-view="ranked">Ranked by MOS</button>
+      </div>
+
+      <form id="rate-form" class="stack">
+        <fieldset class="raters">
+          <legend>Listeners</legend>
+          <label>How many <select id="rater-count"><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
+          <div id="rater-names" class="row"></div>
+          <p class="muted small">Each listener moves their slider from 0 (bad) to 5 (excellent) for every clip they heard.
+            A slider counts once it is moved. The mean over listeners is the clip's MOS.</p>
+        </fieldset>
+        <ol class="clips" id="rate-clips"></ol>
+        <div class="sticky"><button type="submit">Save scores and rank</button></div>
+      </form>
+
+      <div id="ranked" hidden>
+        <p id="ranked-head" class="muted"></p>
+        <ol class="clips" id="ranked-clips"></ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section class="tab" id="tab-results" hidden>
+    <p class="intro">The measured baselines (CosyVoice 3, no genome) and the genome search comparison, from the host's PC.</p>
+    <div id="results"></div>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

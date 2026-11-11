@@ -9,12 +9,25 @@ The server rebuilds the graph by itself when it is out of date.
 You can also run it by hand:  python backend/mcp_server/build_graph.py
 """
 import json
+import os
 from pathlib import Path
 
 import networkx as nx
 
 PROJECT = Path(__file__).resolve().parents[2]
-OUTPUT_DIR = PROJECT / "output"
+
+
+def _output_setting():
+    """OUTPUT_DIR from the environment or .env, else the default in backend/model.py."""
+    if os.environ.get("OUTPUT_DIR"):
+        return os.environ["OUTPUT_DIR"].strip()
+    env = PROJECT / ".env"
+    for line in (env.read_text(encoding="utf-8").splitlines() if env.exists() else []):
+        if line.strip().startswith("OUTPUT_DIR="):
+            return line.split("=", 1)[1].strip()
+    return "D:/Dramatizer 2 renders"
+
+OUTPUT_DIR = PROJECT / _output_setting()
 GRAPH_PATH = PROJECT / "history" / "graph.json"
 
 

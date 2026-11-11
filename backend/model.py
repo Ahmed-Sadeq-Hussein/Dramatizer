@@ -66,6 +66,13 @@ def setting(name, default=None):
     return str(value).strip()
 
 
+# Where everything generated goes: renders, baselines, genome searches, calibrations.
+# Kept off the project drive so audio never bloats the repository (setting OUTPUT_DIR;
+# a relative path is taken from the project folder).
+DEFAULT_OUTPUT_DIR = "D:/Dramatizer 2 renders"
+OUTPUT_DIR = PROJECT_DIR / setting("OUTPUT_DIR", DEFAULT_OUTPUT_DIR)
+
+
 def device():
     """cuda if .env asks for it and a GPU is there, otherwise cpu."""
     wanted = setting("DEVICE", "cpu").lower()

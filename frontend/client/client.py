@@ -7,12 +7,16 @@ no voice data, no GPU. Every action is sent to the API on the host's PC.
 
 The first time, it asks for:
 
-    the API key        given to you by the host (one per person)
     the fingerprint    of the host's certificate: the host reads it to you, and the client
                        refuses to talk to anything else, so nobody in between can listen in
+    an API key         only if the host gave you one. With an account (a username and
+                       password from the host) press Enter and log in on the page instead.
 
 Both are saved in ~/.dramatizer_client.json, so next time only the address is
 needed (or nothing: the last address is remembered). --forget deletes that file.
+A password is never saved: the page asks for it, and the session the host gives
+back is kept only in this program's memory (never in the browser), until you log
+out, close the client, or 12 hours pass.
 
 Only needs Python with flask and requests:  pip install flask requests
 """
@@ -81,10 +85,12 @@ class Pinned(HTTPAdapter):
 
 
 def session_for(url, key, fingerprint):
+    """A pinned connection to the host; `key` may be None until someone logs in on the page."""
     session = requests.Session()
     session.mount(url.rstrip("/") + "/", Pinned(fingerprint))
     session.verify = False          # the fingerprint above is the check, not a CA
-    session.headers["Authorization"] = f"Bearer {key}"
+    if key:
+        session.headers["Authorization"] = f"Bearer {key}"
     return session
 
 
@@ -130,20 +136,21 @@ def setup(url, key=None, fingerprint=None):
                          "--fingerprint, or --forget to start over.")
 
     key = key or (config.get("key") if same_host else None)
-    if not key:
-        key = getpass.getpass("Your API key (from the host; it is not shown while you type): ").strip()
+    if not key and not (same_host and config.get("login")):
+        key = getpass.getpass("Your API key, or press Enter to log in with a username and password on the page: ").strip()
 
     session = session_for(url, key, expected)
     try:
-        reply = session.get(url + API + "/me", timeout=TIMEOUT)
+        reply = session.get(url + API + ("/me" if key else "/health"), timeout=TIMEOUT)
     except requests.RequestException as error:
         raise SystemExit(f"Cannot reach the API at {url}: {error}")
     if reply.status_code == 401:
         raise SystemExit("The host does not accept this key. Ask for a new one, then run with --key or --forget.")
     reply.raise_for_status()
 
-    save_config({"url": url, "key": key, "fingerprint": expected})
-    return url, session, reply.json()["name"]
+    save_config({"url": url, "key": key, "fingerprint": expected} if key else
+                {"url": url, "login": True, "fingerprint": expected})
+    return url, session, reply.json()["name"] if key else None
 
 
 # --------------------------------------------------------------------------- #
@@ -151,15 +158,34 @@ def setup(url, key=None, fingerprint=None):
 # --------------------------------------------------------------------------- #
 
 def make_app(url, session, name):
+    """`name` is the API key's owner, or None when people log in on the page."""
     app = Flask(__name__, static_folder=None)
+    who = {"name": name, "key": name is not None}
     app.config["MAX_CONTENT_LENGTH"] = 64 * 1024
 
     @app.before_request
     def same_page_only():
-        # Another website open in this browser must not be able to use the key through this app
+        # Only this PC's own address: a website that points its own name at 127.0.0.1 (DNS rebinding) is refused
+        if request.host.split(":")[0] not in ("127.0.0.1", "localhost"):
+            abort(403)
+        # Another website open in this browser must not be able to use the key or login through this app
         origin = request.headers.get("Origin")
         if request.method != "GET" and origin and urlsplit(origin).netloc != request.host:
             abort(403)
+        if request.method == "POST" and request.path.startswith(API) and not request.is_json:
+            abort(415)          # a plain form from another page cannot send JSON without asking first
+
+    @app.after_request
+    def strict_headers(response):
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Content-Security-Policy"] = ("default-src 'self'; img-src 'self' data:; media-src 'self' blob:; "
+                                                       "style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; "
+                                                       "form-action 'self'; base-uri 'none'")
+        if request.path.startswith(API) or request.path == "/connection":
+            response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.get("/")
     def index():
@@ -171,20 +197,54 @@ def make_app(url, session, name):
 
     @app.get("/connection")
     def connection():
-        return {"host": urlsplit(url).netloc, "name": name}
+        return {"host": urlsplit(url).netloc, "name": who["name"], "mode": "key" if who["key"] else "login"}
+
+    def to_host(method, path, data=None):
+        return session.request(method, f"{url}{API}/{path}", data=data, timeout=TIMEOUT,
+                               headers={"Content-Type": "application/json"} if data is not None else None)
+
+    @app.post(f"{API}/login")
+    def login():
+        # The host's session token stays here; the browser only learns who logged in
+        if who["key"]:
+            return {"error": "This client uses an API key; start it with --forget to log in instead."}, 400
+        try:
+            reply = to_host("POST", "login", request.get_data())
+        except requests.RequestException:
+            return {"error": "The host cannot be reached. Is its API and tunnel running?"}, 502
+        data = reply.json()
+        if reply.ok:
+            session.headers["Authorization"] = f"Bearer {data.pop('token')}"
+            who["name"] = data["account"]["display_name"]
+        return data, reply.status_code
+
+    @app.post(f"{API}/logout")
+    def logout():
+        if who["key"]:
+            return {"error": "This client uses an API key: there is nothing to log out of."}, 400
+        try:
+            to_host("POST", "logout", b"{}")
+        except requests.RequestException:
+            pass
+        session.headers.pop("Authorization", None)
+        who["name"] = None
+        return {"ok": True}
 
     @app.route(f"{API}/<path:path>", methods=["GET", "POST"])
     def forward(path):
         try:
+            headers = {"Content-Type": "application/json"} if request.method == "POST" else {}
+            if request.headers.get("Range"):
+                headers["Range"] = request.headers["Range"]     # the audio player asks for parts when you skip ahead
             reply = session.request(request.method, f"{url}{API}/{path}", params=request.args,
                                     data=request.get_data() if request.method == "POST" else None,
-                                    headers={"Content-Type": "application/json"} if request.method == "POST" else None,
-                                    timeout=TIMEOUT, stream=True)
+                                    headers=headers or None, timeout=TIMEOUT, stream=True)
         except requests.exceptions.SSLError:
             return {"error": "The host's certificate changed: stopped for safety. Restart the client."}, 502
         except requests.RequestException as error:
             return {"error": f"The host cannot be reached ({type(error).__name__}). Is its API and tunnel running?"}, 502
-        kept = {k: v for k, v in reply.headers.items() if k.lower() in ("content-type", "content-disposition")}
+        kept = {k: v for k, v in reply.headers.items()
+                if k.lower() in ("content-type", "content-disposition", "content-length", "content-range", "accept-ranges")}
         return Response(reply.iter_content(64 * 1024), status=reply.status_code, headers=kept)
 
     return app
@@ -207,7 +267,8 @@ def main(argv=None):
             return
     url, session, name = setup(args.url, args.key, args.fingerprint)
     page = f"http://127.0.0.1:{args.port}"
-    print(f"\nConnected to {url} as {name}. Open {page} (Ctrl+C to stop).\n", flush=True)
+    print(f"\nConnected to {url} as {name or 'nobody yet: log in on the page'}. Open {page} (Ctrl+C to stop).\n",
+          flush=True)
     if not args.no_browser:
         threading.Timer(1.0, lambda: webbrowser.open(page)).start()
     make_app(url, session, name).run(host="127.0.0.1", port=args.port, threaded=True)

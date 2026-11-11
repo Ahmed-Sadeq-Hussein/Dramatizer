@@ -41,7 +41,7 @@ from backend.voice_data.Picky_voice import (DUPLICATE_ACTOR, EMOTIONS, MAX_SECON
 from backend.voice_data.Voice_Importer import find_clips, list_speakers
 
 PORT = 5002
-REFERENCES_DIR = model.PROJECT_DIR / "output" / "references"
+REFERENCES_DIR = model.OUTPUT_DIR / "references"
 
 app = Flask(__name__, template_folder=library_ui.FRONTEND_DIR / "templates", static_folder=library_ui.FRONTEND_DIR / "static")
 

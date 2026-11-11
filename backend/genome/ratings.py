@@ -14,15 +14,22 @@ voices (a genome's genes hold positions in the sentence, not words).
 
 Where it is stored (all under .gitignore: listener ratings are personal data):
 
-    <run folder>/ratings.json        the run's current scores and picks, rewritten on every save
-    history/ratings/mos.jsonl        every score ever saved, one line each, never rewritten,
-                                     with the run, voice, line and markup, so ratings can be
-                                     reviewed later even if a run folder is removed
+    <run folder>/ratings.json        the run's current scores and picks, rewritten on every save;
+                                     "given" holds, per listener and clip, the score, when it
+                                     was first given and last changed, and the account that gave it
+    history/ratings/mos.jsonl        every score ever given or changed, one line each, never
+                                     rewritten: when, who (name and login account), the run,
+                                     batch, pile, voice, line, clip, markup, and the score before
+    history/ratings/who_rated_what.csv
+                                     the current score of every listener for every clip, with its
+                                     date: rebuilt after every save, open it in a spreadsheet
     history/genomes/named.json       the named genomes: the genes, where they came from, their MOS
 
     python -m backend.genome.ratings               # every rated run, with its best genome
     python -m backend.genome.ratings --named       # the named genomes
-    python -m backend.genome.ratings --export FILE # every score as CSV, for analysis
+    python -m backend.genome.ratings --who         # who has scored what, per listener and pile
+    python -m backend.genome.ratings --export FILE # every score ever given (the log) as CSV
+    python -m backend.genome.ratings --current FILE  # the current scores (who rated what) as CSV
 """
 import argparse
 import csv
@@ -33,7 +40,7 @@ import threading
 from datetime import datetime
 from pathlib import Path
 
-from backend import model
+from backend import model, safe_files
 from backend.genome import search as genome_search
 
 SCHEMA_VERSION = 1
@@ -54,12 +61,8 @@ def _now():
 
 
 def _write(path, data):
-    """A temporary file first, so a crash never leaves half a file."""
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    os.replace(temporary, path)
+    """A temporary file first, so a crash never leaves half a file; waits while a reader has it open."""
+    safe_files.write_json(path, data)
 
 
 def clip_key(number):
@@ -96,7 +99,7 @@ def load(run_dir):
     """The run's ratings: {"raters", "scores": {rater: {clip: score}}, "picked": [...]}; empty when none yet."""
     path = Path(run_dir) / RATINGS_FILE
     if path.is_file():
-        return json.loads(path.read_text(encoding="utf-8"))
+        return safe_files.read_json(path)
     return {"schema_version": SCHEMA_VERSION, "run": Path(run_dir).name, "scale": [LOWEST, HIGHEST],
             "raters": [], "scores": {}, "picked": [], "updated": None}
 
@@ -105,12 +108,18 @@ def is_rated(run_dir):
     return any(load(run_dir)["scores"].values())
 
 
-def save_scores(run_dir, scores, submitted_by=None):
+def who_path():
+    return LOG_PATH.parent / "who_rated_what.csv"
+
+
+def save_scores(run_dir, scores, submitted_by=None, account=None):
     """
     Save the scores of one or more listeners: {rater: {clip: score}}, clip being
-    "baseline" or "genome_NN". A score given again replaces the earlier one. Each
-    is also appended to the review log. At most MAX_RATERS listeners per run.
-    submitted_by: who sent them (the API key's owner), kept in the log.
+    "baseline" or "genome_NN". A score given again replaces the earlier one. A new
+    or changed score is also appended to the review log (sending the same score
+    again adds nothing). At most MAX_RATERS listeners per run.
+    submitted_by: who sent them (the API key's owner or the account's name);
+    account: the login account's username, when it was an account.
     """
     run_dir = Path(run_dir)
     run = genome_search.load_run(run_dir)
@@ -140,23 +149,42 @@ def save_scores(run_dir, scores, submitted_by=None):
         time = _now()
         log = []
         genomes = {clip_key(g["number"]): g for g in run["genomes"]}
+        given = ratings.setdefault("given", {})
         for rater, clips in cleaned.items():
-            ratings["scores"].setdefault(rater, {}).update(clips)
+            before = ratings["scores"].setdefault(rater, {})
             for clip, score in clips.items():
+                previous = before.get(clip)
+                if previous == score and clip in given.get(rater, {}):
+                    continue                       # the page sent it again: nothing changed
+                before[clip] = score
+                detail = given.setdefault(rater, {}).get(clip) or {"first_given": time, "changes": -1}
+                detail.update(score=score, time=time, account=account or detail.get("account"),
+                              submitted_by=submitted_by, changes=detail["changes"] + 1)
+                given[rater][clip] = detail
                 genome = genomes.get(clip)
-                log.append({"time": time, "run": run["id"], "voice": run["voice"], "origin": run.get("origin"),
-                            "text": run["text"], "rater": rater, "clip": clip, "score": score,
+                log.append({"time": time, "run": run["id"], "batch": run.get("batch"), "pile": run.get("pile"),
+                            "voice": run["voice"], "origin": run.get("origin"), "text": run["text"],
+                            "rater": rater, "account": account, "clip": clip,
+                            "genome": genome["number"] if genome else None, "score": score, "previous": previous,
                             "markup": genome["markup"] if genome else run["text"],
                             "speed": genome["speed"] if genome else 1.0,
                             "genes": genome["genes"] if genome else [],
                             "verdict": genome["verdict"] if genome else "baseline",
                             "submitted_by": submitted_by})
+        if not log:
+            return ratings
         ratings["updated"] = time
         _write(run_dir / RATINGS_FILE, ratings)
         LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
         with LOG_PATH.open("a", encoding="utf-8") as f:
             for entry in log:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
+        try:
+            write_current(who_path(), run_dir.parent)
+        except OSError:
+            pass                                   # open in a spreadsheet, say; rebuilt on the next save
     return ratings
 
 
@@ -203,8 +231,53 @@ def ranked(run_dir, run=None, ratings=None):
 # Picking and naming a genome
 # --------------------------------------------------------------------------- #
 
+def collection(runs, rater=None, others=True):
+    """
+    Every rendered clip of several runs (a listening pile, say), for one listener's
+    rating page and ranking. `runs` is [(run folder, run dict)].
+
+    Returns {"runs": [...], "clips": [...]}. Each run has its id, voice, pile,
+    line, how many clips it has and how many `rater` scored. Each clip has its
+    run, "baseline" or the genome's number, what the genome does, its verdict,
+    `rater`'s score ("mine", or None), the MOS over every listener, and both
+    against the same run's baseline, because a score means most next to the
+    plain render of the same voice and line. others=False (a listener rating
+    blind): no MOS and no other listener's name, only `rater`'s own scores.
+    """
+    out_runs, clips = [], []
+    for folder, run in runs:
+        ratings = load(folder)
+        own = ratings["scores"].get(rater, {}) if rater else {}
+        own_on = ratings.get("given", {}).get(rater, {}) if rater else {}
+        if not others:
+            ratings = {**ratings, "raters": [rater] if own else [], "scores": {rater: own} if own else {}}
+        base_mos, base_mine = mos(ratings, "baseline"), own.get("baseline")
+        rendered = [("baseline", None)] if run["baseline"].get("audio") else []
+        rendered += [(clip_key(g["number"]), g) for g in run["genomes"] if g.get("audio")]
+        for key, genome in rendered:
+            score, mine = mos(ratings, key), own.get(key)
+            clips.append({
+                "run": run["id"], "voice": run["voice"], "pile": run.get("pile"), "clip": key,
+                "audio": f"{key}.wav", "genome": genome["number"] if genome else None,
+                "described": genome["described"] if genome else ["the line with no genes"],
+                "markup": genome["markup"] if genome else run["text"],
+                "speed": genome["speed"] if genome else 1.0,
+                "verdict": genome["verdict"] if genome else "baseline",
+                "mine": mine,
+                "mine_on": (own_on.get(key) or {}).get("time") or (ratings.get("updated") if mine is not None else None),
+                "mine_above_baseline": round(mine - base_mine, 2)
+                if genome and mine is not None and base_mine is not None else None,
+                "mos": score,
+                "mos_above_baseline": round(score["mos"] - base_mos["mos"], 2) if genome and score and base_mos else None,
+            })
+        out_runs.append({"id": run["id"], "voice": run["voice"], "pile": run.get("pile"), "batch": run.get("batch"),
+                         "text": run["text"], "clips": len(rendered), "mine": sum(1 for k, _ in rendered if k in own),
+                         "raters": ratings["raters"]})
+    return {"runs": out_runs, "clips": clips}
+
+
 def load_named():
-    return json.loads(NAMED_PATH.read_text(encoding="utf-8")) if NAMED_PATH.is_file() else {"genomes": []}
+    return safe_files.read_json(NAMED_PATH, default={"genomes": []})
 
 
 def pick(run_dir, number, name, named_by=None):
@@ -276,9 +349,80 @@ def read_log():
     return [json.loads(line) for line in LOG_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
+CURRENT_FIELDS = ["rater", "account", "batch", "pile", "voice", "run", "clip", "genome", "score",
+                  "above_plain_line", "rated_on", "first_given", "changes", "verdict", "markup", "text"]
+
+
+def current_scores(runs_dir=None):
+    """
+    Who rated what, now: one row per listener and clip, with the score, the date
+    it was last given (and first given), the login account, and the score minus
+    the same listener's score for the plain line of the same run. Sorted by
+    listener, then batch, pile and voice.
+    """
+    rows = []
+    for folder, run in genome_search.list_runs(runs_dir):
+        if not (folder / RATINGS_FILE).is_file():
+            continue
+        ratings = load(folder)
+        genomes = {clip_key(g["number"]): g for g in run["genomes"]}
+        for rater, clips in ratings["scores"].items():
+            detail = ratings.get("given", {}).get(rater, {})
+            plain = clips.get("baseline")
+            for clip, score in clips.items():
+                genome, info = genomes.get(clip), detail.get(clip, {})
+                rows.append({
+                    "rater": rater, "account": info.get("account"), "batch": run.get("batch"), "pile": run.get("pile"),
+                    "voice": run["voice"], "run": run["id"], "clip": clip,
+                    "genome": genome["number"] if genome else None, "score": score,
+                    "above_plain_line": round(score - plain, 2) if genome and plain is not None else None,
+                    "rated_on": info.get("time") or ratings.get("updated"), "first_given": info.get("first_given"),
+                    "changes": info.get("changes", 0),
+                    "verdict": genome["verdict"] if genome else "baseline",
+                    "markup": genome["markup"] if genome else run["text"], "text": run["text"]})
+    rows.sort(key=lambda r: (r["rater"].lower(), str(r["batch"]), r["pile"] or 0, r["voice"], r["clip"]))
+    return rows
+
+
+def write_current(path, runs_dir=None):
+    rows = current_scores(runs_dir)
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = safe_files.temporary_for(path)
+    with open(temporary, "w", newline="", encoding="utf-8-sig") as f:    # -sig: Excel reads the accents
+        writer = csv.DictWriter(f, fieldnames=CURRENT_FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+    safe_files.replace(temporary, path)
+    return len(rows)
+
+
+def who_summary(runs_dir=None):
+    """{rater: {"account", "piles": {"batch pile N": [scored, clips]}, "first", "last"}}"""
+    totals = {}
+    for folder, run in genome_search.list_runs(runs_dir):
+        if run.get("batch") and run.get("pile"):
+            key = f"{run['batch']} pile {run['pile']}"
+            totals[key] = totals.get(key, 0) + (1 if run["baseline"].get("audio") else 0) + \
+                sum(1 for g in run["genomes"] if g.get("audio"))
+    out = {}
+    for row in current_scores(runs_dir):
+        one = out.setdefault(row["rater"], {"account": row["account"], "piles": {}, "first": None, "last": None})
+        one["account"] = one["account"] or row["account"]
+        key = f"{row['batch']} pile {row['pile']}" if row["batch"] else "not in a pile"
+        done = one["piles"].setdefault(key, [0, totals.get(key)])
+        done[0] += 1
+        when = row["rated_on"]
+        if when:
+            one["first"] = min(one["first"] or when, row["first_given"] or when)
+            one["last"] = max(one["last"] or when, when)
+    return out
+
+
 def export_csv(path):
     rows = read_log()
-    fields = ["time", "run", "voice", "text", "rater", "clip", "score", "verdict", "speed", "markup"]
+    fields = ["time", "rater", "account", "batch", "pile", "voice", "run", "clip", "genome", "score", "previous",
+              "verdict", "speed", "markup", "text", "submitted_by"]
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
         writer.writeheader()
@@ -289,10 +433,23 @@ def export_csv(path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Review listener ratings (MOS) of genome searches.")
     parser.add_argument("--named", action="store_true", help="list the named genomes")
-    parser.add_argument("--export", metavar="FILE", help="write every score ever saved as CSV")
+    parser.add_argument("--export", metavar="FILE", help="write every score ever given or changed (the log) as CSV")
+    parser.add_argument("--current", metavar="FILE", help="write the current score of every listener and clip as CSV")
+    parser.add_argument("--who", action="store_true", help="who has scored what, per listener and pile")
     args = parser.parse_args()
 
-    if args.export:
+    if args.current:
+        print(f"{write_current(args.current)} scores written to {args.current}")
+    elif args.who:
+        summary = who_summary()
+        if not summary:
+            print("Nobody has scored anything yet.")
+        for rater, one in summary.items():
+            print(f"{rater}  (account {one['account'] or '-'}; from {one['first']} to {one['last']})")
+            for pile, (done, total) in one["piles"].items():
+                print(f"    {pile}: {done} of {total or '?'} clips scored")
+        print(f"\nThe details: {who_path()}")
+    elif args.export:
         print(f"{export_csv(args.export)} scores written to {args.export}")
     elif args.named:
         for entry in load_named()["genomes"]:

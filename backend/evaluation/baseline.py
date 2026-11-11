@@ -4,6 +4,9 @@
     python main_backend.py baseline --measure-only   # render nothing; measure and report what is there
     python main_backend.py baseline --no-log         # do not record the run in MLflow
 
+    # The script baseline: every line of a script in every validation voice of the voice manifest
+    python main_backend.py baseline --name script-v1 --script backend/data/scripts/context-script-v1.json --voices all
+
 The baseline is what every later change is compared against (SCOPE.md): the voice
 model CosyVoice 3 with its default settings, no genome, no cleaning of the
 reference. Each line is spoken in each voice once, by the same renderer the genome
@@ -11,8 +14,10 @@ search uses for its own baseline clip, so a search result and this baseline are
 made the same way.
 
     voices      an even share of VCTK, CREMA-D and LibriTTS-R, from the validation
-                speakers only (never the final test), with a neutral reference clip
-    lines       LINES below: written for this, not taken from any dataset, no digits
+                voices only (never the final test), each with its longest neutral clip;
+                or, with --voices all, every validation voice in the voice manifest
+    lines       LINES below, or the lines of a script file (--script): written for
+                this, not taken from any dataset, no digits
     measured    WER (Whisper), speaker similarity to the reference (Resemblyzer),
                 estimated quality (SQUIM: PESQ, STOI, SI-SDR), speaking rate
     reported    per dataset and overall, with a 95 % bootstrap interval over voices
@@ -24,7 +29,13 @@ Known-answer checks, where the right answer is known before looking:
     3. each render is most similar to its own voice, not to another voice in the run
     4. rendering the same voice, line and seed again gives the same audio
 
-Everything goes in output/baseline/<name>/ (never committed): plan.json (the
+A script baseline (--script) renders every validation voice x every line. Its voice
+folders are named after the reference clip (<dataset>_<clip id>), and
+baseline_manifest.json says for every audio which line it speaks and which reference
+clip it was cloned from (dataset, speaker, clip, transcript, length, checksum, split).
+
+Every run goes in OUTPUT_DIR/baseline/<name>/ (OUTPUT_DIR is on the D drive, outside
+the repository, see backend/model.py): plan.json (the
 voices, lines and seeds, made once and reused), the renders, results.json (saved
 after every clip, so a stopped run continues), checks.json, summary.json and
 record.json (git commit, data hashes, models, versions, seeds). The run is then
@@ -49,7 +60,9 @@ import numpy as np  # noqa: E402
 
 from backend import model  # noqa: E402
 
-OUT_DIR = PROJECT / "output" / "baseline"
+OUT_DIR = model.OUTPUT_DIR / "baseline"
+
+
 NAME = "v2"             # v1 had only the first five lines (its plan.json keeps them)
 VOICES = 12             # 4 per dataset
 PICK_SEED = 0
@@ -92,7 +105,27 @@ def sha256(path):
 # The plan, the renders, the measurements
 # --------------------------------------------------------------------------- #
 
-def plan_of(out_dir, voices, pick_seed, render_seed):
+def read_script(path):
+    """The lines of a script file (backend/data/scripts/), its name and its hash."""
+    path = Path(path)
+    if not path.is_absolute():
+        path = PROJECT / path
+    script = json.loads(path.read_text(encoding="utf-8"))
+    return [line["text"] for line in script["lines"]], {"name": script["name"], "file": path.relative_to(PROJECT).as_posix(),
+                                                       "sha256": sha256(path),
+                                                       "line_ids": [line["id"] for line in script["lines"]]}
+
+
+def every_validation_voice():
+    """The chosen clip of every validation voice in the voice manifest, in the manifest's order."""
+    from backend.voice_data.split_voice_data import read_library, voice_clips
+
+    chosen = voice_clips("validation")
+    by_id = {(f"{clip.dataset}/{clip.speaker}", clip.clip_id): clip for clip in read_library()}
+    return [by_id[(voice, clip_id)] for voice, clip_id in chosen.items()]
+
+
+def plan_of(out_dir, voices, pick_seed, render_seed, script=None):
     """The voices, lines and seed of this baseline: made once, then reused, so a restart renders the same set."""
     path = out_dir / "plan.json"
     if path.is_file():
@@ -101,17 +134,70 @@ def plan_of(out_dir, voices, pick_seed, render_seed):
     from backend.voice_data.Voice_Importer import get_clip
     from backend.voice_data.split_voice_data import pick_even, voice_origin
 
-    plan = {"lines": LINES, "render_seed": render_seed, "pick_seed": pick_seed, "voices": []}
-    for clip in pick_even(voices, seed=pick_seed, split="validation"):
+    lines, script_info = read_script(script) if script else (LINES, None)
+    plan = {"lines": lines, "script": script_info, "render_seed": render_seed,
+            "pick_seed": None if voices == "all" else pick_seed, "voices": []}
+    clips = every_validation_voice() if voices == "all" else pick_even(voices, seed=pick_seed, split="validation")
+    for clip in clips:
         origin = voice_origin(clip)
         if origin["split"] != "validation":
             raise RuntimeError(f"{clip.dataset}/{clip.speaker} is not a validation speaker")
         audio, text = get_clip(clip)
-        plan["voices"].append({"name": f"{clip.dataset}_{clip.speaker}", "dataset": clip.dataset,
+        # A script baseline names each voice after its reference clip, so a folder says which audio it was cloned from
+        name = f"{clip.dataset}_{clip.clip_id}" if script else f"{clip.dataset}_{clip.speaker}"
+        plan["voices"].append({"name": name, "dataset": clip.dataset,
                                "reference_audio": str(audio), "reference_text": text, "origin": origin})
     out_dir.mkdir(parents=True, exist_ok=True)
     _save(path, plan)
     return plan
+
+
+def write_baseline_manifest(out_dir, plan):
+    """
+    baseline_manifest.json: every audio of the run, the line it speaks and the reference
+    clip it was cloned from, with the voice manifest's details of that clip. Rewritten
+    after rendering, so the render checksums are those of the files on disk.
+    """
+    from backend.voice_data.split_voice_data import SPLITS_FILE, load_voice_manifest
+
+    voices = {v["voice"]: v for v in load_voice_manifest()["voices"]}
+    line_ids = (plan.get("script") or {}).get("line_ids") or [f"line{i}" for i in range(len(plan["lines"]))]
+    audios = []
+    for voice in plan["voices"]:
+        origin = voice["origin"]
+        known = voices.get(f"{origin['dataset']}/{origin['speaker']}", {})
+        reference = {
+            "voice": f"{origin['dataset']}/{origin['speaker']}",
+            "dataset": origin["dataset"],
+            "speaker": origin["speaker"],
+            "clip_id": origin["clip_id"],
+            "transcript": voice["reference_text"],
+            "speech_seconds": known.get("speech_seconds"),
+            "sha256": known.get("sha256"),
+            "split": origin["split"],
+        }
+        for line, text in enumerate(plan["lines"]):
+            path = clip_path(out_dir, voice, line)
+            audios.append({
+                "audio": path.relative_to(out_dir).as_posix(),
+                "line": line,
+                "line_id": line_ids[line],
+                "text": text,
+                "render_seed": plan["render_seed"],
+                "rendered": path.is_file(),
+                "sha256": sha256(path) if path.is_file() else None,
+                "reference": reference,
+            })
+    _save(out_dir / "baseline_manifest.json", {
+        "name": out_dir.name,
+        "what": "Plain CosyVoice 3 renders (no genome): each audio, the line it speaks and the reference clip it was cloned from.",
+        "script": plan.get("script"),
+        "voice_manifest": SPLITS_FILE.name,
+        "voice_manifest_sha256": sha256(SPLITS_FILE),
+        "voices": len(plan["voices"]),
+        "lines": len(plan["lines"]),
+        "audios": audios,
+    })
 
 
 def clip_path(out_dir, voice, line):
@@ -317,6 +403,7 @@ def run_record(plan, out_dir):
         "pick_seed": plan["pick_seed"],
         "voices": [v["name"] for v in plan["voices"]],
         "lines": plan["lines"],
+        "script": plan.get("script"),
         "settings": {key: _optional(key) for key in SETTINGS},
         "device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
         "cuda": torch.version.cuda,
@@ -327,7 +414,7 @@ def run_record(plan, out_dir):
     }
 
 
-def show(summary, checks):
+def show(summary, checks, lines=LINES):
     print("\nBaseline (mean, and 95 % interval over voices)")
     print(f"  {'':11s} {'WER':>22s} {'similarity':>22s} {'PESQ':>18s} {'WER 0':>6s}")
     for name, s in summary.items():
@@ -338,7 +425,7 @@ def show(summary, checks):
               f"{s['wer_zero']:6.0%}")
     print("\nBy line (all voices):")
     for line, numbers in summary["by_line"].items():
-        print(f"  line {line} ({len(LINES[int(line)].split())} words): WER {numbers['wer']:.3f}, "
+        print(f"  line {line} ({len(lines[int(line)].split())} words): WER {numbers['wer']:.3f}, "
               f"similarity {numbers['similarity']:.3f}")
     print("\nKnown-answer checks:")
     for check in checks:
@@ -365,18 +452,25 @@ def log_to_mlflow(out_dir, record, summary, checks):
     params.update({f"judge_{k}": v for k, v in record["judges"].items()})
     params["voices"] = len(record["voices"])
     params["lines"] = len(record["lines"])
+    if record.get("script"):
+        params["script"] = record["script"]["name"]
+        params["script_sha256"] = record["script"]["sha256"]
     log_run(f"baseline-{out_dir.name}", params, metrics,
-            artifacts=[out_dir / name for name in ("plan.json", "results.json", "checks.json", "summary.json", "record.json")],
+            artifacts=[out_dir / name for name in ("plan.json", "results.json", "checks.json", "summary.json", "record.json",
+                                                    "baseline_manifest.json") if (out_dir / name).is_file()],
             limitations=LIMITATION)
 
 
-def main(name=NAME, voices=VOICES, pick_seed=PICK_SEED, render_seed=RENDER_SEED, measure_only=False, log=True):
+def main(name=NAME, voices=VOICES, pick_seed=PICK_SEED, render_seed=RENDER_SEED, measure_only=False, log=True,
+         script=None):
     out_dir = OUT_DIR / name
-    plan = plan_of(out_dir, voices, pick_seed, render_seed)
+    plan = plan_of(out_dir, voices, pick_seed, render_seed, script)
+    write_baseline_manifest(out_dir, plan)
     print(f"Baseline {name}: {len(plan['voices'])} validation voices x {len(plan['lines'])} lines, "
           f"render seed {plan['render_seed']}. Saved in {out_dir}", flush=True)
     if not measure_only:
         render_all(out_dir, plan)
+        write_baseline_manifest(out_dir, plan)
     results = measure_all(out_dir, plan)
     if not results:
         raise SystemExit("Nothing measured yet: render first.")
@@ -385,7 +479,7 @@ def main(name=NAME, voices=VOICES, pick_seed=PICK_SEED, render_seed=RENDER_SEED,
     record = run_record(plan, out_dir)
     _save(out_dir / "summary.json", summary)
     _save(out_dir / "record.json", record)
-    show(summary, checks)
+    show(summary, checks, plan["lines"])
     if log:
         try:
             log_to_mlflow(out_dir, record, summary, checks)
@@ -399,11 +493,14 @@ def main(name=NAME, voices=VOICES, pick_seed=PICK_SEED, render_seed=RENDER_SEED,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="The reproducible baseline: plain renders, measured and checked.")
-    parser.add_argument("--name", default=NAME, help="the run's folder in output/baseline")
-    parser.add_argument("--voices", type=int, default=VOICES, help="validation voices, an even share per dataset")
+    parser.add_argument("--name", default=NAME, help="the run's folder, in OUTPUT_DIR/baseline")
+    parser.add_argument("--voices", default=str(VOICES),
+                        help="validation voices, an even share per dataset; or 'all' for every validation voice")
+    parser.add_argument("--script", help="a script file (backend/data/scripts/) whose lines are rendered instead of LINES")
     parser.add_argument("--pick-seed", type=int, default=PICK_SEED, help="which voices are picked")
     parser.add_argument("--render-seed", type=int, default=RENDER_SEED, help="the seed of every render")
     parser.add_argument("--measure-only", action="store_true", help="render nothing; measure what is there")
     parser.add_argument("--no-log", action="store_true", help="do not record the run in MLflow")
     args = parser.parse_args()
-    main(args.name, args.voices, args.pick_seed, args.render_seed, args.measure_only, not args.no_log)
+    voices = "all" if args.voices == "all" else int(args.voices)
+    main(args.name, voices, args.pick_seed, args.render_seed, args.measure_only, not args.no_log, args.script)

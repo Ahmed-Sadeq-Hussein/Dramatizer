@@ -47,7 +47,7 @@ import numpy as np  # noqa: E402
 
 import baseline as base  # noqa: E402
 
-OUT_DIR = PROJECT / "output" / "milestone2"
+OUT_DIR = base.model.OUTPUT_DIR / "milestone2"
 NAME = "random-v2"
 BASELINE = "v2"
 GENES = 3

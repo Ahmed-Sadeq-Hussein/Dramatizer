@@ -12,15 +12,13 @@ private channel, and only to members of the group (LIMITATIONS.md, Ethics).
 import argparse
 import hashlib
 import hmac
-import json
-import os
 import re
 import secrets
 import threading
 from datetime import datetime
 from pathlib import Path
 
-from backend import model
+from backend import model, safe_files
 
 KEYS_PATH = model.PROJECT_DIR / "history" / "api" / "keys.json"
 NAME = re.compile(r"^[A-Za-z0-9 ._-]{1,40}$")
@@ -34,15 +32,11 @@ def _hash(key):
 
 def load(path=None):
     path = Path(path or KEYS_PATH)
-    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {"keys": {}}
+    return safe_files.read_json(path, default={"keys": {}})
 
 
 def _save(data, path=None):
-    path = Path(path or KEYS_PATH)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(".tmp")
-    temporary.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    os.replace(temporary, path)
+    safe_files.write_json(path or KEYS_PATH, data)
 
 
 def add(name, path=None):

@@ -41,7 +41,7 @@ import torchaudio
 from backend import model
 
 # Where audio is written (settings come from .env, loaded by model.py)
-OUTPUT_DIR = model.PROJECT_DIR / model.setting("OUTPUT_DIR", "output")
+OUTPUT_DIR = model.OUTPUT_DIR
 
 # The seed of every render: VOICE_SEED in .env, or "random"
 SEED = model.setting("VOICE_SEED", "0")

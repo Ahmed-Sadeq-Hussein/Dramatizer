@@ -82,7 +82,7 @@ PRE_TRIMMED = {"VCTK"}
 # How quiet counts as silence when trimming, in dB below the loudest part
 TRIM_TOP_DB = 35
 
-CACHE_DIR = model.PROJECT_DIR / "output" / "picky"
+CACHE_DIR = model.OUTPUT_DIR / "picky"
 
 
 def _trimmed_seconds(samples, rate):

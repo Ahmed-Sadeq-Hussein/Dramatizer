@@ -47,6 +47,8 @@ COMMANDS = {
         "pick": ("Choose which clips of a dataset to use as references", "backend.voice_data.Picky_voice"),
         "manifest": ("Build the data manifest", "backend.voice_data.build_manifest"),
         "split": ("Make the voice manifest: each voice's longest clip and its validation/test split (once)", "backend.voice_data.split_voice_data"),
+        "voice-map": ("3D map and clusters of the validation voices by similarity; --pick N for a spread-out choice",
+                      "backend.voice_data.voice_map"),
     },
     "Speech": {
         "speak": ("Speak a line in a cloned voice (CosyVoice 3)", "backend.speech.Voice_model"),
@@ -59,11 +61,15 @@ COMMANDS = {
                    "backend.genome.search"),
         "ratings": ("Review listener scores (MOS) of genome searches; --named, --export FILE.csv",
                     "backend.genome.ratings"),
+        "explore": ("Far-apart genomes (up to 10) for the voice-map voices, in 3 piles for MOS listeners (renders)",
+                    "backend.genome.explore"),
     },
     "API (for others' PCs, through playit.gg)": {
         "api": ("Start the back end as a web API on https://127.0.0.1:5005; tunnel only this port",
                 "backend.api.server"),
         "api-key": ("Who may use the API: api-key add NAME | list | remove NAME", "backend.api.keys"),
+        "account": ("Login accounts: account add USERNAME --name NAME [--role listener|researcher|admin] | list | reset | disable | remove",
+                    "backend.api.accounts"),
     },
     "Emphasis": {
         "emphasis-test": ("Which small LLM picks the right words to stress", "backend.emphasis.test_emphasis_llms"),
@@ -86,7 +92,7 @@ COMMANDS = {
 # package each needs beyond requirements.txt (None: nothing more). The MCP server
 # has its own environment (see requirements.txt), so its test is skipped where
 # "mcp" is not installed.
-TESTS = [("backend/evaluation/test_checks.py", None), ("backend/mcp_server/test_graph.py", "mcp")]
+TESTS = [("backend/evaluation/test_checks.py", None), ("backend/voice_data/test_voice_map.py", None), ("backend/genome/test_explore.py", None), ("backend/api/test_accounts.py", None), ("backend/mcp_server/test_graph.py", "mcp")]
 
 
 def all_commands():

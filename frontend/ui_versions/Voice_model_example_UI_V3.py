@@ -47,7 +47,7 @@ from backend.voice_data.split_voice_data import voice_origin
 from backend.voice_data.Voice_Importer import find_clips, get_clip, list_speakers
 
 PORT = 5003
-PREPARED_DIR = model.PROJECT_DIR / "output" / "prepared" / "references"
+PREPARED_DIR = model.OUTPUT_DIR / "prepared" / "references"
 
 # Defaults of the new options
 GAP_SECONDS = 0.3

@@ -8,18 +8,27 @@
 
 Safe to put behind a tunnel because:
 
-    - every call needs a key (Authorization: Bearer <key>); keys are per person and can be removed
+    - every call needs a key or a login session (Authorization: Bearer <key or token>); keys are per
+      person and can be removed; passwords are kept only as salted PBKDF2 hashes (accounts.py)
     - it speaks HTTPS with its own certificate (history/api/); the client pins its fingerprint,
       so a tunnel or network in between cannot read or change the traffic
     - it can only do what is listed below: no commands, no file paths from outside, voices by id
     - the GPU work waits in one queue, one job at a time, at most 3 waiting per person
     - only validation voices are offered; final test speakers and custom voices never are
-    - every call is logged with who made it (history/api/access.log)
+    - every call is logged with who made it (history/api/access.log); logins, refused logins,
+      logouts, password changes and saved scores also go to history/api/audit.jsonl
+    - an account locks after 5 wrong passwords; past 30 refused logins in 10 minutes (someone
+      trying many names) every login waits until it is quiet again; each refusal takes a second
+    - replies carry strict browser headers (no framing, no sniffing, no referrer, no caching),
+      bodies are capped at 64 KB, and the server does not say what software it runs
 
 The API, all under /api/v1 (JSON in and out, audio as WAV):
 
     GET  /health                                  no key needed: is it up?
-    GET  /me                                      who this key belongs to, and the queue
+    POST /login   {username, password}            no key needed: an account logs in -> {token, account}
+    POST /logout                                  end this session
+    POST /me/password {current, new}              change your own password (ends your sessions)
+    GET  /me                                      who this key or session belongs to, and the queue
     GET  /datasets                                the datasets and how many validation voices each has
     GET  /voices?dataset=&q=&page=                validation clips, 50 a page; q matches speaker or words
     GET  /voices/audio?dataset=&clip_id=          a clip's recording
@@ -35,7 +44,13 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
     POST /genome/searches/<run>/pick    {genome, name}                    pick and name a genome
     POST /genome/searches/<run>/unpick  {genome}                          take the name off
     GET  /genome/named                            the named genomes
+    GET  /genome/listening?batch=&pile=           a listening pile: every clip, your score and the MOS
     GET  /results                                 the baselines' and Milestone 2's summaries
+
+Who may do what: an API key may do everything. An account (accounts.py) may do
+what its role allows: listeners rate (only as themselves, only their own pile)
+and see rankings; starting speech or searches and naming genomes need a
+researcher or admin.
 """
 import argparse
 import hashlib
@@ -57,7 +72,7 @@ from werkzeug.exceptions import HTTPException
 from werkzeug.serving import WSGIRequestHandler
 
 from backend import model
-from backend.api import keys
+from backend.api import accounts, keys
 
 API = "/api/v1"
 VERSION = 1
@@ -65,7 +80,9 @@ PORT = int(model.setting("API_PORT", "5005"))
 API_DIR = model.PROJECT_DIR / "history" / "api"
 CERT_PATH, KEY_PATH = API_DIR / "api_cert.pem", API_DIR / "api_key.pem"
 ACCESS_LOG = API_DIR / "access.log"
-SPEAK_DIR = model.PROJECT_DIR / model.setting("OUTPUT_DIR", "output") / "api"
+AUDIT_LOG = API_DIR / "audit.jsonl"
+LOGIN_WINDOW_MINUTES, LOGIN_FAILURES_ALLOWED = 10, 30
+SPEAK_DIR = model.OUTPUT_DIR / "api"
 DATASETS = ("VCTK", "CREMA-D", "LibriTTS-R")
 PAGE_SIZE = 50
 MAX_TEXT = 300
@@ -107,23 +124,80 @@ def crashed(error):
     return jsonify(error="Something went wrong on the server; it is in the server's log."), 500
 
 
+_audit_lock = threading.Lock()
+_failed_logins = []          # times of recent refused logins, from anyone
+
+
+def audit(event, **details):
+    """One line in the audit log: what happened, when, by whom, from where. Never a password or token."""
+    entry = {"time": f"{datetime.now():%Y-%m-%d %H:%M:%S}", "event": event,
+             "who": getattr(g, "user", None), "account": getattr(getattr(g, "account", None), "username", None),
+             "address": request.remote_addr, **details}
+    try:
+        with _audit_lock:
+            API_DIR.mkdir(parents=True, exist_ok=True)
+            with AUDIT_LOG.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
+
+
+def _too_many_failed_logins(add=False):
+    """Many refused logins from anyone in a short time: someone is guessing names. Wait until it is quiet."""
+    now = time.monotonic()
+    with _audit_lock:
+        _failed_logins[:] = [t for t in _failed_logins if now - t < LOGIN_WINDOW_MINUTES * 60]
+        if add:
+            _failed_logins.append(now)
+        return len(_failed_logins) > LOGIN_FAILURES_ALLOWED
+
+
+def _bearer():
+    header = request.headers.get("Authorization", "")
+    return header[7:].strip() if header.startswith("Bearer ") else ""
+
+
 def needs_key(view):
+    """
+    Who is calling: an API key (keys.py; the host's people, allowed everything) or
+    a login session (accounts.py; allowed what the account's role allows).
+    Sets g.user (the name kept with ratings), g.account and g.permissions.
+    """
     @wraps(view)
     def checked(*args, **kwargs):
-        header = request.headers.get("Authorization", "")
-        name = keys.who(header[7:].strip()) if header.startswith("Bearer ") else None
+        token = _bearer()
+        account = accounts.session_account(token)
+        name = account.display_name if account else keys.who(token)
         if name is None:
-            time.sleep(1)       # slows down guessing; the keys are far too long to guess anyway
-            raise Refused("A valid API key is needed (Authorization: Bearer <key>).", 401)
-        g.user = name
+            time.sleep(1)       # slows down guessing; keys and tokens are far too long to guess anyway
+            raise Refused("Log in, or use a valid API key (Authorization: Bearer <key>).", 401)
+        g.user, g.account = name, account
+        g.permissions = account.permissions if account else set(accounts.PERMISSIONS)
         return view(*args, **kwargs)
     return checked
+
+
+def needs(permission):
+    """A route that only accounts allowed to `permission` may use (after needs_key)."""
+    def wrap(view):
+        @wraps(view)
+        def checked(*args, **kwargs):
+            if permission not in g.permissions:
+                raise Refused("Your account may not do this. Ask the host.", 403)
+            return view(*args, **kwargs)
+        return checked
+    return wrap
 
 
 @app.after_request
 def log_and_protect(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000"
+    response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
     try:
         API_DIR.mkdir(parents=True, exist_ok=True)
         with ACCESS_LOG.open("a", encoding="utf-8") as f:
@@ -266,13 +340,64 @@ def health():
     return jsonify(ok=True, version=VERSION)
 
 
+@app.post(f"{API}/login")
+def login():
+    data = body()
+    tried = str(data.get("username") or "")[:40]
+    if _too_many_failed_logins():
+        audit("login held back", username=tried)
+        time.sleep(1)
+        raise Refused("Too many wrong logins on this server just now. Wait a few minutes and try again.", 429)
+    try:
+        account = accounts.authenticate(data.get("username"), data.get("password"))
+    except accounts.LoginRefused as error:
+        _too_many_failed_logins(add=True)
+        audit("login refused", username=tried, reason=str(error))
+        time.sleep(1)           # slows down guessing; the account also locks after a few wrong passwords
+        raise Refused(str(error), 401)
+    g.user, g.account = account.display_name, account
+    audit("login")
+    return jsonify(token=accounts.open_session(account), account=account.public(),
+                   expires_in_hours=accounts.SESSION_HOURS)
+
+
+@app.post(f"{API}/logout")
+@needs_key
+def logout():
+    accounts.close_session(_bearer())
+    audit("logout")
+    return jsonify(ok=True)
+
+
+@app.post(f"{API}/me/password")
+@needs_key
+def change_password():
+    if g.account is None:
+        raise Refused("API keys have no password.", 400)
+    data = body()
+    try:
+        accounts.authenticate(g.account.username, data.get("current"))
+    except accounts.LoginRefused:
+        audit("password change refused")
+        time.sleep(1)
+        raise Refused("The current password is wrong.", 403)
+    try:
+        accounts.set_password(g.account.username, str(data.get("new") or ""))
+    except ValueError as error:
+        raise Refused(str(error))
+    audit("password changed")
+    return jsonify(ok=True, message="Password changed: log in again.")
+
+
 @app.get(f"{API}/me")
 @needs_key
 def me():
     with jobs_lock:
         mine = [job_json(j) for j in jobs.values() if j["owner"] == g.user]
         busy = sum(j["status"] in ("queued", "running") for j in jobs.values())
-    return jsonify(name=g.user, version=VERSION, jobs_waiting=busy, my_jobs=mine[-20:])
+    account = g.account.public() if g.account else {"username": None, "display_name": g.user, "role": "api key",
+                                                    "permissions": sorted(g.permissions), "last_login": None}
+    return jsonify(name=g.user, account=account, version=VERSION, jobs_waiting=busy, my_jobs=mine[-20:])
 
 
 @app.get(f"{API}/datasets")
@@ -313,6 +438,7 @@ def voice_audio():
 
 @app.post(f"{API}/speak")
 @needs_key
+@needs("speak")
 def speak():
     from backend.voice_data.Voice_Importer import get_clip
 
@@ -371,6 +497,31 @@ def searching(run_id):
                    and (j.get("about") or {}).get("run") == run_id for j in jobs.values())
 
 
+def may_see(run):
+    """
+    A listener (an account that may not search) sees only the runs of the listening
+    piles it may rate: no other searches, no other listener's pile. Researchers,
+    admins and API keys see every run.
+    """
+    if g.account is None or g.account.can("search"):
+        return True
+    return bool(run.get("batch") and run.get("pile")) and g.account.may_rate_pile(run["batch"], run["pile"])
+
+
+def sees_others():
+    """Whether this caller may see other listeners' scores (and so the MOS). Listeners rate blind."""
+    return "rate_for_others" in g.permissions
+
+
+def own_ratings(rating):
+    """A run's ratings as a listener may see them: only their own scores."""
+    if sees_others():
+        return rating
+    mine = rating["scores"].get(g.user)
+    return {**rating, "raters": [g.user] if mine else [], "scores": {g.user: mine} if mine else {},
+            "given": {g.user: rating.get("given", {}).get(g.user, {})}}
+
+
 def public_run(run):
     """A run without this PC's file paths."""
     shown = {k: v for k, v in run.items() if k not in ("reference_audio",)}
@@ -390,17 +541,56 @@ def queue_search(run_id, owner):
 def searches():
     from backend.genome import ratings, search
 
-    out = []
-    for folder, run in search.list_runs()[:100]:
+    # ?pile=N (and ?batch=NAME): only one listener's pile of a listening batch (backend/genome/explore.py)
+    pile, batch = request.args.get("pile"), request.args.get("batch")
+    runs = [(f, r) for f, r in search.list_runs() if may_see(r)]
+    if pile or batch:
+        runs = [(f, r) for f, r in runs if r.get("batch") and (not batch or r["batch"] == batch)
+                and (not pile or str(r.get("pile")) == pile)]
+        runs.sort(key=lambda item: item[1]["voice"])
+    out, piles = [], {}
+    for folder, run in runs:
+        if run.get("batch"):
+            piles.setdefault(run["batch"], set()).add(run.get("pile"))
+    for folder, run in runs[:100] if not (pile or batch) else runs:
         out.append({"id": run["id"], "voice": run["voice"], "text": run["text"], "created": run["created"],
                     "status": "queued or running" if searching(run["id"]) else run["status"],
                     "summary": search.summary(run), "requested_by": run.get("requested_by"),
-                    "rated": ratings.is_rated(folder)})
-    return jsonify(searches=out)
+                    "rated": ratings.is_rated(folder), "batch": run.get("batch"), "pile": run.get("pile")})
+    return jsonify(searches=out, piles={b: sorted(p for p in ps if p) for b, ps in piles.items()})
+
+
+@app.get(f"{API}/genome/listening")
+@needs_key
+def listening():
+    """
+    One listening pile for the logged-in listener: every clip of its runs with
+    their own score and the MOS, for the Rate tab and its ranking.
+    ?batch=NAME&pile=N; without them, only the piles that exist.
+    """
+    from backend.genome import ratings, search
+
+    every = [(f, r) for f, r in search.list_runs() if r.get("batch") and r.get("pile")
+             and (g.account is None or g.account.may_rate_pile(r["batch"], r["pile"]))]
+    piles = {}
+    for _, run in every:
+        piles.setdefault(run["batch"], set()).add(run["pile"])
+    piles = {b: sorted(ps) for b, ps in sorted(piles.items())}
+    batch, pile = request.args.get("batch"), request.args.get("pile")
+    assigned = g.account.assignments if g.account else []
+    if not (batch and pile):
+        return jsonify(piles=piles, rater=g.user, assigned=assigned)
+    runs = sorted(((f, r) for f, r in every if r["batch"] == batch and str(r["pile"]) == pile
+                   and r["status"] == "finished" and not searching(r["id"])), key=lambda item: item[1]["voice"])
+    if not runs:
+        raise Refused("No such pile.", 404)
+    return jsonify(piles=piles, rater=g.user, assigned=assigned, batch=batch, pile=int(pile), max_raters=ratings.MAX_RATERS,
+                   sees_others=sees_others(), **ratings.collection(runs, g.user, others=sees_others()))
 
 
 @app.post(f"{API}/genome/searches")
 @needs_key
+@needs("search")
 def new_search():
     from backend.genome import search
     from backend.voice_data import split_voice_data
@@ -435,11 +625,13 @@ def one_search(run_id):
 
     folder = run_dir_of(run_id)
     run = search.load_run(folder)
+    if not may_see(run):
+        raise Refused("No such search.", 404)
     busy = searching(run_id)
     state = run["status"]
     if state == "running" and not busy:
         state = "stopped"
-    rating = ratings.load(folder)
+    rating = own_ratings(ratings.load(folder))
     return jsonify(run=public_run(run), state="queued or running" if busy else state,
                    summary=search.summary(run), ratings={k: rating[k] for k in ("raters", "scores", "picked")},
                    ranking=ratings.ranked(folder, run, rating), max_raters=ratings.MAX_RATERS)
@@ -447,6 +639,7 @@ def one_search(run_id):
 
 @app.post(f"{API}/genome/searches/<run_id>/continue")
 @needs_key
+@needs("search")
 def continue_search(run_id):
     from backend.genome import search
 
@@ -463,7 +656,12 @@ def continue_search(run_id):
 def search_audio(run_id, name):
     if not CLIP_FILE.match(name):
         raise Refused("No such clip.", 404)
-    path = run_dir_of(run_id) / name
+    from backend.genome import search
+
+    folder = run_dir_of(run_id)
+    if not may_see(search.load_run(folder)):
+        raise Refused("No such clip.", 404)
+    path = folder / name
     if not path.is_file():
         raise Refused("That clip is not made yet.", 404)
     return send_file(path, mimetype="audio/wav")
@@ -476,8 +674,9 @@ def not_while_searching(run_id):
 
 @app.post(f"{API}/genome/searches/<run_id>/ratings")
 @needs_key
+@needs("rate")
 def rate(run_id):
-    from backend.genome import ratings
+    from backend.genome import ratings, search
 
     folder = run_dir_of(run_id)
     not_while_searching(run_id)
@@ -486,16 +685,31 @@ def rate(run_id):
         raise Refused('Send {"scores": {"listener name": {"genome_01": 4, ...}}}.')
     if not all(isinstance(clips, dict) for clips in scores.values()):
         raise Refused("Each listener's scores must be an object of clip: score.")
+    if "rate_for_others" not in g.permissions and set(scores) != {g.user}:
+        raise Refused(f"You can only save your own scores, as {g.user}.", 403)
+    run = search.load_run(folder)
+    if not may_see(run):
+        raise Refused("No such search.", 404)
+    if g.account and run.get("batch") and not g.account.may_rate_pile(run["batch"], run.get("pile") or 0):
+        raise Refused("This run is in another listener's pile.", 403)
     try:
-        saved = ratings.save_scores(folder, scores, submitted_by=g.user)
+        ratings.save_scores(folder, scores, submitted_by=g.user,
+                            account=g.account.username if g.account else None)
     except (TypeError, ValueError) as error:
         raise Refused(str(error))
-    return jsonify(saved=sum(len(c) for c in scores.values()), raters=saved["raters"],
-                   ranking=ratings.ranked(folder))
+    stored = ratings.load(folder)        # read back from the disk, so the page shows only what was really kept
+    audit("rated", run=run_id, clips=sum(len(c) for c in scores.values()))
+    shown = own_ratings(stored)
+    return jsonify(saved=sum(len(c) for c in scores.values()), raters=shown["raters"],
+                   stored={rater: stored["scores"].get(rater, {}) for rater in scores},
+                   rated_on={rater: {clip: d.get("time") for clip, d in stored.get("given", {}).get(rater, {}).items()}
+                             for rater in scores},
+                   ranking=ratings.ranked(folder, ratings=shown))
 
 
 @app.post(f"{API}/genome/searches/<run_id>/pick")
 @needs_key
+@needs("name")
 def pick(run_id):
     from backend.genome import ratings
 
@@ -511,6 +725,7 @@ def pick(run_id):
 
 @app.post(f"{API}/genome/searches/<run_id>/unpick")
 @needs_key
+@needs("name")
 def unpick(run_id):
     from backend.genome import ratings
 
@@ -536,7 +751,7 @@ def named():
 @needs_key
 def results():
     out = {"baselines": [], "milestone2": []}
-    for folder in sorted((model.PROJECT_DIR / "output" / "baseline").glob("*/summary.json")):
+    for folder in sorted((model.OUTPUT_DIR / "baseline").glob("*/summary.json")):
         record_path = folder.parent / "record.json"
         record = json.loads(record_path.read_text(encoding="utf-8")) if record_path.is_file() else {}
         checks_path = folder.parent / "checks.json"
@@ -546,7 +761,7 @@ def results():
                                  "git_commit": record.get("git_commit"), "git_dirty": record.get("git_dirty"),
                                  "checks": [{"name": c["name"], "passed": c["passed"]} for c in checks],
                                  "summary": json.loads(folder.read_text(encoding="utf-8"))})
-    for folder in sorted((model.PROJECT_DIR / "output" / "milestone2").glob("*/summary.json")):
+    for folder in sorted((model.OUTPUT_DIR / "milestone2").glob("*/summary.json")):
         out["milestone2"].append({"name": folder.parent.name, "summary": json.loads(folder.read_text(encoding="utf-8"))})
     return jsonify(out)
 
@@ -596,6 +811,7 @@ class HandshakeOnItsOwnThread(ssl.SSLContext):
 
 class ClosesIdleConnections(WSGIRequestHandler):
     timeout = IDLE_SECONDS
+    server_version, sys_version = "Dramatizer", ""      # do not tell the world which Werkzeug and Python run here
 
 
 def tls_context():
@@ -608,7 +824,7 @@ def tls_context():
 
 
 def main(port=PORT):
-    people = keys.load()["keys"]
+    people = list(keys.load()["keys"]) + [f"{a.display_name} (login)" for a in accounts.load().values() if not a.disabled]
     context = tls_context()
     threading.Thread(target=worker, name="gpu jobs", daemon=True).start()
     threading.Thread(target=library, name="read voices", daemon=True).start()
@@ -616,7 +832,7 @@ def main(port=PORT):
 Dramatizer API on https://127.0.0.1:{port}{API}
   Certificate fingerprint (give it to the people you share with; their client checks it):
     {fingerprint()}
-  Keys: {len(people)} ({', '.join(people) or 'none yet: python main_backend.py api-key add NAME'})
+  Who may use it: {len(people)} ({', '.join(people) or 'nobody yet: python main_backend.py api-key add NAME, or account add USERNAME'})
   playit.gg: a TCP tunnel to local address 127.0.0.1, port {port}. Only tunnel this port.
   Stop with Ctrl+C.
 """, flush=True)

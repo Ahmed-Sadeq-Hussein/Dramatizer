@@ -33,7 +33,7 @@ from backend import model
 from backend.metrics.Similarity import _embedding
 from backend.voice_data.Voice_Importer import get_clip, read_crema_d, read_vctk
 
-OUT_DIR = model.PROJECT_DIR / "output" / "calibration"
+OUT_DIR = model.OUTPUT_DIR / "calibration"
 
 # Short clips give unreliable embeddings, and Dramatizer's references are full sentences
 MIN_WORDS = 6

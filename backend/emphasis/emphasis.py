@@ -282,7 +282,7 @@ def speak_with_emphasis(reference_audio, reference_text, line, values, voice_nam
     cosyvoice = model.voice_model()
     audio = synthesize(cosyvoice, plan, str(reference_audio), reference_text)
 
-    folder = model.PROJECT_DIR / model.setting("OUTPUT_DIR", "output") / voice_name
+    folder = model.OUTPUT_DIR / voice_name
     folder.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     plain = folder / f"{voice_name}_{stamp}_plain.wav"

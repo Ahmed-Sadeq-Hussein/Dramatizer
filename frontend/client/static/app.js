@@ -31,6 +31,7 @@ async function call(path, options = {}) {
   const reply = await fetch(API + path, init);
   let data = {};
   try { data = await reply.json(); } catch (e) { /* audio or empty */ }
+  if (reply.status === 401 && path !== "/login" && state.mode === "login") showLogin();
   if (!reply.ok) throw new Error(data.error || `The host answered ${reply.status}.`);
   return data;
 }
@@ -56,22 +57,89 @@ function showTab(name) {
   document.querySelectorAll(".tab").forEach((s) => (s.hidden = s.id !== "tab-" + name));
   if (name === "genomes" && !state.run) loadSearches();
   if (name === "results") loadResults();
+  if (name === "rate") Rate.open();
 }
 document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
 
 // ------------------------------------------------------------- connection --
+const can = (permission) => !!(state.me && state.me.account && state.me.account.permissions.includes(permission));
+
+// Returns true when someone is known to the host (an API key, or a logged-in account)
 async function connect() {
   const c = $("conn");
   try {
     const local = await (await fetch("/connection")).json();
+    state.mode = local.mode;
+    state.host = local.host;
+    $("account").hidden = local.mode !== "login" || !local.name;
+    if (local.mode === "login" && !local.name) { showLogin(); return false; }
     state.me = await call("/me");
-    c.textContent = `${state.me.name} · ${local.host}` + (state.me.jobs_waiting ? ` · ${state.me.jobs_waiting} job(s) on the host` : "");
+    const role = state.me.account && state.me.account.role !== "api key" ? ` (${state.me.account.role})` : "";
+    c.textContent = `${state.me.name}${role} · ${local.host}` + (state.me.jobs_waiting ? ` · ${state.me.jobs_waiting} job(s) on the host` : "");
     c.className = "conn ok";
+    applyPermissions();
+    return true;
   } catch (error) {
     c.textContent = error.message;
     c.className = "conn bad";
+    return false;
   }
 }
+
+// What a listener account cannot do is hidden rather than refused
+function applyPermissions() {
+  // A listener only rates: the other tabs would show other searches and distract from the listening test
+  const listener = can("rate") && !can("search") && !can("speak");
+  for (const tab of ["voices", "genomes", "results"]) document.querySelector(`.tabs [data-tab="${tab}"]`).hidden = listener;
+  document.querySelector('.tabs [data-tab="speak"]').hidden = !can("speak");
+  document.querySelector("#tab-genomes details.card").hidden = !can("search");
+  document.body.classList.toggle("can-name", can("name"));
+  document.body.classList.toggle("own-scores-only", !can("rate_for_others"));
+}
+
+// ------------------------------------------------------------------ login --
+function showLogin() {
+  state.me = null;
+  $("login").hidden = false;
+  $("app").hidden = true;
+  $("account").hidden = true;
+  $("conn").textContent = state.host ? `Not logged in · ${state.host}` : "Not logged in";
+  $("conn").className = "conn";
+  setTimeout(() => $("login-user").focus(), 0);
+}
+
+$("login-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const button = $("login-form").querySelector("button");
+  button.disabled = true;
+  $("login-error").hidden = true;
+  try {
+    await call("/login", { body: { username: $("login-user").value.trim(), password: $("login-pass").value } });
+    $("login-pass").value = "";
+    $("login").hidden = true;
+    $("app").hidden = false;
+    if (await connect()) start();
+  } catch (error) {
+    $("login-error").textContent = error.message;
+    $("login-error").hidden = false;
+  } finally { button.disabled = false; }
+});
+
+$("logout").addEventListener("click", async () => {
+  try { await call("/logout", { body: {} }); } catch (e) {}
+  location.reload();
+});
+
+$("password-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const current = $("pw-current").value, next = $("pw-new").value;
+  if (next !== $("pw-again").value) return toast("The two new passwords are not the same.", true);
+  try {
+    const reply = await call("/me/password", { body: { current, new: next } });
+    toast(reply.message);
+    setTimeout(() => location.reload(), 1500);
+  } catch (error) { toast(error.message, true); }
+});
 
 // -------------------------------------------------------------- 1. voices --
 async function loadDatasets() {
@@ -166,11 +234,21 @@ function followJob(id, card) {
 // ------------------------------------------------------------- 3. genomes --
 async function loadSearches() {
   try {
-    const [{ searches }, { named }] = await Promise.all([call("/genome/searches"), call("/genome/named")]);
+    const chosen = $("pile-filter").value;   // "batch|pile" or "" for all
+    const [batch, pile] = chosen ? chosen.split("|") : [];
+    const query = chosen ? `?batch=${encodeURIComponent(batch)}&pile=${encodeURIComponent(pile)}` : "";
+    const [{ searches, piles }, { named }] = await Promise.all([call("/genome/searches" + query), call("/genome/named")]);
+    const options = [el("option", { value: "" }, "All searches")];
+    for (const [b, ps] of Object.entries(piles || {})) for (const p of ps)
+      options.push(el("option", { value: `${b}|${p}` }, `${b} · pile ${p}`));
+    $("pile-filter").replaceChildren(...options);
+    $("pile-filter").value = options.some((o) => o.value === chosen) ? chosen : "";
+    $("pile-note").hidden = !chosen;
+    try { localStorage.setItem("pile", $("pile-filter").value); } catch (e) {}
     $("search-list").replaceChildren(...(searches.length ? searches.map((s) =>
       el("li", { class: "item clickable", onclick: () => openRun(s.id) },
         el("div", { class: "item-head" },
-          el("strong", {}, `${s.voice} · ${s.created}`),
+          el("strong", {}, s.pile ? `${s.voice} · pile ${s.pile}` : `${s.voice} · ${s.created}`),
           el("span", {},
             s.rated ? el("span", { class: "mos" }, "rated") : null, " ",
             el("span", { class: "pill " + (s.summary.done === s.summary.total ? "fine" : "neutral") },
@@ -184,6 +262,9 @@ async function loadSearches() {
         el("p", { class: "markup" }, n.markup))) : [el("li", { class: "muted" }, "None yet: rate a search, then pick its best genome.")]));
   } catch (error) { toast(error.message, true); }
 }
+
+$("pile-filter").addEventListener("change", loadSearches);
+try { const saved = localStorage.getItem("pile"); if (saved) $("pile-filter").append(el("option", { value: saved }, saved)), $("pile-filter").value = saved; } catch (e) {}
 
 $("search-form").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -262,17 +343,18 @@ function raterNames(data) {
   const saved = data.ratings.raters;
   const typed = [...document.querySelectorAll("#rater-names input")].map((i) => i.value.trim());
   const names = [];
+  if (!can("rate_for_others") && state.me) return [state.me.name];    // an account rates only as itself
   for (let i = 0; i < data.max_raters; i++) names.push(typed[i] || saved[i] || (i === 0 && state.me ? state.me.name : ""));
   return names;
 }
 
 function renderRate(data, busy) {
   const names = raterNames(data);
-  const count = Math.max(1, Math.min(data.max_raters, Number($("rater-count").value) || data.ratings.raters.length || 1));
+  const count = names.length === 1 ? 1 : Math.max(1, Math.min(data.max_raters, Number($("rater-count").value) || data.ratings.raters.length || 1));
   $("rater-count").value = String(count);
   $("rater-names").replaceChildren(...names.map((name, i) =>
     el("label", { dataset: { rater: i + 1 }, hidden: i >= count }, `Listener ${i + 1}`,
-      el("input", { type: "text", maxlength: 40, value: name, placeholder: "Name", oninput: () => relabel() }))));
+      el("input", { type: "text", maxlength: 40, value: name, placeholder: "Name", readonly: !can("rate_for_others") && state.me, oninput: () => relabel() }))));
 
   const { run } = data;
   const clips = [];
@@ -409,5 +491,19 @@ async function loadResults() {
 }
 
 // ------------------------------------------------------------------ start --
-connect().then(loadDatasets);
-setInterval(connect, 30000);
+let started = false;
+function start() {
+  if (started) {
+    // Logged in again (the session ran out): reload the pile, which also sends any scores still waiting
+    if (!$("tab-rate").hidden) Rate.open();
+    return;
+  }
+  started = true;
+  loadDatasets();
+  // Whoever has a pile to rate (or may do nothing else) starts on the Rate genomes tab, on their pile
+  const account = state.me && state.me.account;
+  if (account && account.permissions.includes("rate") &&
+      ((account.assignments || []).length || (!can("speak") && !can("search")))) showTab("rate");
+}
+connect().then((ok) => ok && start());
+setInterval(() => { if (state.me) connect(); }, 30000);

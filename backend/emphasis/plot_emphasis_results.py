@@ -12,6 +12,7 @@ Writes three PNGs next to the results:
 Needs matplotlib (in the dramatizer env; the llm env does not have it).
 """
 import json
+import os
 from pathlib import Path
 
 import matplotlib
@@ -21,7 +22,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 PROJECT_DIR = Path(__file__).resolve().parents[2]
-OUT_DIR = PROJECT_DIR / "output" / "emphasis_test"
+DEFAULT_OUTPUT_DIR = "D:/Dramatizer 2 renders"    # the same as backend/model.py
+OUT_DIR = PROJECT_DIR / (os.environ.get("OUTPUT_DIR") or DEFAULT_OUTPUT_DIR) / "emphasis_test"
 TESTSET = PROJECT_DIR / "backend" / "data" / "emphasis_testset.json"
 
 SURFACE = "#fcfcfb"

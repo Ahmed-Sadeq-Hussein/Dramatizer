@@ -37,6 +37,11 @@ Use the project's Python environment. Every back-end command goes through
 python main_backend.py              # list every command
 python main_backend.py checks       # the data contract and the split
 python main_backend.py baseline     # the baseline (renders on the GPU)
+python main_backend.py baseline --name script-v1 --script backend/data/scripts/context-script-v1.json --voices all
+                                    # the script baseline: the test line in every validation voice
+python main_backend.py voice-map --pick 18   # 3D map and clusters of the validation voices, 18 spread-out picks
+python main_backend.py voice-map --dedupe     # or: one voice per tight cluster plus every loner
+python main_backend.py explore --hours 6.5     # far-apart genomes for those voices, in 3 MOS piles (renders)
 python main_backend.py compare-search --run   # Milestone 2: random genome search vs the baseline
 python main_backend.py test         # the tests that need no GPU
 python main_frontend.py             # the website (V4)
@@ -63,7 +68,7 @@ own `.env`, and it is never committed.
 | `DEVICE` | `cuda` or `cpu` |
 | `VOICES_DIR` | One sub-folder per voice with `reference.wav` and `reference.txt` |
 | `VOICE_LIBRARY_DIR` | The datasets, one sub-folder each (`CREMA_D_FOLDER`, `VCTK_FOLDER`, `LIBRITTS_R_FOLDER`) |
-| `OUTPUT_DIR` | Renders, genome searches and baselines (default `output`) |
+| `OUTPUT_DIR` | Renders, genome searches and baselines (default `D:/Dramatizer 2 renders`, off the project drive) |
 | `WER_MODEL` | Speech recogniser for the word error rate: `whisper-base` (or tiny, small, medium) |
 | `SIMILARITY_MODEL` | Speaker similarity: `resemblyzer` |
 | `PERQ_MODEL` | Estimated quality: `squim` |

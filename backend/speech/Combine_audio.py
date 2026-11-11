@@ -46,7 +46,7 @@ import soundfile as sf
 from backend import model
 from backend.audio_io import load_mono
 
-OUTPUT_DIR = model.PROJECT_DIR / "output" / "combined"
+OUTPUT_DIR = model.OUTPUT_DIR / "combined"
 MODES = ("join", "overlay")
 
 

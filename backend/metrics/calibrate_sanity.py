@@ -36,7 +36,7 @@ import numpy as np
 
 from backend import model
 
-OUT_DIR = model.PROJECT_DIR / "output" / "calibration" / "sanity"
+OUT_DIR = model.OUTPUT_DIR / "calibration" / "sanity"
 # A short line and a long one: a limit in words matters most on the short one.
 # Written without digits, because the search renders without the text normaliser.
 LINES = [

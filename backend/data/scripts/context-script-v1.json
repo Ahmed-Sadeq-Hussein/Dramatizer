@@ -1,0 +1,28 @@
+{
+  "name": "context-script-v1",
+  "what": "One line, the same words for every test, that means something different depending on who says it and why. The genome's job is to bring out one character's reading from these fixed words. Its plain render in every validation voice is the baseline for every later test (backend/evaluation/baseline.py --script).",
+  "rules": [
+    "The words never change: only the delivery (stress, pauses, pace, pitch, breath, laughter) may change the meaning.",
+    "The line names no emotion and no relationship, so every character below can say it naturally.",
+    "Plain words, no digits or abbreviations, because the renderer runs without a text normaliser.",
+    "Two sentences, 14 words (about 5 s), long enough for a stable similarity measure (LIMITATIONS.md)."
+  ],
+  "lines": [
+    {
+      "id": "came-back",
+      "text": "So you finally came back. I kept everything exactly the way you left it.",
+      "kind": "love, grief, menace, bitterness, relief or comedy, depending on the character",
+      "readings": [
+        {"character": "A parent whose grown child comes home after years away", "reading": "warm, tearful joy; breath before the second sentence; soft on \"exactly\""},
+        {"character": "A widow speaking at a grave", "reading": "grief; slow, breaking voice; long pause after \"back\""},
+        {"character": "A villain who has been waiting for the hero", "reading": "cold menace; low and slow; stress on \"finally\"; a smile in the voice"},
+        {"character": "An obsessive stalker", "reading": "unsettling calm; too gentle, too even; lingering on \"exactly\""},
+        {"character": "A partner who was left without a word", "reading": "bitter and hurt; clipped first sentence; flat, controlled second"},
+        {"character": "A loyal dog's owner, half joking, to the dog", "reading": "playful, delighted; fast; a laugh at the end"},
+        {"character": "A roommate pointing at a pile of dirty dishes", "reading": "dry sarcasm; drawn-out \"finally\"; stress on \"exactly\"; a sigh"},
+        {"character": "A soldier's comrade, relieved they survived", "reading": "relief; breath out first; quiet, rough voice"},
+        {"character": "A ghost in an empty house", "reading": "distant and hollow; very slow; whispered second sentence"}
+      ]
+    }
+  ]
+}

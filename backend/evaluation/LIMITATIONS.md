@@ -25,6 +25,39 @@ The split is made over **voices**: speakers with at least one neutral clip of 3-
 
 Validation is used for all development and for the baseline. The test speakers are locked and unused, so no result in this milestone has been measured on them.
 
+### The voice map (9 Nov 2026): which voices sound alike
+
+`python main_backend.py voice-map --pick 18` (`backend/voice_data/voice_map.py`; output in `OUTPUT_DIR/voice_map/`). It maps the 176 validation voices by how alike they sound, to pick a varied set of voices for the genome search.
+
+**Our similarity judge mostly measures the recording, not the voice.** With Resemblyzer on each voice's reference clip, 86 % of a voice's 5 nearest voices come from its own dataset (39 % by chance), and a classifier tells the dataset from the embedding 93 % of the time. CosyVoice's own speaker model (CAM++, `campplus.onnx`) does the same (82 %). Equalising the audio (same band, same loudness, silence cut) or removing noise (DeepFilterNet) leaves it at 79-86 %. Part of this is real (CREMA-D's American actors, VCTK's British accents, read against acted speech), but most is the recording setup. This also matters for every similarity score: a CREMA-D render's lower similarity (0.81 in script-v1) is partly its recording.
+
+**What fixed it**, chosen among about 70 configurations scored on a reference clip and up to 4 other neutral clips per voice (the scripts were run outside the repository):
+
+- Each voice is the mean of its clips' embeddings (the reference and up to 4 more).
+- Each dataset's mean embedding is removed.
+- Each similarity is z-normalised within its dataset pair (s-norm). The order of voices within a dataset does not change; only scores across datasets become comparable.
+
+| Measured on held-out clips | Before | Way 1 (CAM++) | Way 2 (CAM++ + Resemblyzer) |
+|---|---|---|---|
+| Nearest 5 from own dataset (chance 39 %) | 86 % | 39 % | 43 % |
+| A clip not used for the map finds its own voice first, of 176 | 88 % | 93 % | 95 % |
+| ... within its own dataset | 89 % | 99 % | 100 % |
+
+Resemblyzer and CAM++ are independent models; after the fix, 44 % of their 5 nearest voices from other datasets are the same (4.5 % by chance), and removing the dataset means makes them agree more within a dataset (r 0.79 to 0.85), so the fix removes noise rather than voice. LDA trained on the extra clips, dataset whitening and removing dataset directions (NAP) were worse.
+
+**Voices form a continuum, not types.** HDBSCAN finds only two natural groups. The stable structure is two families (stability 0.98 on 80 % subsets), split by pitch (median 192 Hz against 115 Hz, most likely female and male; the datasets have no gender labels here). Below that, Way 1's 4 groups (0.85) and 8 neighbourhoods (0.67) and Way 2's 3 communities (0.88) are browsing aids. No dataset dominates any cluster (dataset NMI 0.00-0.05), except that one of the 8 neighbourhoods is 15 of 17 VCTK.
+
+**Not shown:** no listener has judged whether neighbours on the map sound alike; pitch is the only check by ear (nearest voices are 1.4-1.6 semitones apart, random pairs 4.8). S-norm assumes every dataset's voices vary as much as the others'. Removing the dataset mean also removes accent differences between datasets.
+
+**Fewer, more different voices** (`voice-map --dedupe`): one voice per tight cluster plus every loner, in the Way 2 similarity, because the two models agree best on which pairs are close (54 % of their 10 % most alike pairs are shared; chance 10 %). Two voices are close when they are among the 10 % most alike pairs. Loners are the 5 % of voices whose closest voice is least alike; they are kept first, and an isolated pair of loners keeps one. Then the voice with the most close voices still uncovered is kept, and those voices are dropped, until every voice is kept or close to a kept one. On 9 Nov 2026 this kept 24 of 176 voices (6 loners): LibriTTS-R 12, VCTK 10, CREMA-D 2, with 15 high-pitched and 9 low-pitched voices. No two picks are close; their most alike pair scores 1.41 standard deviations, against 2.64 for 24 random voices. The picks cover both families, all 4 groups and 7 of the 8 neighbourhoods.
+
+Limits of this pick:
+
+- "Tight" is relative, not "duplicate". Two halves of one voice's clips score a median of 4.0, and the most alike pair of different voices scores 3.4, so no two voices are interchangeable to the models.
+- Loners are the least certain part. The two models share only 7 of their 18 most alone voices (chance about 2).
+- The count follows from the two shares (10 % and 5 %), which are choices, not measurements.
+- CREMA-D, the only emotional dataset, gets 2 voices, because most of its voices are close to a voice from another dataset.
+
 ## Measurements
 
 WER uses Whisper base, similarity uses Resemblyzer, and quality uses SQUIM, which estimates PESQ, STOI and SI-SDR without a clean reference. These are automatic estimates with their own errors. Whisper can mishear clear speech, Resemblyzer can confuse similar voices, and PESQ was designed for telephone speech, not for synthetic voices; SQUIM mostly measures how clean a recording is, not how natural it sounds. No listening test has been done, so the numbers do not show whether a listener would find the output natural or the voice convincing.
@@ -58,6 +91,27 @@ The sample on validation is small, so a difference of a few hundredths is not me
 Known-answer checks, all passed: a reference compared with itself has similarity 1; Whisper hears the reference recordings with a median WER of 0 (mean 0.027); 59 of 60 renders are most like their own voice of the 12; and rendering the same voice, line and seed again gives the same samples.
 
 What it shows: plain CosyVoice 3 keeps the words almost perfectly, so WER leaves little room to improve and is mainly a guard for later changes. Similarity and quality differ by dataset, so later results must be reported per dataset as well.
+
+### The script baseline, script-v1 (9 Nov 2026): the baseline for every later test
+
+The test script, `backend/data/scripts/context-script-v1.json`, is **one line of two sentences**: "So you finally came back. I kept everything exactly the way you left it." (14 words). It names no emotion and no relationship, so the same words fit very different characters: a parent welcoming a child home, a widow at a grave, a villain, a stalker, a hurt partner, a sarcastic roommate, a relieved comrade, a ghost. The file lists 9 such characters with the delivery each one calls for. The genome's job in later tests is to bring out one character's reading from these fixed words.
+
+The line is rendered plainly (no genome, render seed 0) in **every validation voice** of the voice manifest, each with its longest clip: 176 renders. They live outside the project, in `BASELINE_AUDIO_DIR/script-v1/` (default: the folder "Dramatizer 2 baselines" next to the project), so the repository stays small. Each voice's folder is named after its reference clip (`<dataset>_<clip id>`), and `baseline_manifest.json` lists every audio with its line and the reference clip it was cloned from (dataset, speaker, clip id, transcript, length, checksum, split). It is logged in MLflow as `baseline-script-v1`.
+
+| | WER | Heard exactly | Similarity to the reference | PESQ (SQUIM estimate) |
+|---|---|---|---|---|
+| All (176 voices) | 0.009 (0.004-0.014) | 93 % | 0.906 (0.899-0.913) | 3.77 (3.69-3.85) |
+| VCTK (87) | 0.011 (0.004-0.020) | 91 % | 0.919 (0.915-0.923) | 3.94 (3.90-3.99) |
+| CREMA-D (27) | 0.008 (0.000-0.021) | 93 % | 0.810 (0.797-0.824) | 2.56 (2.41-2.70) |
+| LibriTTS-R (62) | 0.006 (0.000-0.013) | 95 % | 0.930 (0.925-0.934) | 4.06 (4.02-4.11) |
+
+- **All 4 known-answer checks passed.** 171 of 176 renders (97 %) are most like their own voice out of all 176, a much harder test than among 12. The reference recordings are heard with a median WER of 0.03.
+- **13 of 176 renders were misheard, almost all at the start.** "finally" became "find the" or "find and" in five voices, and "So you" became "Sue" or "Are you". The second sentence is nearly always heard exactly. This start is the weakest part of the line, and a genome that slows or stresses "finally" may change its WER either way.
+- **The long-reference leak happened again in LibriTTS-R 7127** ("be damned" before the line), and one other LibriTTS-R voice (3729) adds "Aw." at the start. These are 2 of 62 LibriTTS-R voices.
+- **CREMA-D stays the least similar** (0.810), as in every baseline: its references are only about 3 s.
+- **The intervals are narrow** because the sample is 176 voices, so a later change of a few hundredths in similarity can now be told apart from chance.
+- **The final test voices are not rendered.** They stay locked until the final evaluation, where the same script is rendered in them.
+- **The references are the longest clips,** so the long-reference leak seen in v4 (LibriTTS-R 7127) is expected in some LibriTTS-R voices. It is part of the plain model's behaviour that later tests are compared with.
 
 ### Baseline v4 (8 Nov 2026): the voice split, longest clips
 

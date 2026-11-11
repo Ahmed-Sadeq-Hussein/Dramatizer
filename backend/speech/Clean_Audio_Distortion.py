@@ -53,7 +53,7 @@ import soundfile as sf
 
 from backend import model
 
-OUTPUT_DIR = model.PROJECT_DIR / "output" / "cleaned"
+OUTPUT_DIR = model.OUTPUT_DIR / "cleaned"
 METHODS = ("deepfilter", "spectral")
 
 # At strength 1.0 DeepFilterNet removes noise without limit; lower strengths

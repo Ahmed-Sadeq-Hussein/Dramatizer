@@ -9,8 +9,36 @@
 <body>
 <header class="top">
   <div class="brand">Dramatizer <span class="tag">client</span></div>
-  <div class="conn" id="conn">Connecting…</div>
+  <div class="who">
+    <div class="conn" id="conn">Connecting…</div>
+    <details class="account" id="account" hidden>
+      <summary>Account</summary>
+      <div class="account-menu">
+        <form id="password-form" class="stack">
+          <strong>Change password</strong>
+          <label>Current password <input type="password" id="pw-current" autocomplete="current-password" required></label>
+          <label>New password (12 or more characters) <input type="password" id="pw-new" autocomplete="new-password" minlength="12" required></label>
+          <label>New password again <input type="password" id="pw-again" autocomplete="new-password" minlength="12" required></label>
+          <button type="submit">Change password</button>
+        </form>
+        <button type="button" class="quiet" id="logout">Log out</button>
+      </div>
+    </details>
+  </div>
 </header>
+
+<section class="login" id="login" hidden>
+  <form id="login-form" class="stack card">
+    <h2>Log in</h2>
+    <p class="muted small">With the username and password the host gave you.</p>
+    <label>Username <input id="login-user" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+    <label>Password <input id="login-pass" type="password" autocomplete="current-password" required></label>
+    <p class="login-error" id="login-error" role="alert" hidden></p>
+    <button type="submit">Log in</button>
+  </form>
+</section>
+
+<div id="app">
 
 <div class="chosen" id="chosen" hidden>
   <span class="label">Voice</span> <strong id="chosen-name"></strong>
@@ -22,6 +50,7 @@
   <button role="tab" data-tab="voices" class="on">1 · Choose a voice</button>
   <button role="tab" data-tab="speak">2 · Speak</button>
   <button role="tab" data-tab="genomes">3 · Genomes</button>
+  <button role="tab" data-tab="rate">Rate genomes</button>
   <button role="tab" data-tab="results">Results</button>
 </nav>
 
@@ -66,6 +95,8 @@
         </form>
       </details>
       <h3>Searches</h3>
+      <label class="row">Listening pile <select id="pile-filter"><option value="">All searches</option></select></label>
+      <p class="muted small" id="pile-note" hidden>Your pile: rate every search in it. Each has the plain line and up to 10 deliveries.</p>
       <ul class="list" id="search-list"></ul>
       <h3>Named genomes</h3>
       <ul class="list" id="named-list"></ul>
@@ -100,14 +131,61 @@
     </div>
   </section>
 
+  <!-- Rate genomes: one listener, one pile -->
+  <section class="tab" id="tab-rate" hidden>
+    <div class="rate-top">
+      <label>Listening pile <select id="rp-pile"></select></label>
+      <div class="views" role="tablist">
+        <button data-rview="rate" class="on">Rate</button>
+        <button data-rview="rank">Ranking</button>
+      </div>
+    </div>
+    <div class="progress-bar" id="rp-progress" hidden>
+      <div class="progress-track"><div class="progress-fill" id="rp-fill"></div></div>
+      <span id="rp-progress-text"></span>
+      <span class="check-host">
+        <button type="button" class="quiet small" id="rp-check">Check with host</button>
+        <span class="muted small" id="rp-checked" aria-live="polite"></span>
+      </span>
+    </div>
+    <p class="muted" id="rp-empty" hidden></p>
+
+    <div id="rp-rate">
+      <p class="intro small">Listen to the plain line first, then score every version from 0 (bad) to 5 (excellent) in steps of
+        0.5. Score how good and expressive it sounds as speech. A score is saved as soon as you set it, and you can change it at any time.</p>
+      <nav class="voice-steps" id="rp-voices" aria-label="Voices in this pile"></nav>
+      <div id="rp-run"></div>
+      <div class="run-nav">
+        <button type="button" class="quiet" id="rp-prev">‹ Previous voice</button>
+        <button type="button" id="rp-next">Next voice ›</button>
+      </div>
+    </div>
+
+    <div id="rp-rank" hidden>
+      <div class="row rank-controls">
+        <label>Order by <select id="rk-by">
+          <option value="mine">My score</option>
+          <option value="mine_above_baseline">My score minus the plain line</option>
+          <option value="mos">Everyone's mean (MOS)</option>
+        </select></label>
+        <label>Voice <select id="rk-voice"><option value="">All voices</option></select></label>
+        <label class="check"><input type="checkbox" id="rk-base"> Show the plain lines</label>
+      </div>
+      <p class="muted small" id="rk-head"></p>
+      <ol class="ranking" id="rk-list"></ol>
+    </div>
+  </section>
+
   <!-- Results -->
   <section class="tab" id="tab-results" hidden>
     <p class="intro">The measured baselines (CosyVoice 3, no genome) and the genome search comparison, from the host's PC.</p>
     <div id="results"></div>
   </section>
 </main>
+</div>
 
 <div class="toast" id="toast" role="status" hidden></div>
 <script src="/static/app.js"></script>
+<script src="/static/rate.js"></script>
 </body>
 </html>

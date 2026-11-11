@@ -31,7 +31,6 @@ clip differ only by the genome. The genome seed decides which genomes are drawn.
 """
 import argparse
 import json
-import os
 import re
 import secrets
 import time
@@ -40,11 +39,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from backend import model
+from backend import model, safe_files
 from backend.genome.candidate import Candidate
 from backend.genome.genome_factory import MAX_OPERATIONS, GenomeFactory
 
-RUNS_DIR = model.PROJECT_DIR / model.setting("OUTPUT_DIR", "output") / "genome_search"
+RUNS_DIR = model.OUTPUT_DIR / "genome_search"
 RUN_ID = re.compile(r"^[A-Za-z0-9_-]{1,100}$")
 SCHEMA_VERSION = 1
 GENES = 3                    # genes per genome, when none is asked for
@@ -106,15 +105,12 @@ def load_run(run):
     """The run.json of a run folder (or of a run.json path) as a dict."""
     path = Path(run)
     path = path if path.name == "run.json" else path / "run.json"
-    return json.loads(path.read_text(encoding="utf-8"))
+    return safe_files.read_json(path)
 
 
 def save_run(run_dir, run):
     """Written to a temporary file first, so a crash never leaves half a run.json."""
-    path = Path(run_dir) / "run.json"
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(run, indent=2, ensure_ascii=False), encoding="utf-8")
-    os.replace(temporary, path)
+    safe_files.write_json(Path(run_dir) / "run.json", run)     # waits while a reader has it open (Windows)
 
 
 def list_runs(runs_dir=None):

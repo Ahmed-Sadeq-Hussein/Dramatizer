@@ -44,7 +44,7 @@ from backend import model
 from backend.emphasis.emphasis import _normal, ask, parse_values
 
 TESTSET = model.DATA_DIR / "emphasis_testset.json"
-OUT_DIR = model.PROJECT_DIR / "output" / "emphasis_test"
+OUT_DIR = model.OUTPUT_DIR / "emphasis_test"
 PROGRESS_DIR = OUT_DIR / "progress"
 # "name:think" runs the same model with its thinking mode on
 MODELS = ["Qwen3-1.7B", "Qwen3-4B", "Qwen3-4B:think", "gemma-4-E2B-it", "gemma-4-E4B-it"]

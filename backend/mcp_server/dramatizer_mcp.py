@@ -7,6 +7,7 @@ itself, rebuilt when a new generation has been added since it was saved.
 Start it with:  python backend/mcp_server/dramatizer_mcp.py
 """
 import json
+import os
 from pathlib import Path
 
 import networkx as nx
@@ -15,8 +16,20 @@ from mcp.server.fastmcp import FastMCP
 import build_graph
 
 PROJECT = Path(__file__).resolve().parents[2]
+
+
+def _output_setting():
+    """OUTPUT_DIR from the environment or .env, else the default in backend/model.py."""
+    if os.environ.get("OUTPUT_DIR"):
+        return os.environ["OUTPUT_DIR"].strip()
+    env = PROJECT / ".env"
+    for line in (env.read_text(encoding="utf-8").splitlines() if env.exists() else []):
+        if line.strip().startswith("OUTPUT_DIR="):
+            return line.split("=", 1)[1].strip()
+    return "D:/Dramatizer 2 renders"
+
 GRAPH_PATH = PROJECT / "history" / "graph.json"
-OUTPUT_DIR = PROJECT / "output"
+OUTPUT_DIR = PROJECT / _output_setting()
 
 mcp = FastMCP("dramatizer")
 

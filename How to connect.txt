@@ -1,0 +1,120 @@
+HOW TO CONNECT TO SOMEONE ELSE'S DRAMATIZER
+===========================================
+
+The voice model and all the heavy work run on one PC: the host's. You run a
+small client on your own PC and use Dramatizer in your browser. You do not need
+a GPU, the models or any voice data.
+
+
+WHAT YOU NEED FROM THE HOST
+---------------------------
+
+The host sends you these privately:
+
+  1. The address       for example  https://name.gl.at.ply.gg:12345
+  2. The fingerprint   64 characters in pairs, like  B0:0A:5A:...:47:91
+  3. Your login        a username and a password
+                       (or an API key instead, if the host gave you one)
+
+Never share your password or key with anyone else.
+
+
+ONE-TIME SETUP
+--------------
+
+1. Install Python 3.10 or newer from https://www.python.org
+   (on Windows, tick "Add Python to PATH" during the install).
+
+2. Get the project folder. Open a terminal (Command Prompt or PowerShell) and run:
+
+       git clone https://github.com/Ahmed-Sadeq-Hussein/Dramatizer.git
+
+   If you already have the folder, go into it and get the newest version:
+
+       git pull
+
+3. Install the two packages the client needs:
+
+       pip install flask requests
+
+
+CONNECTING
+----------
+
+1. In a terminal, go into the project folder and run (with the host's address):
+
+       python main_frontend.py connect https://name.gl.at.ply.gg:12345
+
+2. The first time, it shows the host's certificate fingerprint. Compare it with
+   the one the host sent you, character by character.
+     - Exactly the same: type  yes  and press Enter.
+     - Different: type anything else to stop, and tell the host. Someone may be
+       in between, or the host has a new certificate.
+
+3. It asks for an API key.
+     - With a username and password: just press Enter.
+     - With an API key: paste it and press Enter.
+
+4. Your browser opens at  http://127.0.0.1:5010
+   Log in with your username and password.
+
+Keep the terminal window open while you use the page; closing it stops the
+client. Next time, "python main_frontend.py connect" is enough: the address and
+fingerprint are remembered. Your password is never saved.
+
+
+RATING (MOS)
+------------
+
+After logging in you start on "Rate genomes" with your own pile open.
+
+  - For each voice, listen to the plain line first, then score it and every
+    version from 0 (bad) to 5 (excellent), in steps of 0.5.
+  - A score saves by itself as soon as you set the slider.
+  - A green card reading "Rated 3.5 · 11 Nov, 14:03" is saved on the host.
+    A white card reading "Not rated yet" still needs a score.
+  - "Next unrated" jumps to the next clip without a score.
+  - "Check with host" asks the host what it has kept and shows that.
+  - "Ranking" shows your scores, best first. You can replay and re-score.
+  - You can stop and come back later: the page continues where you left off.
+
+You only see your own scores. That is on purpose: everyone rates blind.
+
+
+IF SOMETHING GOES WRONG
+-----------------------
+
+"Cannot reach the API" / "The host cannot be reached"
+    The host's API or tunnel is not running. Ask the host to start it.
+
+"STOP: the host's certificate is not the one you trusted"
+    Do not continue. Ask the host for the new fingerprint, then run:
+        python main_frontend.py connect https://ADDRESS --forget
+    and confirm the new fingerprint.
+
+"Wrong username or password"
+    Check the spelling. After 5 wrong tries the account locks for 15 minutes;
+    the host can also give you a new password.
+
+"Not saved yet: trying again..." on a card
+    The connection dropped. Your score is kept in the browser and sent again
+    by itself. Keep the page open until the card turns green.
+
+The login page appears while you were rating
+    Your session ended (after 12 hours, or the host restarted). Log in again;
+    any scores still waiting are sent by themselves.
+
+The page does not open
+    Open http://127.0.0.1:5010 in your browser yourself. If port 5010 is taken:
+        python main_frontend.py connect --port 5011
+    and open http://127.0.0.1:5011 instead.
+
+"python" is not recognised
+    Python is not on PATH. Reinstall it with "Add Python to PATH" ticked, or
+    use  py  instead of  python.
+
+
+CHANGING YOUR PASSWORD / LOGGING OUT
+------------------------------------
+
+Click "Account" at the top right of the page.

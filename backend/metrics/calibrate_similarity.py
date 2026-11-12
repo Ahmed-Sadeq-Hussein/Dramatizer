@@ -30,7 +30,7 @@ from pathlib import Path
 import numpy as np
 
 from backend import model
-from backend.metrics.Similarity import _embedding
+from backend.metrics.Similarity import speaker_embedding
 from backend.voice_data.Voice_Importer import get_clip, read_crema_d, read_vctk
 
 OUT_DIR = model.OUTPUT_DIR / "calibration"
@@ -73,7 +73,7 @@ def pair_similarities(chosen, max_different, rng):
         vectors[speaker] = []
         for clip in clips:
             path, _ = get_clip(clip)
-            e = _embedding(path)
+            e = speaker_embedding(path)
             vectors[speaker].append(e / np.linalg.norm(e))
 
     same = [

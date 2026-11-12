@@ -238,6 +238,11 @@ async function loadSearches() {
     const [batch, pile] = chosen ? chosen.split("|") : [];
     const query = chosen ? `?batch=${encodeURIComponent(batch)}&pile=${encodeURIComponent(pile)}` : "";
     const [{ searches, piles }, { named }] = await Promise.all([call("/genome/searches" + query), call("/genome/named")]);
+    const starting = $("search-start");
+    const selected = starting.value;
+    starting.replaceChildren(el("option", { value: "" }, "Neutral"),
+      ...named.map((genome) => el("option", { value: JSON.stringify(genome.genes) }, genome.name)));
+    starting.value = [...starting.options].some((option) => option.value === selected) ? selected : "";
     const options = [el("option", { value: "" }, "All searches")];
     for (const [b, ps] of Object.entries(piles || {})) for (const p of ps)
       options.push(el("option", { value: `${b}|${p}` }, `${b} · pile ${p}`));
@@ -266,11 +271,18 @@ async function loadSearches() {
 $("pile-filter").addEventListener("change", loadSearches);
 try { const saved = localStorage.getItem("pile"); if (saved) $("pile-filter").append(el("option", { value: saved }, saved)), $("pile-filter").value = saved; } catch (e) {}
 
+$("search-method").addEventListener("change", () => {
+  $("search-start").disabled = $("search-method").value === "random";
+});
+
 $("search-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!needVoice()) return;
   const body = { dataset: state.voice.dataset, clip_id: state.voice.clip_id, text: $("search-text").value,
-                 genes: Number($("search-genes").value) };
+                 genes: Number($("search-genes").value), method: $("search-method").value };
+  if (body.method !== "random" && $("search-start").value) {
+    body.starting_genome = JSON.parse($("search-start").value);
+  }
   if ($("search-seed").value !== "") body.seed = Number($("search-seed").value);
   try {
     const { run } = await call("/genome/searches", { body });
@@ -316,7 +328,7 @@ async function refreshRun(first) {
   state.runData = data;
   const { run, summary } = data;
   const busy = data.state === "queued or running";
-  $("run-title").textContent = `${run.voice} · ${run.genes_per_genome} genes · genome seed ${run.seed}`;
+  $("run-title").textContent = `${run.voice} · ${run.method_label || run.method} · ${run.genes_per_genome} genes · genome seed ${run.seed}`;
   $("run-line").textContent = run.text;
   $("run-state").textContent = busy ? `Working on the host: ${summary.done} of ${summary.total} judged… (you can rate when it has finished)`
     : data.state === "finished" ? `Finished: ${summary.fine} fine, ${summary.terrible} terrible` + (summary.failed ? `, ${summary.failed} failed` : "")

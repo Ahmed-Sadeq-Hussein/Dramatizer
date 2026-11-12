@@ -31,7 +31,7 @@ SAMPLE_RATE = 16000    # what the speaker encoder expects
 _embeddings = {}
 
 
-def _embedding(path):
+def speaker_embedding(path):
     """The voice in a recording as 256 numbers. Cached by file and modification time."""
     path = Path(path)
     key = (str(path.resolve()), path.stat().st_mtime if path.exists() else None)
@@ -56,8 +56,8 @@ def speaker_similarity(audio, reference_audio):
     (identical). `audio` is the recording to judge, `reference_audio` the voice
     it should sound like. Both are paths to wav, flac or mp3 files.
     """
-    a = _embedding(audio)
-    b = _embedding(reference_audio)
+    a = speaker_embedding(audio)
+    b = speaker_embedding(reference_audio)
 
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 

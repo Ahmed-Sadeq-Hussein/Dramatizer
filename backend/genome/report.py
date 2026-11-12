@@ -30,7 +30,7 @@ from backend.genome import search as S
 
 GOOD = 4.0
 BAD = 2.5
-MIN_LISTENERS = 2
+MIN_LISTENERS = 1
 FIELDS = ["voice", "run", "genome", "features", "verdict", "mos", "n", "low", "high",
           "above_baseline", "baseline_mos", "markup"]
 

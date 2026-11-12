@@ -40,6 +40,14 @@
 
 <div id="app">
 
+<nav class="modes" id="modes" aria-label="Mode">
+  <button type="button" data-mode="rank" aria-pressed="false">Rank</button>
+  <button type="button" data-mode="audio" aria-pressed="false">Make audio</button>
+  <button type="button" data-mode="listen" aria-pressed="false">Listen</button>
+  <button type="button" data-mode="build" aria-pressed="false">Make genomes</button>
+  <span class="mode-note" id="mode-note"></span>
+</nav>
+
 <div class="chosen" id="chosen" hidden>
   <span class="label">Voice</span> <strong id="chosen-name"></strong>
   <span class="muted" id="chosen-text"></span>
@@ -47,10 +55,10 @@
 </div>
 
 <nav class="tabs" role="tablist">
-  <button role="tab" data-tab="voices" class="on">1 · Choose a voice</button>
-  <button role="tab" data-tab="speak">2 · Speak</button>
-  <button role="tab" data-tab="genomes">3 · Genomes</button>
-  <button role="tab" data-tab="studio">4 · Genome studio</button>
+  <button role="tab" data-tab="voices" class="on">Choose a voice</button>
+  <button role="tab" data-tab="speak">Speak</button>
+  <button role="tab" data-tab="genomes">Genomes</button>
+  <button role="tab" data-tab="studio">Genome studio</button>
   <button role="tab" data-tab="rate">Rate genomes</button>
   <button role="tab" data-tab="results">Results</button>
 </nav>

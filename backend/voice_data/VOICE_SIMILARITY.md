@@ -140,7 +140,7 @@ result = vs.closest("new_voice.wav")        # {"closest": [...], "suggestion": {
 genome = result["suggestion"]["genome"]     # run, genome number, genes, markup, MOS, gain over the plain line
 ```
 
-To render the suggested genome in the new voice, open it in the website's Genome studio (tab 4)
+To render the suggested genome in the new voice, open it in the website's Genome studio (the Make genomes mode)
 from its run and number, or pass its `genes` to `backend.genome.editor.render`.
 
 **Keeping it current:**

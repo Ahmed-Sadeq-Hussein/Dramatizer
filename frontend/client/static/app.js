@@ -51,8 +51,60 @@ const fmt = (x, d = 3) => (x === null || x === undefined ? "–" : Number(x).toF
 const clipKey = (n) => "genome_" + String(n).padStart(2, "0");
 const audioOf = (run, name) => el("audio", { controls: true, preload: "none", src: `${API}/genome/searches/${encodeURIComponent(run)}/audio/${name}` });
 
+// ------------------------------------------------------------------ modes --
+// A mode is a set of tabs for one kind of work; a tab can be in more than one mode.
+const MODES = {
+  rank: { tabs: ["rate", "results"], note: "Score the deliveries in your pile, and see the results." },
+  audio: { tabs: ["voices", "speak"], note: "Choose a voice and have it speak a line." },
+  listen: { tabs: ["genomes", "results"], note: "Listen to the searches' clips and their rankings." },
+  build: { tabs: ["voices", "genomes", "studio"], note: "Start genome searches, and edit, name and render genomes." },
+};
+const MODE_KEY = "dramatizer-mode";
+let mode = null;
+const lastTab = {};          // each mode reopens on the tab last used in it
+
+// Allowed by the account's permissions (applyPermissions marks the others)
+const tabAllowed = (tab) => !document.querySelector(`.tabs [data-tab="${tab}"]`).dataset.denied;
+const modeTabs = (name) => MODES[name].tabs.filter(tabAllowed);
+
+function applyMode(name) {
+  mode = name;
+  try { localStorage.setItem(MODE_KEY, name); } catch { /* private window: not remembered */ }
+  document.body.dataset.mode = name;
+  document.querySelectorAll(".modes button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === name)));
+  $("mode-note").textContent = MODES[name].note;
+  const tabs = modeTabs(name);
+  document.querySelectorAll(".tabs button").forEach((b) => (b.hidden = !tabs.includes(b.dataset.tab)));
+}
+
+function setMode(name) {
+  if (!modeTabs(name).length) return;
+  applyMode(name);
+  const tabs = modeTabs(name);
+  const current = document.querySelector(".tabs button.on");
+  showTab(tabs.includes(lastTab[name]) ? lastTab[name] : current && !current.hidden ? current.dataset.tab : tabs[0]);
+}
+
+// Which modes this account can use; with only one, the mode bar is left out
+function renderModes() {
+  const usable = Object.keys(MODES).filter((m) => modeTabs(m).length);
+  document.querySelectorAll(".modes button").forEach((b) => (b.hidden = !usable.includes(b.dataset.mode)));
+  $("modes").hidden = usable.length < 2;
+  let saved = null;
+  try { saved = localStorage.getItem(MODE_KEY); } catch { /* none */ }
+  const pick = usable.includes(mode) ? mode : usable.includes(saved) ? saved : usable[0];
+  if (pick) setMode(pick);
+}
+document.querySelectorAll(".modes button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+
 // ------------------------------------------------------------------- tabs --
 function showTab(name) {
+  // A tab outside the current mode (e.g. a listener sent to Rate genomes): switch to a mode that has it
+  if (mode && !modeTabs(mode).includes(name)) {
+    const other = Object.keys(MODES).find((m) => modeTabs(m).includes(name));
+    if (other) applyMode(other);
+  }
+  if (mode) lastTab[mode] = name;
   document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
   document.querySelectorAll(".tab").forEach((s) => (s.hidden = s.id !== "tab-" + name));
   if (name === "genomes" && !state.run) loadSearches();
@@ -91,12 +143,17 @@ async function connect() {
 function applyPermissions() {
   // A listener only rates: the other tabs would show other searches and distract from the listening test
   const listener = can("rate") && !can("search") && !can("speak");
-  for (const tab of ["voices", "genomes", "results"]) document.querySelector(`.tabs [data-tab="${tab}"]`).hidden = listener;
-  document.querySelector('.tabs [data-tab="studio"]').hidden = !can("speak") && !can("name");
-  document.querySelector('.tabs [data-tab="speak"]').hidden = !can("speak");
+  const deny = (tab, no) => {
+    const b = document.querySelector(`.tabs [data-tab="${tab}"]`);
+    if (no) b.dataset.denied = "1"; else delete b.dataset.denied;
+  };
+  for (const tab of ["voices", "genomes", "results"]) deny(tab, listener);
+  deny("studio", !can("speak") && !can("name"));
+  deny("speak", !can("speak"));
   document.querySelector("#tab-genomes details.card").hidden = !can("search");
   document.body.classList.toggle("can-name", can("name"));
   document.body.classList.toggle("own-scores-only", !can("rate_for_others"));
+  renderModes();
 }
 
 // ------------------------------------------------------------------ login --
@@ -192,7 +249,7 @@ $("next").addEventListener("click", () => loadVoices(state.page + 1));
 
 function needVoice() {
   if (state.voice) return true;
-  toast("Choose a voice first (tab 1).", true);
+  toast("Choose a voice first (the Choose a voice tab).", true);
   showTab("voices");
   return false;
 }

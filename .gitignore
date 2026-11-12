@@ -55,6 +55,10 @@ imported_voices/
 /outputs/
 /runs/
 /history/
+# Voice similarity (voice_similarity.py): speaker embeddings of real people and the
+# voice-against-voice heatmap data. Already under /history/; named here so it stays ignored
+# if that line ever changes.
+/history/voice_similarity/
 ratings.json
 # MLflow's default folders, if it is ever run without the project's database (track.py)
 mlruns/

@@ -70,6 +70,9 @@ After logging in you start on "Rate genomes" with your own pile open.
 
   - For each voice, listen to the plain line first, then score it and every
     version from 0 (bad) to 5 (excellent), in steps of 0.5.
+  - Under each slider is a box: "I heard an artifact". Tick it if the clip has a
+    glitch, click, noise, a cut-off or a garbled word; leave it empty if not.
+    It is saved with the score, and you can change it later.
   - A score saves by itself as soon as you set the slider.
   - A green card reading "Rated 3.5 · 11 Nov, 14:03" is saved on the host.
     A white card reading "Not rated yet" still needs a score.

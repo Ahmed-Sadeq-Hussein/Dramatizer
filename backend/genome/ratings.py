@@ -6,20 +6,27 @@ mean of its listeners' scores. The genomes are then ranked by MOS, and the best
 one can be picked and given a name, so it can be used again on other lines and
 voices (a genome's genes hold positions in the sentence, not words).
 
+With each score a listener also says whether they heard an artifact in the clip
+(a glitch, a click, noise, a cut-off or a garbled word): yes or no. Scores given
+before this was asked have no answer (None).
+
     from backend.genome.ratings import save_scores, ranked, pick
 
-    save_scores(run_dir, {"Ana": {"baseline": 3, "genome_01": 4.5}, "Ben": {"genome_01": 4}})
+    save_scores(run_dir, {"Ana": {"baseline": 3, "genome_01": 4.5}, "Ben": {"genome_01": 4}},
+                artifacts={"Ana": {"genome_01": True, "baseline": False}})
     ranked(run_dir)                          # the genomes, best MOS first
     pick(run_dir, 1, "Proud praise")         # name genome 1 and keep it in the library
 
 Where it is stored (all under .gitignore: listener ratings are personal data):
 
-    <run folder>/ratings.json        the run's current scores and picks, rewritten on every save;
-                                     "given" holds, per listener and clip, the score, when it
-                                     was first given and last changed, and the account that gave it
+    <run folder>/ratings.json        the run's current scores, artifact answers and picks, rewritten
+                                     on every save; "given" holds, per listener and clip, the score,
+                                     the artifact answer, when it was first given and last changed,
+                                     and the account that gave it
     history/ratings/mos.jsonl        every score ever given or changed, one line each, never
                                      rewritten: when, who (name and login account), the run,
-                                     batch, pile, voice, line, clip, markup, and the score before
+                                     batch, pile, voice, line, clip, markup, the artifact answer,
+                                     and the score and answer before
     history/ratings/who_rated_what.csv
                                      the current score of every listener for every clip, with its
                                      date: rebuilt after every save, open it in a spreadsheet
@@ -104,6 +111,17 @@ def load(run_dir):
             "raters": [], "scores": {}, "picked": [], "updated": None}
 
 
+def clean_artifact(value):
+    """Whether the listener heard an artifact: True or False (also "yes"/"no", 1/0)."""
+    if isinstance(value, bool):
+        return value
+    if value in (0, 1):
+        return bool(value)
+    if isinstance(value, str) and value.strip().lower() in ("yes", "no", "true", "false"):
+        return value.strip().lower() in ("yes", "true")
+    raise ValueError(f"An artifact answer must be true (heard one) or false (none), not {value!r}.")
+
+
 def is_rated(run_dir):
     return any(load(run_dir)["scores"].values())
 
@@ -112,12 +130,15 @@ def who_path():
     return LOG_PATH.parent / "who_rated_what.csv"
 
 
-def save_scores(run_dir, scores, submitted_by=None, account=None):
+def save_scores(run_dir, scores, submitted_by=None, account=None, artifacts=None):
     """
     Save the scores of one or more listeners: {rater: {clip: score}}, clip being
-    "baseline" or "genome_NN". A score given again replaces the earlier one. A new
-    or changed score is also appended to the review log (sending the same score
-    again adds nothing). At most MAX_RATERS listeners per run.
+    "baseline" or "genome_NN". A score given again replaces the earlier one.
+    artifacts: {rater: {clip: True/False}}, whether that listener heard an
+    artifact in the clip; it may come with a score or later, for a clip the
+    listener has already scored. A new or changed score or answer is also
+    appended to the review log (sending the same again adds nothing). At most
+    MAX_RATERS listeners per run.
     submitted_by: who sent them (the API key's owner or the account's name);
     account: the login account's username, when it was an account.
     """
@@ -126,14 +147,22 @@ def save_scores(run_dir, scores, submitted_by=None, account=None):
     rendered = {"baseline"} if run["baseline"].get("audio") else set()
     rendered |= {clip_key(g["number"]) for g in run["genomes"] if g.get("audio")}
 
-    cleaned = {}
+    def check_clip(clip):
+        if not CLIP.match(str(clip)) or clip not in rendered:
+            raise ValueError(f"No rendered clip {clip!r} in this run.")
+
+    cleaned, heard = {}, {}
     for rater, clips in scores.items():
         rater = clean_rater(rater)
         for clip, value in clips.items():
-            if not CLIP.match(clip) or clip not in rendered:
-                raise ValueError(f"No rendered clip {clip!r} in this run.")
+            check_clip(clip)
             cleaned.setdefault(rater, {})[clip] = clean_score(value)
-    if not cleaned:
+    for rater, clips in (artifacts or {}).items():
+        rater = clean_rater(rater)
+        for clip, value in clips.items():
+            check_clip(clip)
+            heard.setdefault(rater, {})[clip] = clean_artifact(value)
+    if not cleaned and not heard:
         return load(run_dir)
 
     with _lock:
@@ -145,20 +174,30 @@ def save_scores(run_dir, scores, submitted_by=None, account=None):
         if len(raters) > MAX_RATERS:
             raise ValueError(f"At most {MAX_RATERS} listeners can rate one run; it already has "
                              f"{', '.join(ratings['raters'])}.")
+        for rater, clips in heard.items():
+            for clip in clips:
+                if clip not in cleaned.get(rater, {}) and clip not in ratings["scores"].get(rater, {}):
+                    raise ValueError(f"Score {clip} first: an artifact answer is kept with a score.")
         ratings["raters"] = raters
         time = _now()
         log = []
         genomes = {clip_key(g["number"]): g for g in run["genomes"]}
         given = ratings.setdefault("given", {})
-        for rater, clips in cleaned.items():
+        answers = ratings.setdefault("artifacts", {})
+        for rater in dict.fromkeys(list(cleaned) + list(heard)):
             before = ratings["scores"].setdefault(rater, {})
-            for clip, score in clips.items():
-                previous = before.get(clip)
-                if previous == score and clip in given.get(rater, {}):
+            said = answers.setdefault(rater, {})
+            for clip in dict.fromkeys(list(cleaned.get(rater, {})) + list(heard.get(rater, {}))):
+                previous, previous_artifact = before.get(clip), said.get(clip)
+                score = cleaned.get(rater, {}).get(clip, previous)
+                artifact = heard.get(rater, {}).get(clip, previous_artifact)
+                if previous == score and previous_artifact == artifact and clip in given.get(rater, {}):
                     continue                       # the page sent it again: nothing changed
                 before[clip] = score
+                if artifact is not None:
+                    said[clip] = artifact
                 detail = given.setdefault(rater, {}).get(clip) or {"first_given": time, "changes": -1}
-                detail.update(score=score, time=time, account=account or detail.get("account"),
+                detail.update(score=score, artifact=artifact, time=time, account=account or detail.get("account"),
                               submitted_by=submitted_by, changes=detail["changes"] + 1)
                 given[rater][clip] = detail
                 genome = genomes.get(clip)
@@ -166,6 +205,7 @@ def save_scores(run_dir, scores, submitted_by=None, account=None):
                             "voice": run["voice"], "origin": run.get("origin"), "text": run["text"],
                             "rater": rater, "account": account, "clip": clip,
                             "genome": genome["number"] if genome else None, "score": score, "previous": previous,
+                            "artifact": artifact, "previous_artifact": previous_artifact,
                             "markup": genome["markup"] if genome else run["text"],
                             "speed": genome["speed"] if genome else 1.0,
                             "genes": genome["genes"] if genome else [],
@@ -188,14 +228,25 @@ def save_scores(run_dir, scores, submitted_by=None, account=None):
     return ratings
 
 
+def artifact_of(ratings, rater, clip):
+    """What `rater` said about an artifact in `clip`: True, False, or None (not asked or not answered)."""
+    return ratings.get("artifacts", {}).get(rater, {}).get(clip)
+
+
 def mos(ratings, clip):
-    """{"mos", "n", "low", "high", "scores": {rater: score}} of one clip, or None when nobody rated it."""
+    """
+    {"mos", "n", "low", "high", "scores": {rater: score}, "artifact_heard", "artifact_answers"} of one clip,
+    or None when nobody rated it. artifact_heard: how many of its listeners heard an artifact, out of the
+    artifact_answers who answered.
+    """
     given = {rater: clips[clip] for rater, clips in ratings["scores"].items() if clip in clips}
     if not given:
         return None
     values = list(given.values())
+    said = [artifact_of(ratings, rater, clip) for rater in given]
     return {"mos": round(sum(values) / len(values), 2), "n": len(values), "low": min(values), "high": max(values),
-            "scores": given}
+            "scores": given, "artifact_heard": sum(1 for a in said if a is True),
+            "artifact_answers": sum(1 for a in said if a is not None)}
 
 
 def ranked(run_dir, run=None, ratings=None):
@@ -239,7 +290,8 @@ def collection(runs, rater=None, others=True):
     Returns {"runs": [...], "clips": [...]}. Each run has its id, voice, pile,
     line, how many clips it has and how many `rater` scored. Each clip has its
     run, "baseline" or the genome's number, what the genome does, its verdict,
-    `rater`'s score ("mine", or None), the MOS over every listener, and both
+    `rater`'s score ("mine", or None) and artifact answer ("mine_artifact": True,
+    False or None), the MOS over every listener, and both
     against the same run's baseline, because a score means most next to the
     plain render of the same voice and line. others=False (a listener rating
     blind): no MOS and no other listener's name, only `rater`'s own scores.
@@ -250,7 +302,8 @@ def collection(runs, rater=None, others=True):
         own = ratings["scores"].get(rater, {}) if rater else {}
         own_on = ratings.get("given", {}).get(rater, {}) if rater else {}
         if not others:
-            ratings = {**ratings, "raters": [rater] if own else [], "scores": {rater: own} if own else {}}
+            ratings = {**ratings, "raters": [rater] if own else [], "scores": {rater: own} if own else {},
+                       "artifacts": {rater: ratings.get("artifacts", {}).get(rater, {})}}
         base_mos, base_mine = mos(ratings, "baseline"), own.get("baseline")
         rendered = [("baseline", None)] if run["baseline"].get("audio") else []
         rendered += [(clip_key(g["number"]), g) for g in run["genomes"] if g.get("audio")]
@@ -264,6 +317,7 @@ def collection(runs, rater=None, others=True):
                 "speed": genome["speed"] if genome else 1.0,
                 "verdict": genome["verdict"] if genome else "baseline",
                 "mine": mine,
+                "mine_artifact": artifact_of(ratings, rater, key) if rater else None,
                 "mine_on": (own_on.get(key) or {}).get("time") or (ratings.get("updated") if mine is not None else None),
                 "mine_above_baseline": round(mine - base_mine, 2)
                 if genome and mine is not None and base_mine is not None else None,
@@ -349,13 +403,14 @@ def read_log():
     return [json.loads(line) for line in LOG_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-CURRENT_FIELDS = ["rater", "account", "batch", "pile", "voice", "run", "clip", "genome", "score",
+CURRENT_FIELDS = ["rater", "account", "batch", "pile", "voice", "run", "clip", "genome", "score", "artifact",
                   "above_plain_line", "rated_on", "first_given", "changes", "verdict", "markup", "text"]
 
 
 def current_scores(runs_dir=None):
     """
-    Who rated what, now: one row per listener and clip, with the score, the date
+    Who rated what, now: one row per listener and clip, with the score, whether
+    they heard an artifact ("yes", "no", or empty when not asked), the date
     it was last given (and first given), the login account, and the score minus
     the same listener's score for the plain line of the same run. Sorted by
     listener, then batch, pile and voice.
@@ -375,6 +430,7 @@ def current_scores(runs_dir=None):
                     "rater": rater, "account": info.get("account"), "batch": run.get("batch"), "pile": run.get("pile"),
                     "voice": run["voice"], "run": run["id"], "clip": clip,
                     "genome": genome["number"] if genome else None, "score": score,
+                    "artifact": yes_no(artifact_of(ratings, rater, clip)),
                     "above_plain_line": round(score - plain, 2) if genome and plain is not None else None,
                     "rated_on": info.get("time") or ratings.get("updated"), "first_given": info.get("first_given"),
                     "changes": info.get("changes", 0),
@@ -382,6 +438,10 @@ def current_scores(runs_dir=None):
                     "markup": genome["markup"] if genome else run["text"], "text": run["text"]})
     rows.sort(key=lambda r: (r["rater"].lower(), str(r["batch"]), r["pile"] or 0, r["voice"], r["clip"]))
     return rows
+
+
+def yes_no(value):
+    return "" if value is None else ("yes" if value else "no")
 
 
 def write_current(path, runs_dir=None):
@@ -420,9 +480,10 @@ def who_summary(runs_dir=None):
 
 
 def export_csv(path):
-    rows = read_log()
+    rows = [{**row, "artifact": yes_no(row.get("artifact")), "previous_artifact": yes_no(row.get("previous_artifact"))}
+            for row in read_log()]
     fields = ["time", "rater", "account", "batch", "pile", "voice", "run", "clip", "genome", "score", "previous",
-              "verdict", "speed", "markup", "text", "submitted_by"]
+              "artifact", "previous_artifact", "verdict", "speed", "markup", "text", "submitted_by"]
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
         writer.writeheader()
@@ -454,7 +515,9 @@ if __name__ == "__main__":
     elif args.named:
         for entry in load_named()["genomes"]:
             score = f"MOS {entry['mos']['mos']:.2f} ({entry['mos']['n']} listeners)" if entry["mos"] else "not rated"
-            print(f"{entry['name']}: genome {entry['genome']} of {entry['run']}, {score}\n    {entry['markup']}")
+            where = (f"made by hand ({len(entry['genes'])} genes)" if entry.get("edited")
+                     else f"genome {entry['genome']} of {entry['run']}")
+            print(f"{entry['name']}: {where}, {score}\n    {entry.get('markup') or entry['genes']}")
     else:
         for folder, run, rank in rated_runs():
             best = next((g for g in rank["genomes"] if g["mos"]), None)

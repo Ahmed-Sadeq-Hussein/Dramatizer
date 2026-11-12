@@ -93,14 +93,21 @@ change their password under **Account** on the page.
    and fingerprint are remembered, so next time `python main_frontend.py connect`
    is enough. A password is never saved.
 
-3. The page opens at http://127.0.0.1:5010. There are three steps:
-   **1. Choose a voice**, **2. Speak** a line, and **3. Genomes**: search, rate
-   with up to 4 listeners, rank by MOS, and name the best genome. **Results**
-   shows the measured baselines.
+3. The page opens at http://127.0.0.1:5010. There are four steps:
+   **1. Choose a voice**, **2. Speak** a line, **3. Genomes**: search, rate
+   with up to 4 listeners, rank by MOS, and name the best genome, and
+   **4. Genome studio**: pick any genome (named or from a search), change its
+   genes by hand, save it under a new name, and render it in the chosen voice
+   (with the plain line beside it, same seed, to compare). **Results** shows
+   the measured baselines.
 
    **Rate genomes** is where anyone with a pile starts after logging in, with
    their own pile already open. For each voice, score the plain line and every
-   version from 0 to 5 in steps of 0.5. Each score is saved as soon as it is
+   version from 0 to 5 in steps of 0.5. Under each slider, **I heard an
+   artifact** is ticked when the clip has a glitch, click, noise, a cut-off or a
+   garbled word, and left empty when not; it is saved with the score (ticking it
+   on a clip already scored saves it at once). Scores given before the box
+   existed have no answer. Each score is saved as soon as it is
    set, and the card shows when ("Saved 10 Nov, 14:03"). The host reads each
    score back from disk before the card says Saved. If a save fails (no
    connection, the tunnel is down), the card says "Not saved yet". The score is
@@ -120,8 +127,8 @@ personal data):
 
 | File | What is in it |
 |---|---|
-| `history/ratings/who_rated_what.csv` | The current score of every listener for every clip: listener, account, batch, pile, voice, run, clip, genome, score, score minus their plain-line score, date last scored, date first scored, number of changes. Rebuilt after every save, so it opens in a spreadsheet as it stands. |
-| `history/ratings/mos.jsonl` | Every score ever given or changed, one line each, never rewritten. It includes the score it replaced. |
+| `history/ratings/who_rated_what.csv` | The current score of every listener for every clip: listener, account, batch, pile, voice, run, clip, genome, score, artifact heard (yes, no, or empty when not asked), score minus their plain-line score, date last scored, date first scored, number of changes. Rebuilt after every save, so it opens in a spreadsheet as it stands. |
+| `history/ratings/mos.jsonl` | Every score or artifact answer ever given or changed, one line each, never rewritten. It includes the score and answer it replaced. |
 | `<run folder>/ratings.json` | That run's scores, with the same date and account details per score. |
 | `history/api/audit.jsonl` | Logins, refused logins, logouts, password changes and saves: when, who, and from where. Never passwords or tokens. |
 

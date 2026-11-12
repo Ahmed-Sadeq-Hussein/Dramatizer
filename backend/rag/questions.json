@@ -1,0 +1,22 @@
+{
+  "about": "Step 1 of the evidence milestone: the questions the system must answer from evidence (supported), and ones it must decline (unsupported). 'kind' is lookup (a few records hold the answer) or summary (the answer counts across many records).",
+  "questions": [
+    {"id": "q01", "question": "Which genomes work best for each voice?", "supported": true, "kind": "summary",
+     "note": "One listener per voice, and 13 of 24 voices have a tie for first place."},
+    {"id": "q02", "question": "Which genomes produce artifacts?", "supported": "partly", "kind": "summary",
+     "note": "No listener answered the artifact question in mos-diverse-v1; the random-v2 sanity check is the closest evidence."},
+    {"id": "q03", "question": "Which genome configurations give bad MOS?", "supported": true, "kind": "summary",
+     "note": "Answerable by gene type, against each listener's own average; whole configurations were each scored once."},
+    {"id": "q04", "question": "Which genomes were rated better than the plain line of the same voice?", "supported": true, "kind": "summary"},
+    {"id": "q05", "question": "How often does a genome beat its plain line, for each number of active features?", "supported": true, "kind": "summary",
+     "note": "Genomes have 1 to 5 genes: the genome factory allows no more."},
+    {"id": "q06", "question": "Which genomes can we exclude?", "supported": true, "kind": "summary",
+     "note": "A lower chance for a gene type, not removal: one listener per clip."},
+    {"id": "q07", "question": "What did genome 5 of voice CREMA-D/1014 do, and how was it rated?", "supported": true, "kind": "lookup"},
+    {"id": "q08", "question": "Which genomes of voice VCTK/p250 scored better than its plain line?", "supported": true, "kind": "lookup"},
+    {"id": "q09", "question": "Which genome suits an angry character?", "supported": false, "kind": "lookup",
+     "note": "No record says anything about characters or emotions of the genomes."},
+    {"id": "q10", "question": "How do the 44 test voices score?", "supported": false, "kind": "summary",
+     "note": "The test voices are locked: nobody rated them, and they are not in the evidence."}
+  ]
+}

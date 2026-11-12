@@ -203,3 +203,28 @@ button.small { padding: 3px 8px; font-size: 0.8rem; }
   .rank-row .bar { grid-column: 1 / 4; }
 }
 button.small { white-space: nowrap; }
+
+/* "I heard an artifact" under each score slider */
+.artifact { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 8px; padding: 6px 8px;
+            border: 1px solid var(--rule); border-radius: 6px; }
+.artifact label { font-weight: 600; cursor: pointer; }
+.artifact .artifact-check { width: 18px; height: 18px; margin: 0; cursor: pointer; accent-color: var(--bad); }
+.artifact.heard { border-color: var(--bad); background: var(--bad-soft); }
+.artifact-tag { color: var(--bad); font-weight: 600; }
+
+/* Genome studio */
+body:not(.can-name) .can-name-only { display: none; }
+label.check { display: flex; align-items: center; gap: 6px; align-self: center; }
+#st-pick { width: 100%; font-size: 0.85rem; }
+.genes { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.gene { display: grid; grid-template-columns: 1.6rem minmax(9rem, 12rem) 1fr auto; gap: 8px; align-items: center;
+        border: 1px solid var(--rule); border-radius: 6px; padding: 6px 8px; }
+.gene .num { color: var(--muted); font-size: 0.8rem; }
+.gene .where { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; }
+.gene .where input[type=range] { width: 100%; padding: 0; }
+.gene .word { font-size: 0.82rem; color: var(--muted); grid-column: 1 / -1; }
+.gene .remove { padding: 4px 9px; }
+@media (max-width: 560px) { .gene { grid-template-columns: 1.6rem 1fr auto; } .gene .where { grid-column: 2 / -1; } }
+.preview { border-top: 1px solid var(--rule); padding-top: 8px; display: grid; gap: 4px; }
+.preview .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.preview p, .preview ul { margin: 0; }

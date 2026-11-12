@@ -58,6 +58,7 @@ function showTab(name) {
   if (name === "genomes" && !state.run) loadSearches();
   if (name === "results") loadResults();
   if (name === "rate") Rate.open();
+  if (name === "studio") Studio.open();
 }
 document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
 
@@ -91,6 +92,7 @@ function applyPermissions() {
   // A listener only rates: the other tabs would show other searches and distract from the listening test
   const listener = can("rate") && !can("search") && !can("speak");
   for (const tab of ["voices", "genomes", "results"]) document.querySelector(`.tabs [data-tab="${tab}"]`).hidden = listener;
+  document.querySelector('.tabs [data-tab="studio"]').hidden = !can("speak") && !can("name");
   document.querySelector('.tabs [data-tab="speak"]').hidden = !can("speak");
   document.querySelector("#tab-genomes details.card").hidden = !can("search");
   document.body.classList.toggle("can-name", can("name"));
@@ -255,11 +257,12 @@ async function loadSearches() {
                `${s.summary.fine} fine of ${s.summary.total}` + (s.status === "finished" ? "" : ` · ${s.status}`)))),
         el("p", { class: "muted small" }, s.text))) : [el("li", { class: "muted" }, "No searches yet.")]));
     $("named-list").replaceChildren(...(named.length ? named.slice().reverse().map((n) =>
-      el("li", { class: "item clickable", onclick: () => openRun(n.run, "ranked") },
+      el("li", { class: "item clickable", onclick: () => (n.run ? openRun(n.run, "ranked") : Studio.show("named:" + n.name)) },
         el("div", { class: "item-head" }, el("strong", {}, n.name),
           n.mos ? el("span", { class: "mos" }, "MOS " + fmt(n.mos.mos, 2)) : null),
-        el("p", { class: "muted small" }, `Genome ${n.genome} of ${n.voice}` + (n.named_by ? ` · named by ${n.named_by}` : "")),
-        el("p", { class: "markup" }, n.markup))) : [el("li", { class: "muted" }, "None yet: rate a search, then pick its best genome.")]));
+        el("p", { class: "muted small" }, (n.run ? `Genome ${n.genome} of ${n.voice}` : "Made by hand in the studio") + (n.named_by ? ` · named by ${n.named_by}` : "")),
+        el("p", { class: "markup" }, n.markup || ""),
+        el("button", { type: "button", class: "quiet small", onclick: (e) => { e.stopPropagation(); Studio.show("named:" + n.name); } }, "Edit or render in the studio"))) : [el("li", { class: "muted" }, "None yet: rate a search, then pick its best genome.")]));
   } catch (error) { toast(error.message, true); }
 }
 

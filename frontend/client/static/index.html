@@ -50,6 +50,7 @@
   <button role="tab" data-tab="voices" class="on">1 · Choose a voice</button>
   <button role="tab" data-tab="speak">2 · Speak</button>
   <button role="tab" data-tab="genomes">3 · Genomes</button>
+  <button role="tab" data-tab="studio">4 · Genome studio</button>
   <button role="tab" data-tab="rate">Rate genomes</button>
   <button role="tab" data-tab="results">Results</button>
 </nav>
@@ -176,6 +177,55 @@
     </div>
   </section>
 
+  <!-- 4. Genome studio -->
+  <section class="tab" id="tab-studio" hidden>
+    <p class="intro">Pick a genome, change its genes, then save it under a new name or render it in the chosen voice.
+      A gene's position runs from the first word (0) to the last (1), so a genome fits any line.</p>
+
+    <div class="card stack">
+      <strong>1 · Pick a genome</strong>
+      <div class="row">
+        <label class="grow">Find <input type="search" id="st-find" placeholder="a name, voice, gene type or word"></label>
+        <label>Show <select id="st-source">
+          <option value="">All</option><option value="named">Named</option><option value="edited">Made by hand</option>
+          <option value="search">From searches</option></select></label>
+      </div>
+      <label>Genome <select id="st-pick" size="8"></select></label>
+      <p class="muted small" id="st-picked"></p>
+      <div class="row"><button type="button" class="quiet" id="st-new">Start empty</button>
+        <button type="button" class="quiet" id="st-remove" hidden>Delete this hand-made genome</button></div>
+    </div>
+
+    <div class="card stack">
+      <strong>2 · Edit</strong>
+      <label>Line <textarea id="st-text" rows="2" maxlength="300">Well, you really did it this time, and I honestly didn't think you had it in you, so I'll be waiting.</textarea></label>
+      <ol class="genes" id="st-genes"></ol>
+      <div class="row"><button type="button" class="quiet" id="st-add">+ Add gene</button>
+        <span class="muted small" id="st-count"></span></div>
+      <div class="preview">
+        <span class="label">Will be spoken as</span>
+        <p class="markup" id="st-markup"></p>
+        <p class="muted small" id="st-speed"></p>
+        <ul class="muted small" id="st-warnings"></ul>
+      </div>
+    </div>
+
+    <div class="card stack can-name-only">
+      <strong>3 · Save as a new genome</strong>
+      <div class="row"><label class="grow">Name <input type="text" id="st-name" maxlength="60" placeholder="e.g. Sigh then pause"></label>
+        <button type="button" id="st-save">Save</button></div>
+    </div>
+
+    <div class="card stack">
+      <strong>4 · Render in the chosen voice</strong>
+      <p class="muted small" id="st-voice"></p>
+      <div class="row"><label>Seed <input type="number" id="st-seed" min="0" placeholder="default"></label>
+        <label class="check"><input type="checkbox" id="st-plain" checked> Also the plain line, to compare</label>
+        <button type="button" id="st-render">Render</button></div>
+      <div id="st-jobs" class="list"></div>
+    </div>
+  </section>
+
   <!-- Results -->
   <section class="tab" id="tab-results" hidden>
     <p class="intro">The measured baselines (CosyVoice 3, no genome) and the genome search comparison, from the host's PC.</p>
@@ -187,5 +237,6 @@
 <div class="toast" id="toast" role="status" hidden></div>
 <script src="/static/app.js"></script>
 <script src="/static/rate.js"></script>
+<script src="/static/studio.js"></script>
 </body>
 </html>

@@ -1,0 +1,4316 @@
+{
+  "about": "Step 2 of the evidence milestone: the records that answer each question (grade 2: answers it, 1: needed with others). Made by the rules in backend/rag/labels.py; check with python main_backend.py rag refresh.",
+  "made": "2026-11-12 10:51:13",
+  "corpus_sha256": "e8a952437e14be3b808947a9ef04f3495f79d1d9f2768907c692b21b13d851b1",
+  "records": 1008,
+  "questions": {
+    "q01": {
+      "question": "Which genomes work best for each voice?",
+      "rule": "q01: each voice's run record (2: it names the best genome), and the clips of its best genomes (1).",
+      "expect": "answer",
+      "relevant": {
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 10:18:01"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 10:18:59"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 10:20:29"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 10:21:22"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 10:21:51"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 10:32:03"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 10:35:54"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 10:53:11"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 11:37:33"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 11:40:03"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 11:40:28"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 11:40:50"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 11:41:52"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 11:46:48"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 11:47:31"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 11:50:21"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 11:50:39"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 11:56:53"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 11:57:28"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 11:58:29"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 16:56:25"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 17:00:03"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 17:00:47"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 17:01:47"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 17:01:59"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 17:05:21"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 17:06:57"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 17:29:17"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 17:31:57"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 17:34:08"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 17:35:50"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 17:36:33"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 17:36:42"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 18:22:28"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 18:26:55"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 18:27:05"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 18:28:16"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 18:28:25"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 18:31:32"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 18:33:19"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 18:34:25"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 18:38:26"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 18:40:56"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 18:43:22"
+        },
+        "run:mos-diverse-v1_p1_CREMA-D_1014": {
+          "grade": 2,
+          "revision": "2026-11-11 11:59:03"
+        },
+        "run:mos-diverse-v1_p1_LibriTTS-R_1089": {
+          "grade": 2,
+          "revision": "2026-11-11 10:31:33"
+        },
+        "run:mos-diverse-v1_p1_LibriTTS-R_121": {
+          "grade": 2,
+          "revision": "2026-11-11 10:36:48"
+        },
+        "run:mos-diverse-v1_p1_LibriTTS-R_1462": {
+          "grade": 2,
+          "revision": "2026-11-11 11:40:03"
+        },
+        "run:mos-diverse-v1_p1_LibriTTS-R_8463": {
+          "grade": 2,
+          "revision": "2026-11-11 11:47:11"
+        },
+        "run:mos-diverse-v1_p1_VCTK_p250": {
+          "grade": 2,
+          "revision": "2026-11-11 11:48:49"
+        },
+        "run:mos-diverse-v1_p1_VCTK_p303": {
+          "grade": 2,
+          "revision": "2026-11-11 11:50:50"
+        },
+        "run:mos-diverse-v1_p1_VCTK_p326": {
+          "grade": 2,
+          "revision": "2026-11-11 11:58:29"
+        },
+        "run:mos-diverse-v1_p2_CREMA-D_1022": {
+          "grade": 2,
+          "revision": "2026-11-11 16:58:20"
+        },
+        "run:mos-diverse-v1_p2_LibriTTS-R_2830": {
+          "grade": 2,
+          "revision": "2026-11-11 17:00:13"
+        },
+        "run:mos-diverse-v1_p2_LibriTTS-R_2961": {
+          "grade": 2,
+          "revision": "2026-11-11 17:02:18"
+        },
+        "run:mos-diverse-v1_p2_LibriTTS-R_6313": {
+          "grade": 2,
+          "revision": "2026-11-11 17:06:09"
+        },
+        "run:mos-diverse-v1_p2_LibriTTS-R_7729": {
+          "grade": 2,
+          "revision": "2026-11-11 17:29:57"
+        },
+        "run:mos-diverse-v1_p2_VCTK_p248": {
+          "grade": 2,
+          "revision": "2026-11-11 17:32:08"
+        },
+        "run:mos-diverse-v1_p2_VCTK_p258": {
+          "grade": 2,
+          "revision": "2026-11-11 17:34:27"
+        },
+        "run:mos-diverse-v1_p2_VCTK_p306": {
+          "grade": 2,
+          "revision": "2026-11-11 17:36:42"
+        },
+        "run:mos-diverse-v1_p3_LibriTTS-R_1221": {
+          "grade": 2,
+          "revision": "2026-11-11 18:22:56"
+        },
+        "run:mos-diverse-v1_p3_LibriTTS-R_6319": {
+          "grade": 2,
+          "revision": "2026-11-11 18:27:50"
+        },
+        "run:mos-diverse-v1_p3_LibriTTS-R_6930": {
+          "grade": 2,
+          "revision": "2026-11-11 18:30:12"
+        },
+        "run:mos-diverse-v1_p3_LibriTTS-R_8224": {
+          "grade": 2,
+          "revision": "2026-11-11 18:33:19"
+        },
+        "run:mos-diverse-v1_p3_VCTK_p261": {
+          "grade": 2,
+          "revision": "2026-11-11 18:36:14"
+        },
+        "run:mos-diverse-v1_p3_VCTK_p310": {
+          "grade": 2,
+          "revision": "2026-11-11 18:38:26"
+        },
+        "run:mos-diverse-v1_p3_VCTK_p313": {
+          "grade": 2,
+          "revision": "2026-11-11 18:40:56"
+        },
+        "run:mos-diverse-v1_p3_VCTK_p343": {
+          "grade": 2,
+          "revision": "2026-11-11 18:43:26"
+        }
+      }
+    },
+    "q02": {
+      "question": "Which genomes produce artifacts?",
+      "rule": "q02: clips where a listener heard an artifact (2), and genomes that failed the sanity check (1), the closest evidence while no listener has answered the artifact question.",
+      "expect": "answer",
+      "relevant": {
+        "sanity:random-v2/CREMA-D_1028/line0/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line0/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line0/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line0/genome05": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line0/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line0/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line0/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line0/genome09": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line0/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line1/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line1/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line2/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line2/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line2/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line2/genome09": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line3/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line3/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line3/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line3/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line4/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line5/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line5/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line0/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line0/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line0/genome05": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line0/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line0/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line1/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line1/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line1/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line1/genome09": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line2/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line2/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line2/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line2/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line2/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line3/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line3/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line3/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line3/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line3/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line3/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line3/genome09": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line3/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line4/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line4/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line5/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line0/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line0/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line1/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line1/genome05": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line1/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line2/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line3/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line0/genome05": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line0/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line0/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line1/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line1/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line1/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line1/genome05": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line1/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line1/genome09": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line2/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line2/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line2/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line2/genome09": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line3/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line4/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line5/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line5/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line5/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line5/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line5/genome05": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line5/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line5/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line5/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line5/genome09": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line5/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line0/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line1/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line1/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line1/genome05": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line1/genome09": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line2/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line3/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line5/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_7127/line0/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_7127/line0/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_7127/line1/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_7127/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_7127/line1/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_7127/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_7127/line2/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_7127/line3/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line0/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line0/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line0/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line0/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line1/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line1/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line1/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line4/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line0/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line0/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line1/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line1/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line2/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line2/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line3/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line3/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line4/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line4/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line5/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line0/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line0/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line0/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line0/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line0/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line0/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line1/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line1/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line1/genome05": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line2/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line2/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line2/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line2/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line3/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line3/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line3/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line4/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line4/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line5/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line5/genome05": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line5/genome09": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line0/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line0/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line0/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line0/genome05": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line0/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line0/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line0/genome09": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line0/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line1/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line1/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line1/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line1/genome05": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line1/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line1/genome09": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line2/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line2/genome09": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line2/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line3/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line3/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line3/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line3/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line3/genome09": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line3/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line4/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line4/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line5/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line5/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line0/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line0/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line0/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line0/genome05": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line0/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line0/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line0/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line1/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line1/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line1/genome05": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line1/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line2/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line2/genome05": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line2/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line3/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line5/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line0/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line0/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line0/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line0/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line0/genome05": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line0/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line0/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line0/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line0/genome09": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line0/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line1/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line1/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line1/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line1/genome09": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line3/genome02": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line3/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line3/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line3/genome05": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line3/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line3/genome07": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line3/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line3/genome09": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line3/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line5/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        }
+      }
+    },
+    "q03": {
+      "question": "Which genome configurations give bad MOS?",
+      "rule": "q03: genomes rated worse than the plain line of the same voice by the same listener (2).",
+      "expect": "answer",
+      "relevant": {
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 10:18:14"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 10:19:11"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 10:20:13"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 10:20:46"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 10:20:55"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 10:21:03"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 10:21:12"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 10:21:32"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 10:31:55"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 10:35:28"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 10:35:40"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 10:36:36"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 11:37:08"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 11:37:26"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 11:39:40"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 11:40:34"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 11:40:40"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 11:41:01"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 11:41:18"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 11:41:31"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 11:41:43"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 11:48:06"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 11:48:05"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 11:48:26"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 11:48:49"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 11:49:25"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 11:49:31"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 11:57:02"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 11:58:08"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 11:58:18"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 16:58:20"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 16:57:37"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 16:57:47"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 16:58:47"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 16:59:53"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 17:01:10"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 17:01:34"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 17:02:10"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 17:02:18"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 17:04:42"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 17:04:53"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 17:05:03"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 17:05:40"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 17:05:49"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 17:06:04"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 17:06:09"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 17:06:47"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 17:08:22"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 17:08:36"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 17:29:07"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 17:29:36"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 17:30:30"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 17:30:51"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 17:31:11"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 17:31:21"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 17:31:30"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 17:31:48"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 17:32:08"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 17:32:53"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 17:33:02"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 17:33:23"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 17:33:44"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 17:34:27"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 17:34:56"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 17:35:10"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 17:35:30"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 17:35:40"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 17:35:59"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 17:36:10"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 17:36:27"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 18:20:11"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 18:20:23"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 18:19:33"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 18:19:45"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 18:22:28"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 18:22:15"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 18:22:04"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 18:21:51"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 18:22:48"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 18:22:56"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 18:23:47"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 18:24:01"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 18:27:50"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 18:24:47"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 18:25:08"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 18:25:33"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 18:26:17"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 18:26:43"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 18:28:35"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 18:28:49"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 18:29:28"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 18:29:47"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 18:30:01"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 18:31:18"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 18:30:45"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 18:31:43"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 18:31:54"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 18:32:20"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 18:32:33"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 18:32:56"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 18:33:07"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 18:33:52"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 18:33:57"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 18:34:30"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 18:34:44"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 18:35:44"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 18:35:48"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 18:35:53"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 18:36:03"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 18:36:14"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 18:36:34"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 18:36:44"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 18:36:54"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 18:37:04"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 18:37:22"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 18:37:29"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 18:37:51"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 18:38:06"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 18:38:16"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 18:38:51"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 18:38:56"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 18:39:28"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 18:39:38"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 18:39:49"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 18:40:00"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 18:40:14"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 18:40:22"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 18:40:34"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 18:40:56"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 18:41:18"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 18:41:41"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 18:41:41"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 18:42:07"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 18:42:40"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 18:42:49"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 18:42:58"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 18:43:07"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 18:43:22"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 18:43:26"
+        }
+      }
+    },
+    "q04": {
+      "question": "Which genomes were rated better than the plain line of the same voice?",
+      "rule": "q04: genomes rated better than their plain line (2), and the runs that have at least one (1).",
+      "expect": "answer",
+      "relevant": {
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 10:17:15"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 11:59:03"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 10:17:53"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 10:18:01"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 10:18:34"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 10:18:47"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 10:18:59"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 10:20:29"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 10:21:22"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 10:21:44"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 10:21:51"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 10:31:47"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 10:32:03"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 10:35:54"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 10:36:10"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 10:36:24"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 10:36:48"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 10:53:11"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 11:36:33"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 11:36:45"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 11:37:33"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 11:39:52"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 11:40:03"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 11:40:28"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 11:40:50"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 11:41:52"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 11:46:48"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 11:47:07"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 11:47:34"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 11:47:31"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 11:47:47"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 11:48:13"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 11:48:40"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 11:49:39"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 11:49:49"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 11:49:58"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 11:50:34"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 11:50:21"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 11:50:31"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 11:50:39"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 11:50:50"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 11:56:53"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 11:57:15"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 11:57:28"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 11:57:37"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 11:57:48"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 11:58:29"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 16:55:57"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 16:56:10"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 16:56:25"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 16:56:40"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 16:56:52"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 16:57:02"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 16:59:26"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 16:59:40"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 17:00:03"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 17:00:13"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 17:00:37"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 17:00:47"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 17:01:22"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 17:01:47"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 17:01:59"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 17:05:21"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 17:06:57"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 17:29:17"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 17:31:57"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 17:32:39"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 17:33:11"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 17:33:32"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 17:33:59"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 17:34:08"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 18:28:16"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 18:28:25"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 18:29:02"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 18:29:37"
+        },
+        "run:mos-diverse-v1_p1_CREMA-D_1014": {
+          "grade": 1,
+          "revision": "2026-11-11 11:59:03"
+        },
+        "run:mos-diverse-v1_p1_LibriTTS-R_1089": {
+          "grade": 1,
+          "revision": "2026-11-11 10:31:33"
+        },
+        "run:mos-diverse-v1_p1_LibriTTS-R_121": {
+          "grade": 1,
+          "revision": "2026-11-11 10:36:48"
+        },
+        "run:mos-diverse-v1_p1_LibriTTS-R_1462": {
+          "grade": 1,
+          "revision": "2026-11-11 11:40:03"
+        },
+        "run:mos-diverse-v1_p1_LibriTTS-R_8463": {
+          "grade": 1,
+          "revision": "2026-11-11 11:47:11"
+        },
+        "run:mos-diverse-v1_p1_VCTK_p250": {
+          "grade": 1,
+          "revision": "2026-11-11 11:48:49"
+        },
+        "run:mos-diverse-v1_p1_VCTK_p303": {
+          "grade": 1,
+          "revision": "2026-11-11 11:50:50"
+        },
+        "run:mos-diverse-v1_p1_VCTK_p326": {
+          "grade": 1,
+          "revision": "2026-11-11 11:58:29"
+        },
+        "run:mos-diverse-v1_p2_CREMA-D_1022": {
+          "grade": 1,
+          "revision": "2026-11-11 16:58:20"
+        },
+        "run:mos-diverse-v1_p2_LibriTTS-R_2830": {
+          "grade": 1,
+          "revision": "2026-11-11 17:00:13"
+        },
+        "run:mos-diverse-v1_p2_LibriTTS-R_2961": {
+          "grade": 1,
+          "revision": "2026-11-11 17:02:18"
+        },
+        "run:mos-diverse-v1_p2_LibriTTS-R_6313": {
+          "grade": 1,
+          "revision": "2026-11-11 17:06:09"
+        },
+        "run:mos-diverse-v1_p2_LibriTTS-R_7729": {
+          "grade": 1,
+          "revision": "2026-11-11 17:29:57"
+        },
+        "run:mos-diverse-v1_p2_VCTK_p248": {
+          "grade": 1,
+          "revision": "2026-11-11 17:32:08"
+        },
+        "run:mos-diverse-v1_p2_VCTK_p258": {
+          "grade": 1,
+          "revision": "2026-11-11 17:34:27"
+        },
+        "run:mos-diverse-v1_p3_LibriTTS-R_6930": {
+          "grade": 1,
+          "revision": "2026-11-11 18:30:12"
+        }
+      }
+    },
+    "q05": {
+      "question": "How often does a genome beat its plain line, for each number of active features?",
+      "rule": "q05: every rated genome (1): the answer counts all of them by their number of features.",
+      "expect": "answer",
+      "relevant": {
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 10:17:15"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 11:59:03"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 10:17:41"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 10:17:53"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 10:18:01"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 10:18:14"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 10:18:34"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 10:18:47"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 10:18:59"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 10:19:11"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 10:20:13"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 10:20:29"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 10:20:46"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 10:20:55"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 10:21:03"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 10:21:12"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 10:21:22"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 10:21:32"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 10:21:44"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 10:21:51"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 10:31:47"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 10:31:55"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 10:32:03"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 10:35:28"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 10:35:40"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 10:35:54"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 10:36:10"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 10:36:24"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 10:36:36"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 10:36:48"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 10:53:11"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 11:36:33"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 11:36:45"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 11:36:56"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 11:37:08"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 11:37:26"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 11:37:33"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 11:39:40"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 11:39:52"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 11:40:03"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 11:40:28"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 11:40:34"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 11:40:40"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 11:40:50"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 11:41:01"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 11:41:18"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 11:41:31"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 11:41:43"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 11:41:52"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 11:46:48"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 11:47:07"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 11:47:34"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 11:47:31"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 11:47:47"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 11:48:06"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 11:48:05"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 11:48:13"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 11:48:26"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 11:48:40"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 11:48:49"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 11:49:25"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 11:49:31"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 11:49:39"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 11:49:49"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 11:49:58"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 11:50:34"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 11:50:21"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 11:50:31"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 11:50:39"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 11:50:50"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 11:56:53"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 11:57:02"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 11:57:15"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 11:57:28"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 11:57:37"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 11:57:48"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 11:57:58"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 11:58:08"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 11:58:18"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 11:58:29"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 16:55:57"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 16:56:10"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 16:56:25"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 16:56:40"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 16:56:52"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 16:57:02"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 16:58:20"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 16:57:37"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 16:57:47"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 16:57:55"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 16:58:37"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 16:58:47"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 16:58:55"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 16:59:04"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 16:59:13"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 16:59:26"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 16:59:40"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 16:59:53"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 17:00:03"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 17:00:13"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 17:00:37"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 17:00:47"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 17:00:57"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 17:01:10"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 17:01:22"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 17:01:34"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 17:01:47"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 17:01:59"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 17:02:10"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 17:02:18"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 17:04:42"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 17:04:53"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 17:05:03"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 17:05:11"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 17:05:21"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 17:05:29"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 17:05:40"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 17:05:49"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 17:06:04"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 17:06:09"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 17:06:47"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 17:06:57"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 17:08:12"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 17:08:22"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 17:08:36"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 17:29:07"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 17:29:17"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 17:29:36"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 17:29:46"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 17:29:57"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 17:30:15"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 17:30:30"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 17:30:51"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 17:31:11"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 17:31:21"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 17:31:30"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 17:31:40"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 17:31:48"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 17:31:57"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 17:32:08"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 17:32:39"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 17:32:53"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 17:33:02"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 17:33:11"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 17:33:23"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 17:33:32"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 17:33:44"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 17:33:59"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 17:34:08"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 17:34:27"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 17:34:56"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 17:35:10"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 17:35:30"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 17:35:40"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 17:35:50"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 17:35:59"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 17:36:10"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 17:36:27"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 17:36:33"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 17:36:42"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 18:20:11"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 18:20:23"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 18:19:33"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 18:19:45"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 18:22:28"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 18:22:15"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 18:22:04"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 18:21:51"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 18:22:48"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 18:22:56"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 18:23:47"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 18:24:01"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 18:27:50"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 18:24:47"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 18:25:08"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 18:25:33"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 18:26:17"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 18:26:43"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 18:26:55"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 18:27:05"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 18:28:16"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 18:28:25"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 18:28:35"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 18:28:49"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 18:29:02"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 18:29:28"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 18:29:37"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 18:29:47"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 18:30:01"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 18:30:12"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 18:31:18"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 18:30:45"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 18:31:32"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 18:31:43"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 18:31:54"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 18:32:20"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 18:32:33"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 18:32:56"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 18:33:07"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 18:33:19"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 18:33:52"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 18:33:57"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 18:34:30"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 18:34:25"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 18:34:44"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 18:35:44"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 18:35:48"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 18:35:53"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 18:36:03"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 18:36:14"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 18:36:34"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 18:36:44"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 18:36:54"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 18:37:04"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 18:37:22"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 18:37:29"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 18:37:51"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 18:38:06"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 18:38:16"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 18:38:26"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 18:38:51"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 18:38:56"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 18:39:28"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 18:39:38"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 18:39:49"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 18:40:00"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 18:40:14"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 18:40:22"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 18:40:34"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 18:40:56"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 18:41:18"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 18:41:41"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 18:41:41"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 18:42:07"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 18:42:40"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 18:42:49"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 18:42:58"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_08": {
+          "grade": 1,
+          "revision": "2026-11-11 18:43:07"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 18:43:22"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 18:43:26"
+        }
+      }
+    },
+    "q06": {
+      "question": "Which genomes can we exclude?",
+      "rule": "q06: rated genomes with a gene type given a lower chance (hissing, speed, vocalized noise) that did worse than their plain line (2), the same gene types' other rated genomes (1), and their failed sanity checks (1).",
+      "expect": "answer",
+      "relevant": {
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 10:18:01"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 10:18:14"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 10:18:34"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 10:20:13"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 10:21:03"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 10:21:12"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 10:21:22"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 10:21:32"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1089/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 10:21:44"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 10:31:55"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 10:32:03"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 10:35:28"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 10:36:10"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_121/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 10:36:36"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 10:53:11"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 11:36:33"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 11:36:56"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 11:37:26"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_1462/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 11:39:40"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 11:40:34"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 11:40:40"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 11:41:18"
+        },
+        "clip:mos-diverse-v1_p1_LibriTTS-R_8463/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 11:41:43"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 11:47:07"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 11:47:47"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 11:48:05"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 11:48:26"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 11:48:49"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 11:49:25"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 11:49:31"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 11:49:39"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 11:49:49"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 11:49:58"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 11:50:34"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p303/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 11:50:21"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 11:56:53"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 11:57:37"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 11:57:48"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p326/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 11:58:08"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 16:55:57"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 16:58:20"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 16:57:37"
+        },
+        "clip:mos-diverse-v1_p2_CREMA-D_1022/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 16:57:47"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 16:58:37"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_03": {
+          "grade": 1,
+          "revision": "2026-11-11 16:58:55"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_04": {
+          "grade": 1,
+          "revision": "2026-11-11 16:59:04"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_07": {
+          "grade": 1,
+          "revision": "2026-11-11 16:59:40"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 16:59:53"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2830/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 17:00:13"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 17:01:10"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_05": {
+          "grade": 1,
+          "revision": "2026-11-11 17:01:22"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_2961/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 17:01:34"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 17:04:53"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 17:05:03"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_06": {
+          "grade": 1,
+          "revision": "2026-11-11 17:05:29"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 17:05:49"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 17:06:04"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_6313/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 17:06:09"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 17:06:47"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 17:06:57"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 17:08:22"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 17:08:36"
+        },
+        "clip:mos-diverse-v1_p2_LibriTTS-R_7729/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 17:29:36"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_01": {
+          "grade": 1,
+          "revision": "2026-11-11 17:30:15"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 17:30:51"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 17:31:30"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p248/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 17:31:48"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 17:33:02"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 17:33:23"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 17:33:44"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 17:34:08"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p258/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 17:34:27"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 17:35:10"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 17:35:30"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 17:35:40"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 17:36:10"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 17:36:27"
+        },
+        "clip:mos-diverse-v1_p2_VCTK_p306/genome_10": {
+          "grade": 1,
+          "revision": "2026-11-11 17:36:42"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 18:20:23"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 18:19:33"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 18:22:04"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 18:21:51"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_1221/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 18:22:48"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 18:24:01"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 18:25:08"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 18:26:17"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 18:26:43"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6319/genome_09": {
+          "grade": 1,
+          "revision": "2026-11-11 18:26:55"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_02": {
+          "grade": 1,
+          "revision": "2026-11-11 18:28:25"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 18:28:35"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 18:28:49"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 18:29:28"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_6930/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 18:29:47"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 18:31:18"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 18:31:54"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 18:32:20"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 18:32:56"
+        },
+        "clip:mos-diverse-v1_p3_LibriTTS-R_8224/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 18:33:07"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 18:33:52"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 18:34:30"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 18:35:44"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 18:35:53"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p261/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 18:36:14"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 18:36:44"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_06": {
+          "grade": 2,
+          "revision": "2026-11-11 18:37:29"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p310/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 18:37:51"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 18:38:51"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 18:39:38"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 18:39:49"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p313/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 18:40:22"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 18:41:18"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 18:41:41"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 18:41:41"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 18:42:40"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 18:42:58"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_08": {
+          "grade": 2,
+          "revision": "2026-11-11 18:43:07"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 18:43:22"
+        },
+        "clip:mos-diverse-v1_p3_VCTK_p343/genome_10": {
+          "grade": 2,
+          "revision": "2026-11-11 18:43:26"
+        },
+        "sanity:random-v2/CREMA-D_1028/line0/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line0/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line0/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line0/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line0/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line1/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line2/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line2/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line3/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line3/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line4/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1028/line5/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line0/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line0/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line1/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line2/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line2/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line2/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line2/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line2/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line3/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line3/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line3/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line3/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line3/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line3/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line4/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line4/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1072/line5/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line0/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line0/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line2/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1087/line3/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line0/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line0/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line1/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line1/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line2/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line2/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line3/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line4/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line5/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line5/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line5/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line5/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line5/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/CREMA-D_1089/line5/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line0/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line1/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line2/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line3/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_2902/line5/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_7127/line0/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_7127/line0/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_7127/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_7127/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_7127/line2/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_7127/line3/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line0/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line0/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line1/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_8230/line4/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line0/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line0/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line2/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line2/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line3/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line4/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line4/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/LibriTTS-R_84/line5/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line0/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line0/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line0/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line0/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line1/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line2/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line2/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line2/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line2/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line3/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line3/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line4/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p231/line5/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line0/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line0/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line0/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line0/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line1/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line1/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line2/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line2/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line3/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line3/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line3/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line3/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line4/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line4/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p266/line5/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line0/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line0/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line0/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line0/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line0/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line1/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line2/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line2/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line3/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p295/line5/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line0/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line0/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line0/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line0/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line0/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line0/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line1/genome01": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line1/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line1/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line1/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line1/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line3/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line3/genome04": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line3/genome06": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line3/genome08": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line3/genome10": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        },
+        "sanity:random-v2/VCTK_p302/line5/genome03": {
+          "grade": 1,
+          "revision": "2026-11-08 03:13:11"
+        }
+      }
+    },
+    "q07": {
+      "question": "What did genome 5 of voice CREMA-D/1014 do, and how was it rated?",
+      "rule": "q07: the clip of genome 5 of CREMA-D/1014 (2), its plain line and its run (1).",
+      "expect": "answer",
+      "relevant": {
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/baseline": {
+          "grade": 1,
+          "revision": "2026-11-11 10:17:04"
+        },
+        "clip:mos-diverse-v1_p1_CREMA-D_1014/genome_05": {
+          "grade": 2,
+          "revision": "2026-11-11 10:18:01"
+        },
+        "run:mos-diverse-v1_p1_CREMA-D_1014": {
+          "grade": 1,
+          "revision": "2026-11-11 11:59:03"
+        }
+      }
+    },
+    "q08": {
+      "question": "Which genomes of voice VCTK/p250 scored better than its plain line?",
+      "rule": "q08: the run of VCTK/p250 and its genomes better than the plain line (2), the plain line (1).",
+      "expect": "answer",
+      "relevant": {
+        "clip:mos-diverse-v1_p1_VCTK_p250/baseline": {
+          "grade": 1,
+          "revision": "2026-11-11 11:47:09"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_01": {
+          "grade": 2,
+          "revision": "2026-11-11 11:47:07"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_02": {
+          "grade": 2,
+          "revision": "2026-11-11 11:47:34"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_03": {
+          "grade": 2,
+          "revision": "2026-11-11 11:47:31"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_04": {
+          "grade": 2,
+          "revision": "2026-11-11 11:47:47"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_07": {
+          "grade": 2,
+          "revision": "2026-11-11 11:48:13"
+        },
+        "clip:mos-diverse-v1_p1_VCTK_p250/genome_09": {
+          "grade": 2,
+          "revision": "2026-11-11 11:48:40"
+        },
+        "run:mos-diverse-v1_p1_VCTK_p250": {
+          "grade": 2,
+          "revision": "2026-11-11 11:48:49"
+        }
+      }
+    },
+    "q09": {
+      "question": "Which genome suits an angry character?",
+      "rule": "No record answers this question: the right result is to say so.",
+      "expect": "decline",
+      "relevant": {}
+    },
+    "q10": {
+      "question": "How do the 44 test voices score?",
+      "rule": "No record answers this question: the right result is to say so.",
+      "expect": "decline",
+      "relevant": {}
+    }
+  }
+}

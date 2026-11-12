@@ -40,10 +40,20 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
     GET  /genome/searches/<run>                   a search: its genomes, verdicts, ratings and ranking
     POST /genome/searches/<run>/continue          queue a stopped search again
     GET  /genome/searches/<run>/audio/<clip>      baseline.wav or genome_NN.wav
-    POST /genome/searches/<run>/ratings {scores: {listener: {clip: 0-5}}}   save MOS scores
+    POST /genome/searches/<run>/ratings {scores: {listener: {clip: 0-5}},
+                                         artifacts: {listener: {clip: true/false}}}
+                                                  save MOS scores, and whether an artifact was heard
     POST /genome/searches/<run>/pick    {genome, name}                    pick and name a genome
     POST /genome/searches/<run>/unpick  {genome}                          take the name off
     GET  /genome/named                            the named genomes
+    GET  /genome/library                          every genome to pick from (named, then every search's),
+                                                  and what the editor offers (features, limits)
+    POST /genome/preview {text, genes}            the genes on a line, in words and as markup (no GPU)
+    POST /genome/edited  {name, genes, text?, based_on?}   save a genome edited by hand, under a new name
+    POST /genome/edited/remove {name}             delete a genome made by hand
+    POST /genome/render  {dataset, clip_id, text, genes, seed?, name?}
+                                                  queue a line spoken with a genome (no genes: the plain
+                                                  line) -> {job}; the audio as for /speak
     GET  /genome/listening?batch=&pile=           a listening pile: every clip, your score and the MOS
     GET  /results                                 the baselines' and Milestone 2's summaries
 
@@ -71,7 +81,7 @@ from flask import Flask, abort, g, jsonify, request, send_file
 from werkzeug.exceptions import HTTPException
 from werkzeug.serving import WSGIRequestHandler
 
-from backend import model
+from backend import model, safe_files
 from backend.api import accounts, keys
 
 API = "/api/v1"
@@ -519,7 +529,8 @@ def own_ratings(rating):
         return rating
     mine = rating["scores"].get(g.user)
     return {**rating, "raters": [g.user] if mine else [], "scores": {g.user: mine} if mine else {},
-            "given": {g.user: rating.get("given", {}).get(g.user, {})}}
+            "given": {g.user: rating.get("given", {}).get(g.user, {})},
+            "artifacts": {g.user: rating.get("artifacts", {}).get(g.user, {})}}
 
 
 def public_run(run):
@@ -633,7 +644,8 @@ def one_search(run_id):
         state = "stopped"
     rating = own_ratings(ratings.load(folder))
     return jsonify(run=public_run(run), state="queued or running" if busy else state,
-                   summary=search.summary(run), ratings={k: rating[k] for k in ("raters", "scores", "picked")},
+                   summary=search.summary(run), ratings={**{k: rating[k] for k in ("raters", "scores", "picked")},
+                                                    "artifacts": rating.get("artifacts", {})},
                    ranking=ratings.ranked(folder, run, rating), max_raters=ratings.MAX_RATERS)
 
 
@@ -680,12 +692,14 @@ def rate(run_id):
 
     folder = run_dir_of(run_id)
     not_while_searching(run_id)
-    scores = body().get("scores")
-    if not isinstance(scores, dict) or not scores:
-        raise Refused('Send {"scores": {"listener name": {"genome_01": 4, ...}}}.')
-    if not all(isinstance(clips, dict) for clips in scores.values()):
-        raise Refused("Each listener's scores must be an object of clip: score.")
-    if "rate_for_others" not in g.permissions and set(scores) != {g.user}:
+    data = body()
+    scores, artifacts = data.get("scores") or {}, data.get("artifacts") or {}
+    if not isinstance(scores, dict) or not isinstance(artifacts, dict) or not (scores or artifacts):
+        raise Refused('Send {"scores": {"listener name": {"genome_01": 4, ...}}, '
+                      '"artifacts": {"listener name": {"genome_01": true, ...}}}.')
+    if not all(isinstance(clips, dict) for clips in list(scores.values()) + list(artifacts.values())):
+        raise Refused("Each listener's scores and artifact answers must be an object of clip: value.")
+    if "rate_for_others" not in g.permissions and not set(scores) | set(artifacts) <= {g.user}:
         raise Refused(f"You can only save your own scores, as {g.user}.", 403)
     run = search.load_run(folder)
     if not may_see(run):
@@ -694,16 +708,19 @@ def rate(run_id):
         raise Refused("This run is in another listener's pile.", 403)
     try:
         ratings.save_scores(folder, scores, submitted_by=g.user,
-                            account=g.account.username if g.account else None)
+                            account=g.account.username if g.account else None, artifacts=artifacts)
     except (TypeError, ValueError) as error:
         raise Refused(str(error))
     stored = ratings.load(folder)        # read back from the disk, so the page shows only what was really kept
-    audit("rated", run=run_id, clips=sum(len(c) for c in scores.values()))
+    sent = set(scores) | set(artifacts)
+    audit("rated", run=run_id, clips=sum(len(c) for c in scores.values()),
+          artifacts=sum(len(c) for c in artifacts.values()))
     shown = own_ratings(stored)
     return jsonify(saved=sum(len(c) for c in scores.values()), raters=shown["raters"],
-                   stored={rater: stored["scores"].get(rater, {}) for rater in scores},
+                   stored={rater: stored["scores"].get(rater, {}) for rater in sent},
+                   stored_artifacts={rater: stored.get("artifacts", {}).get(rater, {}) for rater in sent},
                    rated_on={rater: {clip: d.get("time") for clip, d in stored.get("given", {}).get(rater, {}).items()}
-                             for rater in scores},
+                             for rater in sent},
                    ranking=ratings.ranked(folder, ratings=shown))
 
 
@@ -743,6 +760,110 @@ def named():
     from backend.genome import ratings
 
     return jsonify(named=[{k: v for k, v in e.items() if k != "origin"} for e in ratings.load_named()["genomes"]])
+
+
+# --- The genome studio: pick, edit, save, render -----------------------------
+
+GENOME_RENDERS = SPEAK_DIR / "genome_renders"
+
+
+def genes_of(data, allow_empty=False):
+    from backend.genome import editor
+
+    try:
+        return editor.clean_genes(data.get("genes"), allow_empty=allow_empty)
+    except ValueError as error:
+        raise Refused(str(error))
+
+
+@app.get(f"{API}/genome/library")
+@needs_key
+def genome_library():
+    from backend.genome import editor, search
+
+    runs = [(f, r) for f, r in search.list_runs() if may_see(r)]
+    return jsonify(options=editor.options(), genomes=editor.library(runs, with_mos=sees_others()))
+
+
+@app.post(f"{API}/genome/preview")
+@needs_key
+def genome_preview():
+    from backend.genome import editor
+
+    data = body()
+    try:
+        return jsonify(preview=editor.preview(text_of(data), genes_of(data, allow_empty=True)))
+    except ValueError as error:
+        raise Refused(str(error))
+
+
+@app.post(f"{API}/genome/edited")
+@needs_key
+@needs("name")
+def save_edited():
+    from backend.genome import editor
+
+    data = body()
+    based_on = data.get("based_on")
+    based_on = str(based_on)[:200] if based_on else None
+    text = text_of(data) if data.get("text") else None
+    try:
+        entry = editor.save(data.get("name"), genes_of(data), named_by=g.user, text=text, based_on=based_on)
+    except ValueError as error:
+        raise Refused(str(error))
+    audit("genome saved", name=entry["name"], genes=len(entry["genes"]))
+    return jsonify(named=entry)
+
+
+@app.post(f"{API}/genome/edited/remove")
+@needs_key
+@needs("name")
+def remove_edited():
+    from backend.genome import editor
+
+    try:
+        editor.remove(body().get("name"))
+    except ValueError as error:
+        raise Refused(str(error))
+    return jsonify(ok=True)
+
+
+@app.post(f"{API}/genome/render")
+@needs_key
+@needs("speak")
+def render_genome():
+    """A line spoken with a genome (or with none: the plain line) in a validation voice -> a speak job."""
+    from backend.genome import editor, search
+    from backend.voice_data.Voice_Importer import get_clip
+
+    data = body()
+    clip = clip_of(data.get("dataset"), data.get("clip_id"))
+    text, genes, owner = text_of(data), genes_of(data, allow_empty=True), g.user
+    seed = seed_of(data)
+    seed = search.render_seed_default() if seed is None else seed
+    name = str(data.get("name") or "")[:60] or None
+    try:
+        shown = editor.preview(text, genes)
+    except ValueError as error:
+        raise Refused(str(error))
+
+    def work():
+        reference_audio, reference_text = get_clip(clip)
+        GENOME_RENDERS.mkdir(parents=True, exist_ok=True)
+        stem = f"{clip.dataset}_{clip.speaker}_{'genome' if genes else 'plain'}_{datetime.now():%Y%m%d_%H%M%S_%f}"
+        path = GENOME_RENDERS / f"{stem}.wav"
+        started = time.time()
+        editor.render(reference_audio, reference_text, text, genes, path, seed)
+        seconds = round(time.time() - started, 1)
+        safe_files.write_json(path.with_suffix(".json"), {
+            "voice": f"{clip.dataset}/{clip.speaker}", "clip_id": clip.clip_id, "text": text, "genome": name,
+            "genes": genes, "markup": shown["markup"], "speed": shown["speed"], "seed": seed, "by": owner,
+            "made": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "seconds": seconds})
+        return {"path": str(path), "seconds": seconds}
+
+    job = queue_job("speak", owner, work, {"voice": clip_json(clip), "text": text, "seed": seed, "genome": name,
+                                           "genes": genes, "markup": shown["markup"]})
+    return jsonify(job=job_json(job), preview=shown), 202
 
 
 # --- Results -----------------------------------------------------------------

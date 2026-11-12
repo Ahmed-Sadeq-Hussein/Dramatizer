@@ -291,6 +291,49 @@ class Api(Temporary):
         self.assertEqual(reply["raters"], ["Julius"])
         self.assertNotIn("Ash", json.dumps(reply))
 
+    def test_artifact_answer_is_kept_with_the_score(self):
+        auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+        url = "/api/v1/genome/searches/r1/ratings"
+        reply = self.client.post(url, headers=auth, json={"scores": {"Julius": {"baseline": 3, "genome_01": 2}},
+                                                          "artifacts": {"Julius": {"baseline": False, "genome_01": True}}})
+        self.assertEqual(reply.status_code, 200, reply.get_json())
+        self.assertEqual(reply.get_json()["stored_artifacts"], {"Julius": {"baseline": False, "genome_01": True}})
+
+        # Changed on its own, for a clip already scored: kept, and logged with the answer before
+        reply = self.client.post(url, headers=auth, json={"artifacts": {"Julius": {"genome_01": False}}})
+        self.assertEqual(reply.status_code, 200, reply.get_json())
+        self.assertEqual(reply.get_json()["stored"]["Julius"]["genome_01"], 2.0)
+        log = [json.loads(line) for line in (self.dir / "mos.jsonl").read_text(encoding="utf-8").splitlines()]
+        self.assertEqual((log[-1]["clip"], log[-1]["score"], log[-1]["artifact"], log[-1]["previous_artifact"]),
+                         ("genome_01", 2.0, False, True))
+        given = json.loads((self.dir / "runs" / "r1" / "ratings.json").read_text(encoding="utf-8"))["given"]["Julius"]
+        self.assertEqual((given["genome_01"]["artifact"], given["genome_01"]["changes"]), (False, 1))
+
+        # Not for a clip with no score yet, and only true or false
+        self.assertEqual(self.client.post(url, headers=auth, json={"artifacts": {"Julius": {"genome_02": True}}}).status_code, 400)
+        self.assertEqual(self.client.post(url, headers=auth, json={"artifacts": {"Julius": {"genome_01": "maybe"}}}).status_code, 400)
+        self.assertEqual(self.client.post(url, headers=auth, json={"artifacts": {"Rama": {"genome_01": True}}}).status_code, 403)
+
+        self.client.post(url, headers=auth, json={"scores": {"Julius": {"genome_03": 4}}, "artifacts": {"Julius": {"genome_03": True}}})
+        import csv
+        with open(self.dir / "who_rated_what.csv", encoding="utf-8-sig") as f:
+            rows = {r["clip"]: r["artifact"] for r in csv.DictReader(f)}
+        self.assertEqual(rows, {"baseline": "no", "genome_01": "no", "genome_03": "yes"})
+        page = self.client.get("/api/v1/genome/listening?batch=test-batch&pile=1", headers=auth).get_json()
+        mine = {c["clip"]: c["mine_artifact"] for c in page["clips"] if c["run"] == "r1"}
+        self.assertEqual(mine, {"baseline": False, "genome_01": False, "genome_02": None, "genome_03": True})
+
+    def test_old_scores_have_no_artifact_answer_and_others_stay_hidden(self):
+        accounts.assign("julius", "test-batch", 1)
+        self.ratings.save_scores(self.dir / "runs" / "r1", {"Ash": {"genome_01": 5}}, artifacts={"Ash": {"genome_01": True}})
+        self.ratings.save_scores(self.dir / "runs" / "r1", {"Julius": {"genome_02": 3}})        # before the box existed
+        rating = self.ratings.load(self.dir / "runs" / "r1")
+        self.assertIsNone(self.ratings.artifact_of(rating, "Julius", "genome_02"))
+        self.assertEqual(self.ratings.mos(rating, "genome_01")["artifact_heard"], 1)
+        auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+        shown = self.client.get("/api/v1/genome/searches/r1", headers=auth).get_json()["ratings"]
+        self.assertEqual(shown["artifacts"], {"Julius": {}})                   # Ash's answer is not shown
+
 
 if __name__ == "__main__":
     unittest.main()

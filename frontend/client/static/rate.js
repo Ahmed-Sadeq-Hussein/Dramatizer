@@ -1,5 +1,6 @@
 // rate.js | The Rate genomes tab: one listener scores one listening pile, then checks their ranking.
-// Uses app.js's helpers (call, el, $, toast, state, fmt). Scores are saved as soon as a slider is set.
+// Uses app.js's helpers (call, el, $, toast, state, fmt). Scores are saved as soon as a slider is set,
+// each with the listener's answer to "did you hear an artifact?" (the box under the slider).
 "use strict";
 
 const Rate = (() => {
@@ -102,7 +103,7 @@ const Rate = (() => {
             el("details", { class: "what" }, el("summary", {}, "What this version changes"),
               el("p", {}, c.described.join(" · ")), el("p", { class: "markup" }, c.markup + (c.speed !== 1 ? ` · speed ${c.speed}` : ""))),
           el("audio", { controls: true, preload: "none", src: audioUrl(run.id, c.clip), onplay: pauseOthers }),
-          scoreSlider(c));
+          scoreSlider(c), artifactBox(c));
       })));
     $("rp-prev").disabled = r.run === 0;
     $("rp-next").textContent = r.run === runs.length - 1 ? "See my ranking ›" : "Next voice ›";
@@ -151,8 +152,9 @@ const Rate = (() => {
       for (const c of r.data.clips) {
         const h = host.get(`${c.run}/${c.clip}`);
         if (!h || r.pending[c.run]?.[c.clip]) continue;
-        if (h.mine !== c.mine) differ++;
-        Object.assign(c, { mine: h.mine, mine_on: h.mine_on, mine_above_baseline: h.mine_above_baseline,
+        if (h.mine !== c.mine || (h.mine_artifact ?? null) !== (c.mine_artifact ?? null)) differ++;
+        c.draft_artifact = h.mine_artifact === true;
+        Object.assign(c, { mine: h.mine, mine_artifact: h.mine_artifact, mine_on: h.mine_on, mine_above_baseline: h.mine_above_baseline,
                            mos: h.mos, mos_above_baseline: h.mos_above_baseline });
       }
       r.data.runs.forEach((run) => recount(run.id));
@@ -194,7 +196,7 @@ const Rate = (() => {
       box.classList.remove("unset");
       out.textContent = value.toFixed(1);
       range.setAttribute("aria-valuetext", `${value} of 5`);
-      queueSave(c, value, box);
+      queueSave(c, value);
     };
     range.addEventListener("input", set);
     range.addEventListener("change", set);
@@ -203,9 +205,38 @@ const Rate = (() => {
     return box;
   }
 
-  function queueSave(c, value, box) {
-    if (c.mine === value && !r.pending[c.run]?.[c.clip]) return;
-    (r.pending[c.run] = r.pending[c.run] || {})[c.clip] = { value, c };
+  // "I heard an artifact": ticked = yes, left empty = no. It is saved with the score, so
+  // every score given from now on has an answer; ticking it on a scored clip saves it at once.
+  function artifactBox(c) {
+    const id = `a-${c.run}-${c.clip}`;
+    if (c.draft_artifact === undefined) c.draft_artifact = c.mine_artifact === true;
+    const box = el("input", { type: "checkbox", id, class: "artifact-check" });
+    box.checked = c.draft_artifact;
+    const note = el("span", { class: "artifact-note muted small" }, artifactNote(c));
+    box.addEventListener("change", () => {
+      c.draft_artifact = box.checked;
+      const waiting = r.pending[c.run]?.[c.clip];
+      const value = waiting ? waiting.value : c.mine;
+      if (value !== null && value !== undefined) queueSave(c, value);
+      note.textContent = artifactNote(c);
+    });
+    return el("div", { class: "artifact" + (c.draft_artifact ? " heard" : "") },
+      box, el("label", { for: id }, "I heard an artifact"),
+      el("span", { class: "muted small" }, " (a glitch, click, noise, cut-off or garbled word)"), note);
+  }
+
+  function artifactNote(c) {
+    if (c.mine === null && !r.pending[c.run]?.[c.clip]) return " · saved with the score";
+    if (c.mine_artifact === null || c.mine_artifact === undefined) return c.mine !== null ? " · not answered yet: tick it, or set the score again for no" : "";
+    return "";
+  }
+
+  function queueSave(c, value) {
+    const artifact = !!c.draft_artifact;
+    const box = card(c)?.querySelector(".artifact");
+    if (box) box.classList.toggle("heard", artifact);
+    if (c.mine === value && c.mine_artifact === artifact && !r.pending[c.run]?.[c.clip]) return;
+    (r.pending[c.run] = r.pending[c.run] || {})[c.clip] = { value, artifact, c };
     rememberUnsent();
     mark(c, "saving");
     clearTimeout(r.timers[c.run]);
@@ -218,7 +249,7 @@ const Rate = (() => {
   function rememberUnsent() {
     const out = {};
     for (const [run, items] of Object.entries(r.pending))
-      for (const [clip, x] of Object.entries(items)) (out[run] = out[run] || {})[clip] = x.value;
+      for (const [clip, x] of Object.entries(items)) (out[run] = out[run] || {})[clip] = { value: x.value, artifact: x.artifact };
     store(unsentKey(), JSON.stringify(out));
   }
 
@@ -232,7 +263,7 @@ const Rate = (() => {
   //   rated   ✓ the host has the score (with its date)      todo    ○ nobody scored it yet
   //   saving  the score is on its way                       failed  ! not saved yet, being sent again
   const BADGES = {
-    rated: (c) => `✓ Rated ${c.mine.toFixed(1)}` + (c.mine_on ? ` · ${when(c.mine_on)}` : ""),
+    rated: (c) => `✓ Rated ${c.mine.toFixed(1)}` + (c.mine_artifact ? " · artifact" : "") + (c.mine_on ? ` · ${when(c.mine_on)}` : ""),
     todo: () => "○ Not rated yet",
     saving: () => "Saving…",
     failed: () => "! Not saved yet: trying again…",
@@ -253,13 +284,19 @@ const Rate = (() => {
     if (!items || !Object.keys(items).length) return;
     const rater = r.data.rater;
     const scores = { [rater]: Object.fromEntries(Object.entries(items).map(([k, x]) => [k, x.value])) };
+    const artifacts = { [rater]: Object.fromEntries(Object.entries(items).filter(([, x]) => typeof x.artifact === "boolean").map(([k, x]) => [k, x.artifact])) };
     try {
-      const reply = await call(`/genome/searches/${encodeURIComponent(runId)}/ratings`, { body: { scores }, keepalive });
+      const reply = await call(`/genome/searches/${encodeURIComponent(runId)}/ratings`, { body: { scores, artifacts }, keepalive });
       const stored = (reply.stored || {})[rater] || {};
+      const heard = (reply.stored_artifacts || {})[rater] || {};
       const dates = (reply.rated_on || {})[rater] || {};
       for (const [clip, x] of Object.entries(items)) {
         if (stored[clip] !== x.value) throw new Error("the host did not keep every score");
+        if (typeof x.artifact === "boolean" && heard[clip] !== x.artifact) throw new Error("the host did not keep every artifact answer");
         x.c.mine = x.value;
+        if (typeof x.artifact === "boolean") x.c.mine_artifact = x.artifact;
+        const note = card(x.c)?.querySelector(".artifact-note");
+        if (note) note.textContent = artifactNote(x.c);
         x.c.mine_on = dates[clip] || x.c.mine_on;
         if (!r.pending[runId]?.[clip]) mark(x.c, "rated");
       }
@@ -286,10 +323,14 @@ const Rate = (() => {
     let left = {};
     try { left = JSON.parse(recall(unsentKey()) || "{}"); } catch (e) {}
     let n = 0;
-    for (const [run, clips] of Object.entries(left)) for (const [clip, value] of Object.entries(clips)) {
+    for (const [run, clips] of Object.entries(left)) for (const [clip, saved] of Object.entries(clips)) {
       const c = r.data.clips.find((x) => x.run === run && x.clip === clip);
       if (!c) continue;
-      (r.pending[run] = r.pending[run] || {})[clip] = { value, c };
+      // Older pages kept only the score; newer ones the score and the artifact answer
+      const { value, artifact } = typeof saved === "number" ? { value: saved, artifact: null } : saved;
+      if (typeof value !== "number") continue;
+      if (typeof artifact === "boolean") c.draft_artifact = artifact;
+      (r.pending[run] = r.pending[run] || {})[clip] = { value, artifact, c };
       n++;
     }
     if (n) { toast(`Sending ${n} score(s) that were not saved last time…`); flushAll(); }
@@ -367,11 +408,18 @@ const Rate = (() => {
       el("button", { type: "button", class: "play" + (playing ? " on" : ""), "aria-label": `Play ${label} of ${c.voice}`,
                      onclick: (e) => play(c, e.currentTarget) }, playing ? "❚❚" : "▶"),
       el("div", { class: "rank-label" }, el("strong", {}, label), el("span", { class: "muted small" }, ` · ${c.voice}`),
+        artifactMark(c, by),
         c.genome !== null ? el("div", { class: "muted small ellipsis" }, c.described.join(" · ")) : null,
         by !== "mos" && c.mine_on ? el("div", { class: "muted small" }, `scored ${when(c.mine_on)}`) : null),
       bar,
       el("span", { class: "rank-value" }, shown),
       el("button", { type: "button", class: "quiet small", onclick: () => rerate(c) }, "Re-score"));
+  }
+
+  function artifactMark(c, by) {
+    if (by === "mos" && c.mos && c.mos.artifact_heard)
+      return el("span", { class: "artifact-tag small" }, ` artifact: ${c.mos.artifact_heard} of ${c.mos.artifact_answers}`);
+    return by !== "mos" && c.mine_artifact ? el("span", { class: "artifact-tag small" }, " artifact") : null;
   }
 
   function stopPlayer() {

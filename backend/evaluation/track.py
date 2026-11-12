@@ -34,12 +34,13 @@ def log_environment():
 
 
 def log_run(name, params, metrics, artifacts=(), limitations=""):
-    with mlflow.start_run(run_name=name):
+    with mlflow.start_run(run_name=name) as run:
         mlflow.log_params(params)
         mlflow.log_metrics(metrics)
         for path in list(artifacts) + [log_environment()]:
             mlflow.log_artifact(str(path))
         mlflow.set_tag("limitations", limitations)
+    return run.info.run_id
 
 
 if __name__ == "__main__":

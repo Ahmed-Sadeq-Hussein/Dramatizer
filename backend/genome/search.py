@@ -1,6 +1,6 @@
 """search.py | Find genomes for a voice: try them on a line, and judge each one with the sanity check.
 
-The method for now is a random search, as the first Dramatizer started: draw 10
+The default is a random search, as the first Dramatizer started: draw 10
 random genomes with the chosen number of genes each, render the line once
 plain (the baseline) and once with each genome, and judge every genome's clip
 with reward.sanity_check against the baseline:
@@ -11,6 +11,9 @@ with reward.sanity_check against the baseline:
                to the baseline at least 0.88), and it is not much slower than
                its speed gene asks (pace at least 0.75)
     terrible   any one fails
+
+Guided methods rank a mutation pool using a trained listener preference model.
+They render the same number of clips and use the same sanity check.
 
     from backend.genome.search import new_run, run_search
 
@@ -56,6 +59,7 @@ class Method:
     genomes: int             # how many genomes it tries
     draw: callable           # (text, genes, count, seed) -> [Candidate]
     about: str
+    preference: str | None = None
 
 
 def draw_random(text, genes, count, seed):
@@ -86,7 +90,56 @@ def draw_random(text, genes, count, seed):
 METHODS = {
     "random": Method("Random search", 10, draw_random,
                      "10 random genomes, each judged against the plain line by the sanity check"),
+    "guided-shared": Method("Shared preference guidance", 10, None,
+                            "Rank mutations with the shared preference model", "shared"),
+    "guided-voice": Method("Voice-conditioned guidance", 10, None,
+                           "Rank mutations with the reference voice and starting genome", "voice"),
 }
+
+
+def draw_guided(text, genes, count, seed, starting_genome, reference_audio, *, conditioned):
+    """Rank a pool of mutations and reserve part of the render budget for exploration."""
+    from backend.genome import preference
+    from backend.genome.descriptors import genome_vector
+    from backend.speech.tts_formatter import process_tts_string
+
+    artifact = preference.load_model()
+    direction = preference.direction(artifact, starting_genome, reference_audio, conditioned=conditioned)
+    start_vector = genome_vector(starting_genome)
+    factory = GenomeFactory(min_operations=genes, max_operations=genes, seed=seed)
+    parent = Candidate(starting_genome)
+    initial_plan = process_tts_string(text, parent.resolve(text))
+    seen = {(initial_plan.text, initial_plan.speed, initial_plan.instruct)}
+    proposals = []
+    for _ in range(count * DRAW_ATTEMPTS):
+        child, _ = factory.mutate(parent, text)
+        # Walk to the requested gene count, then keep drawing from the
+        # accumulated valid proposals and the first parent at that count.
+        if len(parent.operations) != genes:
+            parent = child
+        if len(child.operations) != genes:
+            continue
+        plan = process_tts_string(text, child.resolve(text))
+        key = (plan.text, plan.speed, plan.instruct)
+        if key in seen:
+            continue
+        seen.add(key)
+        vector = genome_vector(child.operations)
+        score = sum(weight * (value - start) for weight, value, start in zip(direction, vector, start_vector))
+        proposals.append((child, score))
+        if len(proposals) == count * 10:
+            break
+        parent = factory.random.choice(proposals)[0]
+    if len(proposals) < count:
+        raise ValueError(f"Found only {len(proposals)} distinct guided proposals. Try a longer line or more genes.")
+    # Sample random proposals first, so the reserved slots are genuinely random.
+    random_count = max(1, count // 5) if count > 1 else 0
+    random_indices = set(factory.random.sample(range(len(proposals)), random_count))
+    ranked = sorted((item for index, item in enumerate(proposals) if index not in random_indices),
+                    key=lambda item: item[1], reverse=True)
+    chosen = ranked[:count - random_count] + [proposals[i] for i in sorted(random_indices)]
+    factory.random.shuffle(chosen)
+    return [candidate for candidate, _ in chosen], artifact["sha256"]
 
 
 # --------------------------------------------------------------------------- #
@@ -163,7 +216,7 @@ def render_seed_default():
 
 
 def new_run(reference_audio, reference_text, text=None, voice=None, method="random", genes=GENES,
-            seed=None, render_seed=None, origin=None, runs_dir=None):
+            seed=None, render_seed=None, origin=None, runs_dir=None, starting_genome=None):
     """
     Draw the genomes and write the run, without rendering anything. Returns the run's folder.
 
@@ -176,6 +229,7 @@ def new_run(reference_audio, reference_text, text=None, voice=None, method="rand
     seed             which genomes are drawn (default: a new one, saved in the run)
     render_seed      the seed of every render (default: VOICE_SEED)
     origin           where the voice comes from (split_voice_data.voice_origin), saved as it is
+    starting_genome  a list of seed genes for guided methods; defaults to neutral
     """
     from backend.speech.tts_formatter import process_tts_string
     from backend.metrics.reward import CONFIG
@@ -186,7 +240,7 @@ def new_run(reference_audio, reference_text, text=None, voice=None, method="rand
     if not reference_text.strip():
         raise ValueError("reference_text is empty: give the words spoken in the reference audio.")
     text = (text or reference_text).strip()
-    if method not in METHODS:
+    if not isinstance(method, str) or method not in METHODS:
         raise ValueError(f"Unknown method {method!r}: use one of {', '.join(METHODS)}.")
     if not 1 <= int(genes) <= MAX_OPERATIONS:
         raise ValueError(f"Genes per genome must be from 1 to {MAX_OPERATIONS}.")
@@ -197,8 +251,22 @@ def new_run(reference_audio, reference_text, text=None, voice=None, method="rand
     chosen = METHODS[method]
     voice = voice or reference_audio.stem
 
+    starting_genome = [] if starting_genome is None else starting_genome
+    from backend.genome.descriptors import genome_vector
+    genome_vector(starting_genome)
+    preference_hash = None
+    if chosen.preference:
+        proposals, preference_hash = draw_guided(
+            text, genes, chosen.genomes, seed, starting_genome, reference_audio,
+            conditioned=chosen.preference == "voice",
+        )
+    else:
+        if starting_genome:
+            raise ValueError("A starting genome requires a guided search method.")
+        proposals = chosen.draw(text, genes, chosen.genomes, seed)
+
     genomes = []
-    for number, genome in enumerate(chosen.draw(text, genes, chosen.genomes, seed), start=1):
+    for number, genome in enumerate(proposals, start=1):
         plan = process_tts_string(text, genome.resolve(text))
         genomes.append({
             "number": number,
@@ -237,6 +305,8 @@ def new_run(reference_audio, reference_text, text=None, voice=None, method="rand
         "reference_text": reference_text.strip(),
         "text": text,
         "genes_per_genome": genes,
+        "starting_genome": starting_genome,
+        "preference_model_sha256": preference_hash,
         "seed": seed,
         "render_seed": render_seed,
         "limits": {"wer": CONFIG.sanity_wer_limit, "words": CONFIG.sanity_wer_words,
@@ -361,6 +431,7 @@ if __name__ == "__main__":
     parser.add_argument("--text", help="the line to speak (default: the reference's own words)")
     parser.add_argument("--voice", help="a name for the run (default: from the reference file)")
     parser.add_argument("--method", default="random", choices=list(METHODS))
+    parser.add_argument("--starting-genome", type=Path, help="JSON file containing a list of starting genes")
     parser.add_argument("--genes", type=int, default=GENES, help=f"genes per genome, 1 to {MAX_OPERATIONS}")
     parser.add_argument("--seed", type=int, help="which genomes are drawn (default: a new one)")
     parser.add_argument("--render-seed", type=int, help="the seed of every render (default: VOICE_SEED)")
@@ -373,8 +444,9 @@ if __name__ == "__main__":
     else:
         if not (args.reference_audio and args.reference_text):
             parser.error("give REFERENCE_AUDIO and REFERENCE_TEXT, or --resume RUN_FOLDER")
+        starting = json.loads(args.starting_genome.read_text(encoding="utf-8")) if args.starting_genome else None
         folder = new_run(args.reference_audio, args.reference_text, args.text, args.voice, args.method,
-                         args.genes, args.seed, args.render_seed)
+                         args.genes, args.seed, args.render_seed, starting_genome=starting)
         print(f"Run saved in {folder}")
 
     if args.prepare_only:

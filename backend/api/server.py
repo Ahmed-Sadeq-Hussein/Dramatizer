@@ -619,7 +619,8 @@ def new_search():
     reference_audio, reference_text = get_clip(clip)
     try:
         folder = search.new_run(reference_audio, reference_text, text=text, voice=clip.speaker, genes=genes,
-                                seed=seed_of(data), origin=split_voice_data.voice_origin(clip))
+                                seed=seed_of(data), origin=split_voice_data.voice_origin(clip),
+                                method=data.get("method") or "random", starting_genome=data.get("starting_genome"))
     except ValueError as error:
         raise Refused(str(error))
     run = search.load_run(folder)

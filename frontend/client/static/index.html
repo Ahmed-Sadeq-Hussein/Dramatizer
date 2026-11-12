@@ -83,12 +83,22 @@
   <!-- 3. Genomes -->
   <section class="tab" id="tab-genomes" hidden>
     <div id="genome-home">
-      <p class="intro">A genome is a few delivery edits: stress, pauses, sounds, speed. A search tries 10 random genomes on
+      <p class="intro">A genome is a few delivery edits: stress, pauses, sounds, speed. A search tries 10 genomes on
         one line and judges each against the plain line. Then listeners rate them and the best one gets a name.</p>
       <details class="card" open>
         <summary>New search with the chosen voice</summary>
         <form id="search-form" class="stack">
           <label>Line <textarea id="search-text" rows="2" maxlength="300" required>Well, you really did it this time, and I honestly didn't think you had it in you, so I'll be waiting.</textarea></label>
+          <div class="row">
+            <label>Search method <select id="search-method">
+              <option value="random">Random</option>
+              <option value="guided-shared">Shared preference model</option>
+              <option value="guided-voice">Voice-conditioned preference model</option>
+            </select></label>
+            <label>Starting genome <select id="search-start" disabled>
+              <option value="">Neutral</option>
+            </select></label>
+          </div>
           <div class="row"><label>Genes per genome <input type="number" id="search-genes" min="1" max="6" value="3"></label>
             <label>Genome seed <input type="number" id="search-seed" min="0" placeholder="new"></label>
             <button type="submit">Start search</button></div>

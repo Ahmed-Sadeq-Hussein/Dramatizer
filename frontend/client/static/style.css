@@ -45,7 +45,10 @@ audio { width: 100%; height: 34px; }
 .modes button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
 .modes button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .mode-note { flex: 1 1 100%; color: var(--muted); font-size: 0.9em; }
-body[data-mode="listen"] #tab-genomes details.card { display: none; }      /* starting a search is Make genomes */
+body[data-mode="listen"] #tab-genomes details.card { display: none; }
+body:not([data-mode="build"]) #tab-genomes .notice { display: none; }   /* "can't start a search" belongs to Make genomes */
+.notice { margin: 12px 0; padding: 8px 12px; border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+          border-radius: 6px; background: var(--surface); color: var(--ink); }      /* starting a search is Make genomes */
 body[data-mode="rank"] #chosen { display: none; }                          /* the chosen voice plays no part in rating */
 .tabs { display: flex; gap: 4px; max-width: 900px; margin: 0 auto; padding: 0 16px; border-bottom: 1px solid var(--rule); overflow-x: auto; }
 .tabs button, .views button { background: transparent; color: var(--muted); border-radius: 6px 6px 0 0; padding: 8px 12px; white-space: nowrap; }

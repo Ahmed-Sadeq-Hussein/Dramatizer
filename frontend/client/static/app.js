@@ -63,9 +63,7 @@ const MODE_KEY = "dramatizer-mode";
 let mode = null;
 const lastTab = {};          // each mode reopens on the tab last used in it
 
-// Allowed by the account's permissions (applyPermissions marks the others)
-const tabAllowed = (tab) => !document.querySelector(`.tabs [data-tab="${tab}"]`).dataset.denied;
-const modeTabs = (name) => MODES[name].tabs.filter(tabAllowed);
+const modeTabs = (name) => MODES[name].tabs;
 
 function applyMode(name) {
   mode = name;
@@ -85,11 +83,9 @@ function setMode(name) {
   showTab(tabs.includes(lastTab[name]) ? lastTab[name] : current && !current.hidden ? current.dataset.tab : tabs[0]);
 }
 
-// Which modes this account can use; with only one, the mode bar is left out
+// The mode to open on: the current one, else the one this browser used last, else the first
 function renderModes() {
-  const usable = Object.keys(MODES).filter((m) => modeTabs(m).length);
-  document.querySelectorAll(".modes button").forEach((b) => (b.hidden = !usable.includes(b.dataset.mode)));
-  $("modes").hidden = usable.length < 2;
+  const usable = Object.keys(MODES);
   let saved = null;
   try { saved = localStorage.getItem(MODE_KEY); } catch { /* none */ }
   const pick = usable.includes(mode) ? mode : usable.includes(saved) ? saved : usable[0];
@@ -139,17 +135,11 @@ async function connect() {
   }
 }
 
-// What a listener account cannot do is hidden rather than refused
+// Every login sees every mode and tab. What an account may not do is disabled with a note
+// (data-needs / data-lacks), and the host refuses it anyway.
 function applyPermissions() {
-  // A listener only rates: the other tabs would show other searches and distract from the listening test
-  const listener = can("rate") && !can("search") && !can("speak");
-  const deny = (tab, no) => {
-    const b = document.querySelector(`.tabs [data-tab="${tab}"]`);
-    if (no) b.dataset.denied = "1"; else delete b.dataset.denied;
-  };
-  for (const tab of ["voices", "genomes", "results"]) deny(tab, listener);
-  deny("studio", !can("speak") && !can("name"));
-  deny("speak", !can("speak"));
+  document.querySelectorAll("[data-needs]").forEach((b) => (b.disabled = !can(b.dataset.needs)));
+  document.querySelectorAll("[data-lacks]").forEach((n) => (n.hidden = can(n.dataset.lacks)));
   document.querySelector("#tab-genomes details.card").hidden = !can("search");
   document.body.classList.toggle("can-name", can("name"));
   document.body.classList.toggle("own-scores-only", !can("rate_for_others"));

@@ -80,10 +80,11 @@
   <!-- 2. Speak -->
   <section class="tab" id="tab-speak" hidden>
     <p class="intro">Type a line; the host's PC speaks it in the chosen voice. Jobs wait in one queue.</p>
+    <p class="notice" data-lacks="speak" hidden>Your account can choose voices and listen to them, but not make speech. Ask the host for a researcher account.</p>
     <form id="speak-form" class="stack">
       <label>Line to speak <textarea id="speak-text" rows="3" maxlength="300" required></textarea></label>
       <div class="row"><label>Seed <input type="number" id="speak-seed" min="0" placeholder="default"></label>
-        <button type="submit">Speak</button></div>
+        <button type="submit" data-needs="speak">Speak</button></div>
     </form>
     <div id="speak-jobs" class="list"></div>
   </section>
@@ -93,6 +94,7 @@
     <div id="genome-home">
       <p class="intro">A genome is a few delivery edits: stress, pauses, sounds, speed. A search tries 10 genomes on
         one line and judges each against the plain line. Then listeners rate them and the best one gets a name.</p>
+<p class="notice" data-lacks="search" hidden>Your account can listen to the searches, but not start one. Ask the host for a researcher account.</p>
       <details class="card" open>
         <summary>New search with the chosen voice</summary>
         <form id="search-form" class="stack">
@@ -197,6 +199,7 @@
 
   <!-- 4. Genome studio -->
   <section class="tab" id="tab-studio" hidden>
+<p class="notice" data-lacks="speak" hidden>Your account can look at and edit genomes here, but not render or save them. Ask the host for a researcher account.</p>
     <p class="intro">Pick a genome, change its genes, then save it under a new name or render it in the chosen voice.
       A gene's position runs from the first word (0) to the last (1), so a genome fits any line.</p>
 
@@ -239,7 +242,7 @@
       <p class="muted small" id="st-voice"></p>
       <div class="row"><label>Seed <input type="number" id="st-seed" min="0" placeholder="default"></label>
         <label class="check"><input type="checkbox" id="st-plain" checked> Also the plain line, to compare</label>
-        <button type="button" id="st-render">Render</button></div>
+        <button type="button" id="st-render" data-needs="speak">Render</button></div>
       <div id="st-jobs" class="list"></div>
     </div>
   </section>

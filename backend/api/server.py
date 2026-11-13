@@ -22,6 +22,15 @@ Safe to put behind a tunnel because:
     - replies carry strict browser headers (no framing, no sniffing, no referrer, no caching),
       bodies are capped at 64 KB, and the server does not say what software it runs
 
+The website is served here too, for phones and browsers without the client app
+(python main_backend.py tunnel gives it a public https:// address through Cloudflare):
+
+    GET  /, /static/<file>                        the same page as the client app (frontend/client/static)
+    GET  /connection                              who is logged in by this browser's cookie, if anyone
+
+A login from that page (its Origin is this server) gets an HttpOnly, Secure, SameSite=Strict
+cookie instead of a token, and a change sent with the cookie must come from the page itself.
+
 The API, all under /api/v1 (JSON in and out, audio as WAV):
 
     GET  /health                                  no key needed: is it up?
@@ -51,16 +60,21 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
     POST /genome/preview {text, genes}            the genes on a line, in words and as markup (no GPU)
     POST /genome/edited  {name, genes, text?, based_on?}   save a genome edited by hand, under a new name
     POST /genome/edited/remove {name}             delete a genome made by hand
-    POST /genome/render  {dataset, clip_id, text, genes, seed?, name?}
+    POST /genome/render  {dataset, clip_id, text, genes, seed?, name?, private_name?}
+                                                  (private_name: also keep the genes as the caller's own private genome)
                                                   queue a line spoken with a genome (no genes: the plain
                                                   line) -> {job}; the audio as for /speak
     GET  /genome/listening?batch=&pile=           a listening pile: every clip, your score and the MOS
     GET  /results                                 the baselines' and Milestone 2's summaries
+    GET  /renders?q=&mine=&page=                  every line spoken or rendered through the API, newest first:
+                                                  voice, line, genome, who made it and when
+    GET  /renders/<id>/audio                      one of them
+    POST /renders/<id>/rating  {score: 1-5|null}  score your own render (kept apart from the MOS)
 
 Who may do what: an API key may do everything. An account (accounts.py) may do
-what its role allows: listeners rate (only as themselves, only their own pile)
-and see rankings; starting speech or searches and naming genomes need a
-researcher or admin.
+what its role allows: listeners rate (only as themselves, only their own pile),
+see rankings, and speak or render lines; starting searches and naming genomes
+need a researcher or admin.
 """
 import argparse
 import hashlib
@@ -76,8 +90,9 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 from ipaddress import ip_address
 from pathlib import Path
+from urllib.parse import urlsplit
 
-from flask import Flask, abort, g, jsonify, request, send_file
+from flask import Flask, abort, g, jsonify, request, send_file, send_from_directory
 from werkzeug.exceptions import HTTPException
 from werkzeug.serving import WSGIRequestHandler
 
@@ -100,8 +115,12 @@ MAX_WAITING = 3          # jobs per person, queued or running
 IDLE_SECONDS = 30
 CLIP_FILE = re.compile(r"^(baseline|genome_\d{2})\.wav$")
 JOB_ID = re.compile(r"^[0-9a-f]{32}$")
+PAGE_DIR = model.PROJECT_DIR / "frontend" / "client" / "static"     # the website, served here too (phones)
+COOKIE = "dramatizer_session"
+PAGE_CSP = ("default-src 'self'; img-src 'self' data:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; "
+            "frame-ancestors 'none'; form-action 'self'; base-uri 'none'")
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=None)      # /static is the website (PAGE_DIR), below
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024
 app.json.sort_keys = False
 
@@ -167,6 +186,28 @@ def _bearer():
     return header[7:].strip() if header.startswith("Bearer ") else ""
 
 
+def _token():
+    """The caller's key or session: an Authorization header (scripts, the client app) or the page's cookie."""
+    return _bearer() or request.cookies.get(COOKIE, "")
+
+
+def from_page():
+    """A request sent by this server's own page: browsers name the page's origin, and it is this server."""
+    origin = request.headers.get("Origin")
+    return bool(origin) and urlsplit(origin).netloc == request.host
+
+
+def _same_page_only():
+    """
+    The cookie goes with every request the browser makes here, so a change sent with it must come from
+    this server's own page, never from another website (on top of SameSite=Strict and JSON-only bodies).
+    """
+    if request.method != "GET" and not _bearer() and request.cookies.get(COOKIE):
+        site = request.headers.get("Sec-Fetch-Site")
+        if not from_page() or (site and site != "same-origin"):
+            raise Refused("Only this site's own page may do that.", 403)
+
+
 def needs_key(view):
     """
     Who is calling: an API key (keys.py; the host's people, allowed everything) or
@@ -175,7 +216,8 @@ def needs_key(view):
     """
     @wraps(view)
     def checked(*args, **kwargs):
-        token = _bearer()
+        _same_page_only()
+        token = _token()
         account = accounts.session_account(token)
         name = account.display_name if account else keys.who(token)
         if name is None:
@@ -205,7 +247,8 @@ def log_and_protect(response):
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
-    response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+    page = not request.path.startswith(API + "/") and request.path != "/connection"
+    response.headers["Content-Security-Policy"] = PAGE_CSP if page else "default-src 'none'; frame-ancestors 'none'"
     response.headers["Strict-Transport-Security"] = "max-age=31536000"
     response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
     try:
@@ -292,7 +335,7 @@ def clip_json(clip):
 
 jobs = {}
 waiting = queue.Queue()
-jobs_lock = threading.Lock()
+jobs_lock = threading.RLock()     # re-entrant: /me holds it while job_json asks place_in_queue, which takes it too
 
 
 def queue_job(kind, owner, work, about):
@@ -366,17 +409,26 @@ def login():
         time.sleep(1)           # slows down guessing; the account also locks after a few wrong passwords
         raise Refused(str(error), 401)
     g.user, g.account = account.display_name, account
+    token = accounts.open_session(account)
+    if from_page():
+        # The website: the session goes in a cookie its scripts cannot read, sent only over HTTPS and only here
+        audit("login", by="page")
+        reply = jsonify(account=account.public(), expires_in_hours=accounts.SESSION_HOURS)
+        reply.set_cookie(COOKIE, token, max_age=accounts.SESSION_HOURS * 3600, secure=True, httponly=True,
+                         samesite="Strict", path="/")
+        return reply
     audit("login")
-    return jsonify(token=accounts.open_session(account), account=account.public(),
-                   expires_in_hours=accounts.SESSION_HOURS)
+    return jsonify(token=token, account=account.public(), expires_in_hours=accounts.SESSION_HOURS)
 
 
 @app.post(f"{API}/logout")
 @needs_key
 def logout():
-    accounts.close_session(_bearer())
+    accounts.close_session(_token())
     audit("logout")
-    return jsonify(ok=True)
+    reply = jsonify(ok=True)
+    reply.delete_cookie(COOKIE, path="/", secure=True, httponly=True, samesite="Strict")
+    return reply
 
 
 @app.post(f"{API}/me/password")
@@ -461,9 +513,11 @@ def speak():
 
         reference_audio, reference_text = get_clip(clip)
         started = time.time()
-        path = generate_speech(reference_audio, reference_text, text,
-                               voice_name=f"api_{clip.dataset}_{clip.speaker}", seed=seed)
-        return {"path": str(path), "seconds": round(time.time() - started, 1)}
+        spoken = generate_speech(reference_audio, reference_text, text,
+                                 voice_name=f"api_{clip.dataset}_{clip.speaker}", seed=seed)
+        seconds = round(time.time() - started, 1)
+        path = keep_render(spoken, clip, text, owner, seconds, seed=seed)
+        return {"path": str(path), "seconds": seconds}
 
     job = queue_job("speak", owner, work, {"voice": clip_json(clip), "text": text, "seed": seed})
     return jsonify(job=job_json(job)), 202
@@ -765,7 +819,50 @@ def named():
 
 # --- The genome studio: pick, edit, save, render -----------------------------
 
-GENOME_RENDERS = SPEAK_DIR / "genome_renders"
+GENOME_RENDERS = SPEAK_DIR / "genome_renders"      # every render made through the API, each with a .json note
+RENDER_ID = re.compile(r"^[A-Za-z0-9_-]{1,160}$")
+RENDERS_PAGE = 30
+RENDER_RATINGS = SPEAK_DIR / "render_ratings.json"    # people's scores of their own renders, apart from the MOS
+PRIVATE_GENOMES = SPEAK_DIR / "private_genomes.json"  # {user: [genome]}: named blank genomes, each seen by its maker only
+_own_lock = threading.Lock()
+
+
+def read_json(path, empty):
+    try:
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return empty
+
+
+def keep_private(user, name, genes, text, clip):
+    """Save (or replace) one of `user`'s private genomes, under `name`."""
+    with _own_lock:
+        everyone = read_json(PRIVATE_GENOMES, {})
+        mine = [e for e in everyone.get(user, []) if e["name"] != name]
+        mine.append({"name": name, "genes": list(genes), "text": text, "voice": f"{clip.dataset}/{clip.speaker}",
+                     "made": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+        everyone[user] = mine
+        PRIVATE_GENOMES.parent.mkdir(parents=True, exist_ok=True)
+        safe_files.write_json(PRIVATE_GENOMES, everyone)
+
+
+def keep_render(path, clip, text, owner, seconds, seed=None, genome=None, genes=(), shown=None):
+    """
+    Keep a finished render in GENOME_RENDERS with a note: which voice, the line, the genome, who made it
+    and when, so everyone can listen to it later (GET /renders). A plain /speak line is moved there too.
+    """
+    path = Path(path)
+    GENOME_RENDERS.mkdir(parents=True, exist_ok=True)
+    if path.parent != GENOME_RENDERS:
+        target = GENOME_RENDERS / f"{clip.dataset}_{clip.speaker}_spoken_{datetime.now():%Y%m%d_%H%M%S_%f}.wav"
+        path.replace(target)
+        path = target
+    shown = shown or {"markup": text, "speed": 1.0}
+    safe_files.write_json(path.with_suffix(".json"), {
+        "voice": f"{clip.dataset}/{clip.speaker}", "clip_id": clip.clip_id, "text": text, "genome": genome,
+        "genes": list(genes), "markup": shown["markup"], "speed": shown["speed"], "seed": seed, "by": owner,
+        "made": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "seconds": seconds})
+    return path
 
 
 def genes_of(data, allow_empty=False):
@@ -783,7 +880,20 @@ def genome_library():
     from backend.genome import editor, search
 
     runs = [(f, r) for f, r in search.list_runs() if may_see(r)]
-    return jsonify(options=editor.options(), genomes=editor.library(runs, with_mos=sees_others()))
+    genomes = editor.library(runs, with_mos=True)       # the MOS orders the list; its number is shown only to those who may
+    for e in genomes:
+        e["group"] = e.get("voice") or "Made by hand"
+    # Grouped by the voice each was found for, the best rated first (unrated last)
+    genomes.sort(key=lambda e: (e["group"] == "Made by hand", str(e["group"]),
+                                e["mos"] is None, -(e["mos"] or 0)))
+    if not sees_others():
+        for e in genomes:
+            e["mos"] = None
+    mine = [{"key": "private:" + e["name"], "source": "private", "name": e["name"], "group": "My genomes",
+             "voice": e.get("voice"), "text": e.get("text"), "genes": e["genes"], "described": None, "markup": None,
+             "verdict": None, "mos": None, "made": e.get("made")}
+            for e in sorted(read_json(PRIVATE_GENOMES, {}).get(g.user, []), key=lambda e: e.get("made") or "", reverse=True)]
+    return jsonify(options=editor.options(), genomes=mine + genomes)
 
 
 @app.post(f"{API}/genome/preview")
@@ -843,10 +953,16 @@ def render_genome():
     seed = seed_of(data)
     seed = search.render_seed_default() if seed is None else seed
     name = str(data.get("name") or "")[:60] or None
+    private = " ".join(str(data.get("private_name") or "").split())[:60] or None
     try:
         shown = editor.preview(text, genes)
     except ValueError as error:
         raise Refused(str(error))
+    if private:
+        if not genes:
+            raise Refused("Add at least one gene to keep the genome.")
+        keep_private(owner, private, genes, text, clip)
+        name = private
 
     def work():
         reference_audio, reference_text = get_clip(clip)
@@ -856,15 +972,107 @@ def render_genome():
         started = time.time()
         editor.render(reference_audio, reference_text, text, genes, path, seed)
         seconds = round(time.time() - started, 1)
-        safe_files.write_json(path.with_suffix(".json"), {
-            "voice": f"{clip.dataset}/{clip.speaker}", "clip_id": clip.clip_id, "text": text, "genome": name,
-            "genes": genes, "markup": shown["markup"], "speed": shown["speed"], "seed": seed, "by": owner,
-            "made": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "seconds": seconds})
+        keep_render(path, clip, text, owner, seconds, seed=seed, genome=name, genes=genes, shown=shown)
         return {"path": str(path), "seconds": seconds}
 
     job = queue_job("speak", owner, work, {"voice": clip_json(clip), "text": text, "seed": seed, "genome": name,
                                            "genes": genes, "markup": shown["markup"]})
     return jsonify(job=job_json(job), preview=shown), 202
+
+
+# --- Renders: everyone's spoken and rendered lines, to listen to ------------------
+
+def render_notes():
+    """Every kept render, newest first: its note plus its id (the file name without .wav)."""
+    out = []
+    for note in GENOME_RENDERS.glob("*.json") if GENOME_RENDERS.is_dir() else []:
+        if not note.with_suffix(".wav").is_file():
+            continue
+        try:
+            data = json.loads(note.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        out.append({"id": note.stem, "voice": data.get("voice"), "text": data.get("text"),
+                    "genome": data.get("genome"), "genes": len(data.get("genes") or []), "markup": data.get("markup"),
+                    "speed": data.get("speed"), "seed": data.get("seed"), "by": data.get("by"),
+                    "made": data.get("made"), "seconds": data.get("seconds")})
+    return sorted(out, key=lambda r: r["made"] or "", reverse=True)
+
+
+@app.get(f"{API}/renders")
+@needs_key
+def renders():
+    words = " ".join(request.args.get("q", "").lower().split())[:100]
+    mine = request.args.get("mine") in ("1", "true")
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except ValueError:
+        page = 1
+    found = render_notes()
+    scores = read_json(RENDER_RATINGS, {})
+    for r in found:
+        r["mine"] = r["by"] == g.user
+        r["my_score"] = scores.get(r["id"], {}).get(g.user)
+    if mine:
+        found = [r for r in found if r["by"] == g.user]
+    if words:
+        found = [r for r in found if words in " ".join(str(r[k] or "") for k in ("voice", "text", "genome", "by")).lower()]
+    start = (page - 1) * RENDERS_PAGE
+    return jsonify(renders=found[start:start + RENDERS_PAGE], total=len(found), page=page,
+                   pages=max(1, -(-len(found) // RENDERS_PAGE)))
+
+
+@app.post(f"{API}/renders/<render_id>/rating")
+@needs_key
+def rate_render(render_id):
+    """Score one of your own renders, 1 to 5 (or null to clear). Kept apart from the listening piles' MOS."""
+    if not RENDER_ID.match(render_id) or not (GENOME_RENDERS / f"{render_id}.wav").is_file():
+        raise Refused("No such render.", 404)
+    note = read_json(GENOME_RENDERS / f"{render_id}.json", {})
+    if note.get("by") != g.user:
+        raise Refused("You can rate only your own renders.", 403)
+    score = body().get("score")
+    if score is not None and (not isinstance(score, int) or isinstance(score, bool) or not 1 <= score <= 5):
+        raise Refused("A score is a whole number from 1 to 5.")
+    with _own_lock:
+        scores = read_json(RENDER_RATINGS, {})
+        if score is None:
+            scores.get(render_id, {}).pop(g.user, None)
+        else:
+            scores.setdefault(render_id, {})[g.user] = score
+        RENDER_RATINGS.parent.mkdir(parents=True, exist_ok=True)
+        safe_files.write_json(RENDER_RATINGS, scores)
+    return jsonify(ok=True, score=score)
+
+
+@app.get(f"{API}/renders/<render_id>/audio")
+@needs_key
+def render_audio(render_id):
+    path = GENOME_RENDERS / f"{render_id}.wav"
+    if not RENDER_ID.match(render_id) or not path.is_file():
+        raise Refused("No such render.", 404)
+    return send_file(path, mimetype="audio/wav", conditional=True)
+
+
+# --- The website ---------------------------------------------------------------
+# The same page as the client app (frontend/client), so a phone or any browser can use the host directly,
+# through a tunnel with a trusted certificate (python main_backend.py tunnel). Logins keep a cookie.
+
+@app.get("/")
+def page():
+    return send_from_directory(PAGE_DIR, "index.html")
+
+
+@app.get("/static/<path:name>")
+def page_file(name):
+    return send_from_directory(PAGE_DIR, name)       # refuses anything outside PAGE_DIR
+
+
+@app.get("/connection")
+def connection():
+    """What the page asks first: who is logged in here (by the cookie), if anyone."""
+    account = accounts.session_account(request.cookies.get(COOKIE, ""))
+    return jsonify(host=request.host, name=account.display_name if account else None, mode="login")
 
 
 # --- Results -----------------------------------------------------------------

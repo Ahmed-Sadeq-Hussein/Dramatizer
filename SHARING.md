@@ -13,6 +13,34 @@ their browser. The client talks to the host's **API** through a playit.gg tunnel
  └───────────────────────────┘               └──────────────────────────────────┘
 ```
 
+## On a phone, or without installing anything: the Cloudflare address
+
+The host's API also serves the website itself. Through a Cloudflare tunnel it gets a public
+`https://` address with a trusted certificate, so anyone can open it on a phone or computer and log
+in with their account. There's no client to install, no fingerprint to check and no "Not secure" warning.
+
+The host, each time:
+
+1. Start the API in one window: `python main_backend.py api`
+2. Start the tunnel in another window: `python main_backend.py tunnel`
+3. It prints an address like `https://some-words.trycloudflare.com`. Send that to the people who
+   rate. It changes every time the tunnel starts.
+
+Once, before the first time: install Cloudflare's tunnel program with
+`winget install --id Cloudflare.cloudflared`, then open a new window. No Cloudflare account is needed.
+
+Everyone else: open the address, log in with the username and password from the host, and use the
+mode buttons at the top. Logging in keeps a secure cookie (12 hours, or until you log out).
+
+What's different from the client below:
+
+- **Cloudflare decrypts the traffic in its own network.** That's how it gives a trusted certificate.
+  The client below talks end-to-end encrypted to the host, checked by the fingerprint. For listening
+  tests either is fine; use the client if that matters to you.
+- **It's an account login only.** API keys stay with the client and scripts (`API calls/`).
+- **"Forbidden" on a phone** means the page was opened through the client's address (`:5010`),
+  which only works on the PC running the client. Use the Cloudflare address instead.
+
 ## The host (once)
 
 1. Give each person a key. It is shown once; send it to them privately:

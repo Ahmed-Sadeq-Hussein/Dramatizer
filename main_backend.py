@@ -74,6 +74,8 @@ COMMANDS = {
     "API (for others' PCs, through playit.gg)": {
         "api": ("Start the back end as a web API on https://127.0.0.1:5005; tunnel only this port",
                 "backend.api.server"),
+        "tunnel": ("A public https:// address for the website and API through Cloudflare (phones; run api first)",
+                   "backend.api.tunnel"),
         "api-key": ("Who may use the API: api-key add NAME | list | remove NAME", "backend.api.keys"),
         "account": ("Login accounts: account add USERNAME --name NAME [--role listener|researcher|admin] | list | reset | disable | remove",
                     "backend.api.accounts"),

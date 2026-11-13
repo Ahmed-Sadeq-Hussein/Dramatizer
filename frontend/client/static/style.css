@@ -50,6 +50,8 @@ body:not([data-mode="build"]) #tab-genomes .notice { display: none; }   /* "can'
 .notice { margin: 12px 0; padding: 8px 12px; border: 1px solid var(--rule); border-left: 3px solid var(--accent);
           border-radius: 6px; background: var(--surface); color: var(--ink); }      /* starting a search is Make genomes */
 body[data-mode="rank"] #chosen { display: none; }                          /* the chosen voice plays no part in rating */
+.foot { max-width: 900px; margin: 0 auto; padding: 24px 16px 40px; text-align: center; font-size: 0.9em; }
+.foot a { color: var(--accent); }
 .tabs { display: flex; gap: 4px; max-width: 900px; margin: 0 auto; padding: 0 16px; border-bottom: 1px solid var(--rule); overflow-x: auto; }
 .tabs button, .views button { background: transparent; color: var(--muted); border-radius: 6px 6px 0 0; padding: 8px 12px; white-space: nowrap; }
 .tabs button.on { color: var(--ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); }
@@ -238,3 +240,7 @@ label.check { display: flex; align-items: center; gap: 6px; align-self: center; 
 .preview { border-top: 1px solid var(--rule); padding-top: 8px; display: grid; gap: 4px; }
 .preview .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
 .preview p, .preview ul { margin: 0; }
+
+.own-score { gap: 2px; align-items: center; }
+.own-score .star { font-size: 1.25em; padding: 2px 6px; color: var(--muted, #888); }
+.own-score .star.on { color: #e0a800; }

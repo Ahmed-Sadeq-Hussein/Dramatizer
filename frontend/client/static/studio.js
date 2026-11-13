@@ -33,7 +33,8 @@ const Studio = (() => {
   function title(g) {
     const what = (g.described && g.described.length ? g.described : g.genes.map((x) => label(x.feature))).join(", ");
     const mos = g.mos !== null && g.mos !== undefined ? ` · MOS ${Number(g.mos).toFixed(2)}` : "";
-    if (g.source === "search") return `${g.voice} #${g.genome}${mos} — ${what}`;
+    if (g.source === "search") return `#${g.genome}${mos} — ${what}`;
+    if (g.source === "private") return `● ${g.name} — ${what}`;
     return `${g.source === "edited" ? "✎" : "★"} ${g.name}${mos} — ${what}`;
   }
 
@@ -47,8 +48,12 @@ const Studio = (() => {
   function showList(selectKey) {
     const source = $("st-source").value, find = $("st-find").value.trim();
     const shown = S.lib.filter((g) => (!source || g.source === source) && matches(g, find));
-    $("st-pick").replaceChildren(...shown.slice(0, 400).map((g) =>
-      el("option", { value: g.key, title: g.markup || "" }, title(g))));
+    const groups = new Map();
+    for (const g of shown.slice(0, 400)) {
+      if (!groups.has(g.group)) groups.set(g.group, el("optgroup", { label: g.group || "Other" }));
+      groups.get(g.group).append(el("option", { value: g.key, title: g.markup || "" }, title(g)));
+    }
+    $("st-pick").replaceChildren(...groups.values());
     if (shown.length > 400) $("st-pick").append(el("option", { disabled: true }, `… ${shown.length - 400} more: narrow the search`));
     if (!shown.length) $("st-pick").append(el("option", { disabled: true }, "Nothing matches."));
     if (selectKey) { $("st-pick").value = selectKey; pick(selectKey); }
@@ -68,8 +73,15 @@ const Studio = (() => {
       g.text ? el("button", { type: "button", class: "quiet small", onclick: () => { $("st-text").value = g.text; schedulePreview(); } },
                   "Use its own line") : "");
     $("st-remove").hidden = !(g.source === "edited" && can("name"));
+    blank(g.source === "private", g.source === "private" ? g.name : "");
     renderGenes();
     schedulePreview();
+  }
+
+  // A blank genome (or one of your own) gets a name, and is kept as yours when rendered
+  function blank(on, name = "") {
+    $("st-blank").hidden = $("st-blank-note").hidden = !on;
+    $("st-blank-name").value = name;
   }
 
   // ------------------------------------------------------------ editing --
@@ -174,8 +186,9 @@ const Studio = (() => {
     } catch (error) { toast(error.message, true); }
   }
 
-  async function renderOne(genes, what) {
+  async function renderOne(genes, what, privateName) {
     const body = { dataset: state.voice.dataset, clip_id: state.voice.clip_id, text: $("st-text").value.trim(), genes, name: what };
+    if (privateName) body.private_name = privateName;
     if ($("st-seed").value !== "") body.seed = Number($("st-seed").value);
     const { job, preview: p } = await call("/genome/render", { body });
     const card = el("div", { class: "item" },
@@ -189,12 +202,16 @@ const Studio = (() => {
   async function render() {
     if (!needVoice()) return;
     if (!$("st-text").value.trim()) { toast("Type a line.", true); return; }
-    const what = S.picked && !S.changed ? (S.picked.name || `${S.picked.voice} #${S.picked.genome}`)
-                                        : (S.picked ? "Edited genome" : "New genome");
+    const own = !$("st-blank").hidden ? $("st-blank-name").value.trim() : "";
+    if (!$("st-blank").hidden && !own) { toast("Name your genome first.", true); $("st-blank-name").focus(); return; }
+    if (own && !S.genes.length) { toast("Add at least one gene.", true); return; }
+    const what = own || (S.picked && !S.changed ? (S.picked.name || `${S.picked.voice} #${S.picked.genome}`)
+                                                : (S.picked ? "Edited genome" : "New genome"));
     try {
       // The plain line first, with the same seed, so the two differ only by the genome
       if ($("st-plain").checked && S.genes.length) await renderOne([], "Plain line");
-      await renderOne(S.genes, S.genes.length ? what : "Plain line");
+      await renderOne(S.genes, S.genes.length ? what : "Plain line", own);
+      if (own) { toast(`Saved “${own}” under My genomes.`); await load("private:" + own); }
     } catch (error) { toast(error.message, true); }
   }
 
@@ -206,7 +223,8 @@ const Studio = (() => {
   $("st-add").addEventListener("click", () => { S.genes.push({ feature: "emphasis", position: 0.5 }); changed(); });
   $("st-new").addEventListener("click", () => {
     S.picked = null; S.genes = []; S.changed = true;
-    $("st-pick").value = ""; $("st-picked").textContent = "Empty: add genes below."; $("st-remove").hidden = true;
+    $("st-pick").value = ""; $("st-picked").textContent = "Empty: name it and add genes below."; $("st-remove").hidden = true;
+    blank(true); $("st-blank-name").focus();
     renderGenes(); schedulePreview();
   });
   $("st-remove").addEventListener("click", remove);

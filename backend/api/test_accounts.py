@@ -113,7 +113,9 @@ class Logging_in(Temporary):
     def test_roles_decide_permissions(self):
         listener, _ = accounts.new_account("julius", "Julius")
         self.assertTrue(listener.can("rate"))
+        self.assertTrue(listener.can("speak"))          # a normal account makes audio in the studio
         self.assertFalse(listener.can("search"))
+        self.assertFalse(listener.can("name"))
         self.assertNotIn("password", listener.public())
         with self.assertRaises(ValueError):
             accounts.new_account("rama", "Rama", role="king")
@@ -175,6 +177,116 @@ class Api(Temporary):
         self.assertNotIn("password", json.dumps(me))
         self.client.post("/api/v1/logout", headers={"Authorization": f"Bearer {token}"})
         self.assertEqual(self.client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"}).status_code, 401)
+
+    # --- the website served by the API itself (phones, through a tunnel) ---------------------------
+    PAGE = {"base_url": "https://localhost", "headers": {"Origin": "https://localhost", "Sec-Fetch-Site": "same-origin"}}
+
+    def page_login(self):
+        return self.client.post("/api/v1/login", json={"username": "julius", "password": self.password}, **self.PAGE)
+
+    def test_the_page_is_served(self):
+        reply = self.client.get("/", base_url="https://localhost")
+        self.assertEqual(reply.status_code, 200)
+        self.assertIn(b"app.js", reply.data)
+        self.assertIn("default-src 'self'", reply.headers["Content-Security-Policy"])
+        self.assertEqual(self.client.get("/static/app.js", base_url="https://localhost").status_code, 200)
+        self.assertEqual(self.client.get("/static/../server.py", base_url="https://localhost").status_code, 404)
+        self.assertEqual(self.client.get("/api/v1/health").headers["Content-Security-Policy"],
+                         "default-src 'none'; frame-ancestors 'none'")
+
+    def test_page_login_keeps_the_session_in_a_cookie_scripts_cannot_read(self):
+        reply = self.page_login()
+        self.assertEqual(reply.status_code, 200)
+        self.assertNotIn("token", reply.get_json())                   # the page's scripts never see it
+        cookie = reply.headers["Set-Cookie"]
+        for part in ("HttpOnly", "Secure", "SameSite=Strict", "dramatizer_session="):
+            self.assertIn(part, cookie)
+        self.assertEqual(self.client.get("/connection", base_url="https://localhost").get_json()["name"], "Julius")
+        self.assertEqual(self.client.get("/api/v1/me", base_url="https://localhost").get_json()["account"]["username"],
+                         "julius")
+        self.client.post("/api/v1/logout", json={}, **self.PAGE)
+        self.assertEqual(self.client.get("/api/v1/me", base_url="https://localhost").status_code, 401)
+        self.assertIsNone(self.client.get("/connection", base_url="https://localhost").get_json()["name"])
+
+    def test_scripts_still_get_a_token(self):
+        self.assertIn("token", self.login().get_json())              # no Origin: a script or the client app
+
+    def test_another_website_cannot_use_the_cookie(self):
+        self.page_login()
+        scores = {"scores": {"Julius": {"genome_01": 4}}}
+        evil = {"base_url": "https://localhost", "headers": {"Origin": "https://evil.example", "Sec-Fetch-Site": "cross-site"}}
+        self.assertEqual(self.client.post("/api/v1/genome/searches/r1/ratings", json=scores, **evil).status_code, 403)
+        no_origin = {"base_url": "https://localhost"}
+        self.assertEqual(self.client.post("/api/v1/genome/searches/r1/ratings", json=scores, **no_origin).status_code, 403)
+        self.assertEqual(self.client.post("/api/v1/genome/searches/r1/ratings", json=scores, **self.PAGE).status_code, 200)
+
+    # --- renders: everyone's spoken and rendered lines ------------------------------------------
+    def test_renders_list_audio_and_only_mine(self):
+        from types import SimpleNamespace
+        folder = self.dir / "renders"
+        with mock.patch.object(self.server, "GENOME_RENDERS", folder):
+            clip = SimpleNamespace(dataset="VCTK", speaker="p250", clip_id="p250_001")
+            spoken = self.dir / "elsewhere" / "x.wav"
+            spoken.parent.mkdir()
+            spoken.write_bytes(b"RIFF....WAVE")
+            kept = self.server.keep_render(spoken, clip, "Hello there.", "Julius", 4.2, seed=0)
+            self.assertEqual(kept.parent, folder)                       # a /speak line is moved in with a note
+            self.assertFalse(spoken.exists())
+            (folder / "VCTK_p250_genome_1.wav").write_bytes(b"RIFF....WAVE")
+            (folder / "VCTK_p250_genome_1.json").write_text(json.dumps({
+                "voice": "VCTK/p250", "text": "Well then.", "genome": "Sigh", "genes": [{"feature": "sigh"}],
+                "markup": "Well [sigh] then.", "by": "Ash", "made": "2030-01-01 10:00:00"}), encoding="utf-8")
+            auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+            every = self.client.get("/api/v1/renders", headers=auth).get_json()
+            self.assertEqual(every["total"], 2)
+            self.assertEqual(every["renders"][0]["genome"], "Sigh")       # newest first
+            mine = self.client.get("/api/v1/renders?mine=1", headers=auth).get_json()["renders"]
+            self.assertEqual([r["by"] for r in mine], ["Julius"])
+            found = self.client.get("/api/v1/renders?q=sigh", headers=auth).get_json()["renders"]
+            self.assertEqual([r["genome"] for r in found], ["Sigh"])
+            audio = self.client.get(f"/api/v1/renders/{every['renders'][1]['id']}/audio", headers=auth)
+            self.assertEqual(audio.status_code, 200)
+            self.assertTrue(audio.data.startswith(b"RIFF"))
+            audio.close()                                               # lets Windows delete the folder
+            self.assertEqual(self.client.get("/api/v1/renders/..%2Fsecret/audio", headers=auth).status_code, 404)
+            self.assertEqual(self.client.get("/api/v1/renders").status_code, 401)
+
+    def test_rate_only_your_own_renders_kept_apart(self):
+        folder = self.dir / "renders2"
+        folder.mkdir()
+        for stem, by in (("VCTK_p250_genome_a", "Julius"), ("VCTK_p250_genome_b", "Ash")):
+            (folder / f"{stem}.wav").write_bytes(b"RIFF....WAVE")
+            (folder / f"{stem}.json").write_text(json.dumps({"voice": "VCTK/p250", "text": "Hi.", "by": by,
+                                                            "made": "2030-01-01 10:00:00"}), encoding="utf-8")
+        scores = self.dir / "render_ratings.json"
+        with mock.patch.object(self.server, "GENOME_RENDERS", folder), mock.patch.object(self.server, "RENDER_RATINGS", scores):
+            auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+            rate = lambda stem, score: self.client.post(f"/api/v1/renders/{stem}/rating", headers=auth, json={"score": score})
+            self.assertEqual(rate("VCTK_p250_genome_a", 4).status_code, 200)
+            self.assertEqual(rate("VCTK_p250_genome_b", 4).status_code, 403)     # someone else's
+            self.assertEqual(rate("VCTK_p250_genome_a", 9).status_code, 400)
+            self.assertEqual(json.loads(scores.read_text(encoding="utf-8")), {"VCTK_p250_genome_a": {"Julius": 4}})
+            listed = {r["id"]: r for r in self.client.get("/api/v1/renders", headers=auth).get_json()["renders"]}
+            self.assertEqual((listed["VCTK_p250_genome_a"]["my_score"], listed["VCTK_p250_genome_a"]["mine"]), (4, True))
+            self.assertFalse(listed["VCTK_p250_genome_b"]["mine"])
+            self.assertEqual(rate("VCTK_p250_genome_a", None).status_code, 200)  # cleared
+
+    def test_private_genomes_are_seen_by_their_maker_only(self):
+        from types import SimpleNamespace
+        kept = self.dir / "private_genomes.json"
+        clip = SimpleNamespace(dataset="VCTK", speaker="p250", clip_id="p250_001")
+        with mock.patch.object(self.server, "PRIVATE_GENOMES", kept):
+            self.server.keep_private("Julius", "My sigh", [{"feature": "sigh", "position": 0.5}], "Hi.", clip)
+            self.server.keep_private("Julius", "My sigh", [{"feature": "laugh", "position": 0.2}], "Hi.", clip)  # replaced
+            self.server.keep_private("Rama", "Rama's", [{"feature": "sigh", "position": 0.5}], "Hi.", clip)
+            auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+            genomes = self.client.get("/api/v1/genome/library", headers=auth).get_json()["genomes"]
+            mine = [g for g in genomes if g["source"] == "private"]
+            self.assertEqual([(g["name"], g["genes"][0]["feature"], g["group"]) for g in mine], [("My sigh", "laugh", "My genomes")])
+            self.assertEqual(genomes[0]["source"], "private")                    # yours first
+            others = [g for g in genomes if g["source"] != "private"]
+            self.assertEqual([g["group"] for g in others], sorted([g["group"] for g in others],
+                                                                    key=lambda x: (x == "Made by hand", str(x))))
 
     def test_listener_rates_only_as_themself_and_cannot_search(self):
         auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}

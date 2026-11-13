@@ -64,7 +64,7 @@ SESSIONS_PATH = model.PROJECT_DIR / "history" / "api" / "sessions.json"
 # What each role may do. The API checks permissions, never role names, so a new
 # role is one line here.
 ROLES = {
-    "listener": {"rate"},                                   # rate genomes and see rankings, as themself
+    "listener": {"rate", "speak"},                          # rate genomes as themself; speak and render lines
     "researcher": {"rate", "speak", "search", "name"},      # also make speech, start searches, name genomes
     "admin": {"rate", "speak", "search", "name", "rate_for_others"},
 }

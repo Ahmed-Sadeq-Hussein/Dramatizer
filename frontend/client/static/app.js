@@ -55,9 +55,9 @@ const audioOf = (run, name) => el("audio", { controls: true, preload: "none", sr
 // A mode is a set of tabs for one kind of work; a tab can be in more than one mode.
 const MODES = {
   rank: { tabs: ["rate", "results"], note: "Score the deliveries in your pile, and see the results." },
-  audio: { tabs: ["voices", "speak"], note: "Choose a voice and have it speak a line." },
-  listen: { tabs: ["genomes", "results"], note: "Listen to the searches' clips and their rankings." },
-  build: { tabs: ["voices", "genomes", "studio"], note: "Start genome searches, and edit, name and render genomes." },
+  audio: { tabs: ["voices", "speak", "renders"], note: "Choose a voice and have it speak a line." },
+  listen: { tabs: ["genomes", "renders", "results"], note: "Listen to the searches' clips, everyone's renders, and the rankings." },
+  build: { tabs: ["voices", "genomes", "studio", "renders"], note: "Start genome searches, and edit, name and render genomes." },
 };
 const MODE_KEY = "dramatizer-mode";
 let mode = null;
@@ -105,6 +105,7 @@ function showTab(name) {
   document.querySelectorAll(".tab").forEach((s) => (s.hidden = s.id !== "tab-" + name));
   if (name === "genomes" && !state.run) loadSearches();
   if (name === "results") loadResults();
+  if (name === "renders") Renders.open();
   if (name === "rate") Rate.open();
   if (name === "studio") Studio.open();
 }

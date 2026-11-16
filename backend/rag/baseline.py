@@ -3,6 +3,7 @@
     python main_backend.py rag ask "What did genome 5 of voice CREMA-D/1014 do?"
     python main_backend.py rag ask "..." --k 5 --kind clip     # only one kind of record
     python main_backend.py rag run                              # every question in questions.json -> history/rag/
+    python main_backend.py rag ask "..." --retriever hybrid     # the variant instead (dense.py, step 4)
 
 BM25 (Okapi, k1 = 1.5, b = 0.75) scores each record by the question's words it
 contains: a rare word counts more than a common one, a word repeated in a record
@@ -17,7 +18,7 @@ with their dataset: "CREMA-D/1014" also gives the word "cremad1014", so the righ
 voice ranks above one that only shares the number.
 
 The baseline only retrieves. Deciding that nothing found is good enough (safe
-absence) and writing an answer from the records come in later steps.
+absence) and writing an answer that cites the records are in answer.py.
 """
 import argparse
 import json
@@ -110,16 +111,21 @@ def main(argv=None):
     ask.add_argument("question")
     ask.add_argument("--k", type=int, default=TOP_K)
     ask.add_argument("--kind", choices=["clip", "run", "sanity"])
+    ask.add_argument("--retriever", choices=["bm25", "dense", "hybrid"], default="bm25",
+                     help="bm25 (this baseline), or the step 4 variant: dense (MiniLM) or hybrid (both)")
     every = sub.add_parser("run", help="every question in questions.json, saved to history/rag/baseline_results.jsonl")
     every.add_argument("--k", type=int, default=TOP_K)
     args = parser.parse_args(argv)
 
-    index = BM25(evidence.load())
+    records = evidence.load()
     if args.command == "ask":
+        from backend.rag import dense
+        index = dense.make(args.retriever, records)
         hits = index.search(args.question, k=args.k, kind=args.kind)
         print(f"{args.question}\n" + ("  nothing in the evidence shares a word with this question" if not hits else ""))
         show(hits)
     else:
+        index = BM25(records)
         for line in run_all(index, load_questions(), k=args.k):
             print(f"\n{line['question_id']} [{'supported' if line['supported'] is True else line['supported'] or 'unsupported'}]"
                   f" {line['question']}")

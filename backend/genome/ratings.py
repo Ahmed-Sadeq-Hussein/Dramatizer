@@ -111,6 +111,24 @@ def load(run_dir):
             "raters": [], "scores": {}, "picked": [], "updated": None}
 
 
+TEST_RATER = re.compile(r"^test[ _]user[ _]\d+$", re.IGNORECASE)   # "Test user 3" (account test_user_3)
+
+
+def is_test_rater(name):
+    """A listener name from an account made to try the website (Test user N), whose scores are not evidence."""
+    return bool(TEST_RATER.match(str(name or "").strip()))
+
+
+def evidence(ratings):
+    """A run's ratings without the test accounts' scores: what the MOS, the reports, the guidance model and
+    the MLflow import count. The website still shows a test account its own scores (load)."""
+    keep = [r for r in ratings.get("raters", []) if not is_test_rater(r)]
+    return {**ratings, "raters": keep,
+            "scores": {r: s for r, s in ratings.get("scores", {}).items() if not is_test_rater(r)},
+            **({"artifacts": {r: a for r, a in ratings["artifacts"].items() if not is_test_rater(r)}}
+               if isinstance(ratings.get("artifacts"), dict) else {})}
+
+
 def clean_artifact(value):
     """Whether the listener heard an artifact: True or False (also "yes"/"no", 1/0)."""
     if isinstance(value, bool):
@@ -237,9 +255,10 @@ def mos(ratings, clip):
     """
     {"mos", "n", "low", "high", "scores": {rater: score}, "artifact_heard", "artifact_answers"} of one clip,
     or None when nobody rated it. artifact_heard: how many of its listeners heard an artifact, out of the
-    artifact_answers who answered.
+    artifact_answers who answered. Test accounts' scores (is_test_rater) are not counted: they tried the
+    website, they did not listen for the study.
     """
-    given = {rater: clips[clip] for rater, clips in ratings["scores"].items() if clip in clips}
+    given = {rater: clips[clip] for rater, clips in ratings["scores"].items() if clip in clips and not is_test_rater(rater)}
     if not given:
         return None
     values = list(given.values())

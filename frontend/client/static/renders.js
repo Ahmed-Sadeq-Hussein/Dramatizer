@@ -46,7 +46,7 @@ const Renders = (() => {
       R.pages = data.pages;
       $("rn-list").replaceChildren(...data.renders.map(item));
       $("rn-count").textContent = data.total
-        ? `${data.total} render${data.total === 1 ? "" : "s"}` : "No renders yet: make one in Speak or the Genome studio.";
+        ? `${data.total} render${data.total === 1 ? "" : "s"}` : "No renders yet: make one in Generate.";
       $("rn-page").textContent = `${R.page} of ${R.pages}`;
       $("rn-prev").disabled = R.page <= 1;
       $("rn-next").disabled = R.page >= R.pages;

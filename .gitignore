@@ -70,6 +70,23 @@ mlflow.db
 /measurements/
 *.csv
 
+# The API's and the chatbot's records (backend/api/server.py, API calls/). They live under history/
+# or the render folder (OUTPUT_DIR), both ignored; named here in case OUTPUT_DIR is ever set inside
+# the project. They hold listeners' scores, people's renders, logins and test passwords.
+render_ratings.json
+private_genomes.json
+genome_renders/
+evidence charts/
+accounts.json
+sessions.json
+keys.json
+audit.jsonl
+test_users*.txt
+*.jsonl
+/API calls/downloads/
+# Downloaded language models (LLM_LIBRARY_DIR), in case one is put in the project
+LLM library/
+
 # --- Models and weights ---------------------------------------------------
 # Several GB each, with their own licences. Downloaded by the README steps.
 CosyVoice/
@@ -122,3 +139,7 @@ envs/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Private work, never committed: the genome policy (imitation learning) and its Ash-only page.
+# The server and page load it only if this folder is there (backend/api/server.py, "private extensions").
+/private/

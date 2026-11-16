@@ -136,7 +136,7 @@ def collect_sessions(runs_dir=None, splits_path=None):
             comparisons = [(heard, (record["winner"],))]
         else:
             comparisons = []
-            for scores in ratings.load(folder)["scores"].values():
+            for scores in ratings.evidence(ratings.load(folder))["scores"].values():   # no test accounts
                 scores = {key: value for key, value in scores.items() if key in clips}
                 if len(scores) < 2:
                     continue

@@ -12,7 +12,7 @@ with the sentence that says what it means. A record is labelled with a grade:
     1   the record is needed with others to answer it, or supports a grade-2 record
 
 Questions the evidence cannot answer (q09, q10) have no relevant records: the
-right result is to say that nothing answers them (safe absence, a later step).
+right result is to say that nothing answers them (safe absence, answer.py).
 
 Every labelled record keeps its revision (when its score was given), and labels.json
 keeps the corpus fingerprint, so a refresh can tell when a label may be out of date

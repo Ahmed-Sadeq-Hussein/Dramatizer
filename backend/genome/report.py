@@ -1,7 +1,7 @@
 """report.py | Answers the genome questions from the listener ratings.
 
-    python -m backend.genome.report                 # the six answers, printed
-    python -m backend.genome.report --csv FILE      # also one row per rated genome as CSV,
+    python main_backend.py genome-report            # the six answers, printed
+    python main_backend.py genome-report --csv FILE # also one row per rated genome as CSV,
                                                     # and a manifest.json next to it
 
 The manifest records the hash of every ratings file and of the review log, the
@@ -13,12 +13,18 @@ least MIN_LISTENERS scores are used in the answers; the rest are counted and lef
 
 GOOD, BAD and MIN_LISTENERS are working choices. They must be justified in the
 report, for example from the spread of the scores, before they are used to decide.
+
+Test accounts' scores (Test user N) are not counted: ratings.mos leaves them out.
+A genome that uses a gene type disabled since (hissing, vocalized noise) or a speed
+outside 0.85-1.15 is marked "can no longer be rendered" (editor.unusable): its
+score is still evidence, but it cannot be chosen again as it is.
 """
 import argparse
 import csv
 import hashlib
 import json
 import subprocess
+import sys
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -27,12 +33,13 @@ from statistics import mean
 from backend import model
 from backend.genome import ratings as R
 from backend.genome import search as S
+from backend.genome.editor import unusable
 
 GOOD = 4.0
 BAD = 2.5
 MIN_LISTENERS = 1
 FIELDS = ["voice", "run", "genome", "features", "verdict", "mos", "n", "low", "high",
-          "above_baseline", "baseline_mos", "markup"]
+          "above_baseline", "baseline_mos", "markup", "unusable"]
 
 
 def rated_genomes():
@@ -51,6 +58,7 @@ def rated_genomes():
                 "mos": g["mos"]["mos"], "n": g["mos"]["n"], "low": g["mos"]["low"], "high": g["mos"]["high"],
                 "above_baseline": g["above_baseline"], "baseline_mos": base["mos"] if base else None,
                 "markup": g["markup"], "genes": json.dumps(g["genes"], sort_keys=True),
+                "unusable": unusable(g["genes"]) or "",
             })
     return rows
 
@@ -98,7 +106,8 @@ def show(title, lines):
 
 
 def describe(r):
-    return f"{r['voice']}, genome {r['genome']} in {r['run']}: MOS {r['mos']:.2f} ({r['n']} listeners)  {r['markup']}"
+    note = f"  [can no longer be rendered: {r['unusable']}]" if r.get("unusable") else ""
+    return f"{r['voice']}, genome {r['genome']} in {r['run']}: MOS {r['mos']:.2f} ({r['n']} listeners)  {r['markup']}{note}"
 
 
 def answers(rows):
@@ -154,6 +163,8 @@ def main():
     parser = argparse.ArgumentParser(description="Answer the genome questions from the listener ratings.")
     parser.add_argument("--csv", metavar="FILE", help="write one row per rated genome as CSV, and a manifest.json beside it")
     args = parser.parse_args()
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")     # the markup's pause marks on a Windows console
 
     rows = rated_genomes()
     if args.csv:

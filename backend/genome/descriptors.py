@@ -1,4 +1,9 @@
-"""Feature descriptors for the current Candidate.operations schema."""
+"""Feature descriptors for the current Candidate.operations schema.
+
+genome_distance and the shortlist in search.py come from Baesar's genome branch (genome_distance.py,
+genome_search.select_diverse, 2-5 Nov), moved onto this schema on 14 Nov. The distance measures these
+descriptors, not perceived delivery, and 0 does not mean two genomes are the same.
+"""
 import math
 
 from backend.genome.genome_factory import MAX_OPERATIONS, PAUSE_KINDS, TARGETED_FEATURES
@@ -39,3 +44,8 @@ def genome_vector(genes):
         if left < BINS - 1:
             result[offset + left + 1] += fraction / MAX_OPERATIONS
     return tuple(result)
+
+
+def genome_distance(first, second):
+    """Euclidean distance between two genomes' descriptor vectors (symmetric, never negative)."""
+    return math.dist(genome_vector(first), genome_vector(second))

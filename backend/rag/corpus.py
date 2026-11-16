@@ -5,18 +5,21 @@
 
 Three kinds of record, built from what the project already keeps:
 
-    clip:<run>/<clip>         one listener's score for one clip of the listening batch (a genome or the
+    clip:<run>/<clip>@<who>   one listener's score for one clip of the listening batch (a genome or the
                               plain line): the voice, the listener, the score, the score against the same
                               listener's plain line, the genes in words, the sanity verdict, and whether an
                               artifact was heard. Revision: when that score was last given.
                               From history/ratings/who_rated_what.csv and the run's run.json.
-    run:<run>                 one voice's listening run: the voice, the line, the pile, the listener, and
+    run:<run>@<who>           one voice's listening run: the voice, the line, the pile, the listener, and
                               its genomes from best to worst. Revision: when its last score was given.
     sanity:random-v2/<id>     one genome of Milestone 2's random search and its sanity check: its genes,
                               what was heard, and why it failed (words, voice, pace). Revision: when the
                               search was made (record.json).
     sanity:sanity-all-genes/<id>   the same for one single-gene genome of the check of every gene type
                               on its own (backend/evaluation/sanity_all_genes.py).
+
+Test accounts' scores are left out (TEST_ACCOUNT: login names test_user_1, test_user_2, ...). They were
+made to try the website, not to listen, so their scores are not evidence; they stay in who_rated_what.csv.
 
 Every record is {"id", "kind", "revision", "title", "text", "fields"}. "text" is what a retriever
 searches; "fields" are the same facts as data, for answers and checks. The corpus is written to
@@ -26,6 +29,7 @@ import argparse
 import csv
 import hashlib
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -60,10 +64,26 @@ def _float(text):
     return None if text in (None, "") else float(text)
 
 
+TEST_ACCOUNT = re.compile(r"^test_user_\d+$")
+
+
+def is_test_account(row):
+    """A score from an account made to test the website (test_user_N), not a listener's."""
+    return bool(TEST_ACCOUNT.match(listener_key(row)))
+
+
+def listener_key(row):
+    """A listener's part of a record ID: the login name, else the name in lower case without spaces."""
+    return (row.get("account") or row["rater"]).strip().lower().replace(" ", "_")
+
+
 def clip_records(rows, runs):
-    """One record per row of who_rated_what.csv (listening batch only)."""
+    """One record per row of who_rated_what.csv (listening batch only). Two listeners can rate the same pile,
+    so the ID ends with the listener: clip:<run>/<clip>@<listener>."""
     out = []
     for row in rows:
+        if is_test_account(row):
+            continue
         run = runs.get(row["run"])
         if run is None or run.get("batch") != BATCH:
             continue
@@ -87,9 +107,9 @@ def clip_records(rows, runs):
             text = (f"Voice {voice} ({dataset}), the plain line with no genome (baseline), pile {row['pile']}. "
                     f"{row['rater']} scored it {score:g} out of 5. Line: {run['text']}")
         out.append({
-            "id": f"clip:{row['run']}/{row['clip']}", "kind": "clip", "revision": row["rated_on"], "title": title, "text": text,
+            "id": f"clip:{row['run']}/{row['clip']}@{listener_key(row)}", "kind": "clip", "revision": row["rated_on"], "title": title, "text": text,
             "fields": {"voice": voice, "dataset": dataset, "run": row["run"], "clip": row["clip"], "genome": number,
-                       "listener": row["rater"], "pile": int(row["pile"]), "score": score, "above_plain": above,
+                       "listener": row["rater"], "listener_key": listener_key(row), "pile": int(row["pile"]), "score": score, "above_plain": above,
                        "features": len(genome["genes"]) if genome else 0, "gene_types": types,
                        "verdict": row["verdict"], "artifact": artifact, "changes": int(row["changes"] or 0),
                        "first_given": row["first_given"]}})
@@ -97,12 +117,12 @@ def clip_records(rows, runs):
 
 
 def run_records(clips, runs):
-    """One record per listening run: its genomes from best to worst against the plain line."""
+    """One record per listening run and listener: its genomes from best to worst against the plain line."""
     by_run = {}
     for c in clips:
-        by_run.setdefault(c["fields"]["run"], []).append(c)
+        by_run.setdefault((c["fields"]["run"], c["fields"]["listener_key"]), []).append(c)
     out = []
-    for run_id, items in sorted(by_run.items()):
+    for (run_id, who), items in sorted(by_run.items()):
         run = runs[run_id]
         plain = next((c for c in items if c["fields"]["genome"] is None), None)
         genomes = sorted((c for c in items if c["fields"]["genome"] is not None),
@@ -119,7 +139,7 @@ def run_records(clips, runs):
         if genomes:
             text += (f"{better} of {len(genomes)} genomes scored better than the plain line. Best genome: "
                      f"{', '.join(str(t) for t in tops)} with {best:g}. All genomes from best to worst: {order}.")
-        out.append({"id": f"run:{run_id}", "kind": "run", "revision": max(c["revision"] or "" for c in items),
+        out.append({"id": f"run:{run_id}@{who}", "kind": "run", "revision": max(c["revision"] or "" for c in items),
                     "title": f"{run['voice']} listening run ({listener})", "text": text,
                     "fields": {"voice": run["voice"], "run": run_id, "listener": listener, "pile": run.get("pile"),
                                "best_genomes": tops, "better_than_plain": better, "genomes": len(genomes)}})

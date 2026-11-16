@@ -27,6 +27,12 @@ Milestone 1, a reproducible baseline, is in place:
 - The next step, decided in advance: [`backend/evaluation/MILESTONE_2.md`](backend/evaluation/MILESTONE_2.md).
   It has been run: a random genome search keeps 67 % of genomes, but it is not yet a strict
   enough guard on the words, and whether it beats the baseline waits on blind listening.
+- The objective and selection rule, with every threshold justified from measurements:
+  [`backend/evaluation/OBJECTIVE.md`](backend/evaluation/OBJECTIVE.md).
+- The evidence milestone: questions about the listening study answered from the records,
+  with citations, safe absence and access control: [`backend/rag/MILESTONE.md`](backend/rag/MILESTONE.md)
+  (`python main_backend.py rag answer "..."`). The genome questions as a text report:
+  `python main_backend.py genome-report`.
 
 ## Running it
 

@@ -68,6 +68,8 @@ COMMANDS = {
                     "backend.genome.ratings"),
         "evidence-charts": ("Charts for the six genome questions, from scores given --from DATE --to DATE",
                             "backend.genome.evidence_charts"),
+        "genome-report": ("The six genome questions answered in text from the ratings; --csv FILE with a manifest",
+                          "backend.genome.report"),
         "explore": ("Far-apart genomes (up to 10) for the voice-map voices, in 3 piles for MOS listeners (renders)",
                     "backend.genome.explore"),
     },
@@ -99,7 +101,7 @@ COMMANDS = {
         "mcp": ("Start the MCP server for the knowledge graph", "backend/mcp_server/dramatizer_mcp.py"),
     },
     "Evidence (questions answered from the project's records)": {
-        "rag": ("rag corpus | label | refresh [--check] | ask \"a question\" | run: the evidence, its answer key, refresh, BM25 baseline",
+        "rag": ("rag corpus | label | refresh [--check] | ask \"a question\" [--retriever hybrid] | run | compare | answer \"a question\" [--as USER] | answer --check: the evidence, its answer key, refresh, BM25 baseline, MiniLM hybrid, hit@k/MRR, cited answers with safe absence",
                 "backend.rag.cli"),
     },
 }
@@ -108,7 +110,7 @@ COMMANDS = {
 # package each needs beyond requirements.txt (None: nothing more). The MCP server
 # has its own environment (see requirements.txt), so its test is skipped where
 # "mcp" is not installed.
-TESTS = [("backend/evaluation/test_checks.py", None), ("backend/evaluation/test_sanity_all_genes.py", None), ("backend/voice_data/test_voice_map.py", None), ("backend/voice_data/test_voice_similarity.py", None), ("backend/genome/test_explore.py", None), ("backend/genome/test_editor.py", None), ("backend/genome/test_evidence_charts.py", None), ("backend/api/test_accounts.py", None), ("backend/rag/test_rag.py", None), ("backend/mcp_server/test_graph.py", "mcp")]
+TESTS = [("backend/evaluation/test_checks.py", None), ("backend/metrics/test_calibrate_words.py", None), ("backend/speech/test_pacing.py", None), ("backend/evaluation/test_sanity_all_genes.py", None), ("backend/voice_data/test_voice_map.py", None), ("backend/voice_data/test_voice_similarity.py", None), ("backend/genome/test_explore.py", None), ("backend/genome/test_editor.py", None), ("backend/genome/test_guidance_and_report.py", None), ("backend/genome/test_evidence_charts.py", None), ("backend/api/test_accounts.py", None), ("backend/api/test_assistant.py", None), ("API calls/test_chatbot.py", None), ("backend/rag/test_rag.py", None), ("backend/mcp_server/test_api_calls.py", None), ("backend/mcp_server/test_graph.py", "mcp")]
 
 
 def all_commands():

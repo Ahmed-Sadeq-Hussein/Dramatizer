@@ -1,4 +1,4 @@
-// rate.js | The Rate genomes tab: one listener scores one listening pile, then checks their ranking.
+// rate.js | The Rate page: one listener scores one listening pile, then checks their ranking.
 // Uses app.js's helpers (call, el, $, toast, state, fmt). Scores are saved as soon as a slider is set,
 // each with the listener's answer to "did you hear an artifact?" (the box under the slider).
 "use strict";

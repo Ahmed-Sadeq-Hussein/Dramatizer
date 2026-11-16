@@ -66,6 +66,17 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
                                                   line) -> {job}; the audio as for /speak
     GET  /genome/listening?batch=&pile=           a listening pile: every clip, your score and the MOS
     GET  /results                                 the baselines' and Milestone 2's summaries
+    GET  /evidence/scores?listener=&voice=&dataset=&gene_type=&genes=&genome=&verdict=&pile=&clip=&from=&to=
+                         &group_by=&sort=&order=&limit=    the listeners' scores, filtered, sorted or grouped
+                                                  (only your own unless you may see others')
+    GET  /evidence/questions/<1-6>?from=&to=     one of the six genome questions, answered from its chart
+    GET  /evidence/questions/<1-6>/chart          that chart (JPEG)
+    GET  /evidence/search?q=&kind=&k=             the evidence records best matching a question (BM25)
+    GET  /evidence/answer?q=                      an answer citing its record IDs, or "no evidence" (rag/answer.py)
+    GET  /about                                   what the Dramatizer is, how to use it, its contributors
+    GET  /assistant                               whether the chatbot's language model is ready
+    POST /assistant/ask  {question, history?}     "Ask the Dramatizer": the chatbot (Gemma 4, with your own
+                                                  token) or, until it is ready, the records answer
     GET  /renders?q=&mine=&page=                  every line spoken or rendered through the API, newest first:
                                                   voice, line, genome, who made it and when
     GET  /renders/<id>/audio                      one of them
@@ -77,6 +88,7 @@ see rankings, and speak or render lines; starting searches and naming genomes
 need a researcher or admin.
 """
 import argparse
+import atexit
 import hashlib
 import json
 import queue
@@ -90,7 +102,7 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 from ipaddress import ip_address
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 from flask import Flask, abort, g, jsonify, request, send_file, send_from_directory
 from werkzeug.exceptions import HTTPException
@@ -459,15 +471,22 @@ def me():
         busy = sum(j["status"] in ("queued", "running") for j in jobs.values())
     account = g.account.public() if g.account else {"username": None, "display_name": g.user, "role": "api key",
                                                     "permissions": sorted(g.permissions), "last_login": None}
-    return jsonify(name=g.user, account=account, version=VERSION, jobs_waiting=busy, my_jobs=mine[-20:])
+    extras = EXTRAS if private_allowed() else []
+    return jsonify(name=g.user, account=account, version=VERSION, jobs_waiting=busy, my_jobs=mine[-20:], extras=extras)
 
 
 @app.get(f"{API}/datasets")
 @needs_key
 def datasets():
+    """The datasets' validation voices, and the voice split: how many voices the project uses in all."""
+    from backend.voice_data.split_voice_data import load_splits
     lib = library()
+    split = {name: len(voices) for name, voices in load_splits().items()}
     return jsonify(datasets=[{"name": name, "clips": len(lib[name]["clips"]),
-                              "speakers": len({c.speaker for c in lib[name]["clips"]})} for name in DATASETS])
+                              "speakers": len({c.speaker for c in lib[name]["clips"]})} for name in DATASETS],
+                   voice_split={**split, "total": sum(split.values()),
+                                "about": "one clip per voice; validation voices are used for all the work, "
+                                         "test voices stay locked until the final evaluation"})
 
 
 @app.get(f"{API}/voices")
@@ -865,11 +884,12 @@ def keep_render(path, clip, text, owner, seconds, seed=None, genome=None, genes=
     return path
 
 
-def genes_of(data, allow_empty=False):
+def genes_of(data, allow_empty=False, usable=True):
+    """The request's genes, cleaned. usable=False (a preview) lets an old genome's disabled genes through."""
     from backend.genome import editor
 
     try:
-        return editor.clean_genes(data.get("genes"), allow_empty=allow_empty)
+        return editor.clean_genes(data.get("genes"), allow_empty=allow_empty, usable=usable)
     except ValueError as error:
         raise Refused(str(error))
 
@@ -891,7 +911,7 @@ def genome_library():
             e["mos"] = None
     mine = [{"key": "private:" + e["name"], "source": "private", "name": e["name"], "group": "My genomes",
              "voice": e.get("voice"), "text": e.get("text"), "genes": e["genes"], "described": None, "markup": None,
-             "verdict": None, "mos": None, "made": e.get("made")}
+             "verdict": None, "mos": None, "made": e.get("made"), "unusable": editor.unusable(e["genes"])}
             for e in sorted(read_json(PRIVATE_GENOMES, {}).get(g.user, []), key=lambda e: e.get("made") or "", reverse=True)]
     return jsonify(options=editor.options(), genomes=mine + genomes)
 
@@ -903,7 +923,7 @@ def genome_preview():
 
     data = body()
     try:
-        return jsonify(preview=editor.preview(text_of(data), genes_of(data, allow_empty=True)))
+        return jsonify(preview=editor.preview(text_of(data), genes_of(data, allow_empty=True, usable=False)))
     except ValueError as error:
         raise Refused(str(error))
 
@@ -1054,6 +1074,27 @@ def render_audio(render_id):
     return send_file(path, mimetype="audio/wav", conditional=True)
 
 
+# --- Private extensions -----------------------------------------------------------
+# Work kept out of git in private/ (see .gitignore). If the folder is there, it adds its own routes, shown
+# only to the accounts named in PRIVATE_ACCOUNTS (.env, default "ash"); everyone else gets 404, and /me
+# lists the extension (so the page loads it) only for them.
+PRIVATE_ACCOUNTS = {name.strip().lower() for name in model.setting("PRIVATE_ACCOUNTS", "ash").split(",") if name.strip()}
+EXTRAS = []
+
+
+def private_allowed():
+    return bool(getattr(g, "account", None)) and g.account.username.lower() in PRIVATE_ACCOUNTS
+
+
+try:
+    from private.genome_policy import web as _lab
+except ImportError:
+    _lab = None
+if _lab is not None:
+    _lab.register(app, API, needs_key, Refused, private_allowed, clip_of=clip_of)
+    EXTRAS.append("lab")
+
+
 # --- The website ---------------------------------------------------------------
 # The same page as the client app (frontend/client), so a phone or any browser can use the host directly,
 # through a tunnel with a trusted certificate (python main_backend.py tunnel). Logins keep a cookie.
@@ -1075,13 +1116,355 @@ def connection():
     return jsonify(host=request.host, name=account.display_name if account else None, mode="login")
 
 
+# --- Evidence: the listeners' scores, the six questions, and the evidence search (for the chatbot) ---------
+# Built from the evidence corpus (backend/rag/corpus.py), which reads who_rated_what.csv: rebuilt after every
+# saved score, so a cache keyed on that file's time stays current. A caller that may not see other
+# listeners' scores (sees_others) gets only their own, and no MOS, no rankings and no charts.
+
+_evidence = {"key": None, "records": None, "index": None, "genomes": None}
+_evidence_lock = threading.Lock()
+GROUPS = ("listener", "voice", "dataset", "gene_type", "genes", "verdict", "genome", "pile")
+SORTS = ("score", "above_plain", "rated_on", "mean", "mean_above_plain", "count", "beat_plain")
+
+
+def evidence():
+    """(corpus records, BM25 index, {run: {genome: (described, markup)}}), rebuilt when the scores change."""
+    from backend.genome import ratings, search
+    from backend.rag import baseline, corpus
+
+    who = ratings.who_path()
+    key = who.stat().st_mtime if who.is_file() else None
+    with _evidence_lock:
+        if _evidence["records"] is None or _evidence["key"] != key:
+            records = corpus.build()
+            genomes = {run["id"]: {gm["number"]: (gm.get("described") or [], gm.get("markup")) for gm in run["genomes"]}
+                       for _, run in search.list_runs()}
+            _evidence.update(key=key, records=records, index=baseline.BM25(records), genomes=genomes)
+        return _evidence["records"], _evidence["index"], _evidence["genomes"]
+
+
+def score_rows():
+    """Every score this caller may see, one row per listener per clip."""
+    records, _, genomes = evidence()
+    rows = []
+    for r in records:
+        if r["kind"] != "clip":
+            continue
+        f = r["fields"]
+        if not sees_others() and f["listener"] != g.user:
+            continue
+        described, markup = genomes.get(f["run"], {}).get(f["genome"], ([], None)) if f["genome"] else ([], None)
+        rows.append({"listener": f["listener"], "voice": f["voice"], "dataset": f["dataset"], "pile": f["pile"],
+                     "search": f["run"], "clip": f["clip"], "genome": f["genome"], "score": f["score"],
+                     "above_plain": f["above_plain"], "genes": f["features"], "gene_types": f["gene_types"],
+                     "genes_described": described, "spoken_as": markup, "verdict": f["verdict"],
+                     "artifact_heard": f["artifact"], "rated_on": r["revision"]})
+    return rows
+
+
+def _matches(row, args):
+    def has(name, value):
+        return value.lower() in str(row[name]).lower()
+    kind = args.get("clip", "genome")
+    if kind == "genome" and row["genome"] is None or kind == "plain" and row["genome"] is not None:
+        return False
+    for name in ("listener", "voice", "dataset", "verdict"):
+        if args.get(name) and not has(name, args[name]):
+            return False
+    if args.get("gene_type") and not any(args["gene_type"].lower() == t.lower() for t in row["gene_types"]):
+        return False
+    if args.get("genes") not in (None, "") and str(row["genes"]) != str(args["genes"]):
+        return False
+    if args.get("genome") not in (None, "") and str(row["genome"]) != str(args["genome"]):
+        return False
+    if args.get("pile") not in (None, "") and str(row["pile"]) != str(args["pile"]):
+        return False
+    if args.get("search") and args["search"] != row["search"]:
+        return False
+    if args.get("from") and row["rated_on"] < args["from"] or args.get("to") and row["rated_on"] > args["to"] + "~":
+        return False
+    return True
+
+
+def _group(rows, by):
+    groups = {}
+    for row in rows:
+        keys = row["gene_types"] if by == "gene_type" else [f"{row['voice']} genome {row['genome']}" if by == "genome"
+                                                           else row[by]]
+        for k in keys or ["(none)"]:
+            groups.setdefault(str(k), []).append(row)
+    out = []
+    for k, members in groups.items():
+        scores = [m["score"] for m in members]
+        above = [m["above_plain"] for m in members if m["above_plain"] is not None]
+        out.append({by: k, "count": len(members), "mean": round(sum(scores) / len(scores), 3),
+                    "low": min(scores), "high": max(scores),
+                    "mean_above_plain": round(sum(above) / len(above), 3) if above else None,
+                    "beat_plain": round(sum(a > 0 for a in above) / len(above), 3) if above else None,
+                    "listeners": sorted({m["listener"] for m in members})})
+    return out
+
+
+@app.get(f"{API}/evidence/scores")
+@needs_key
+def evidence_scores():
+    """
+    The listeners' scores, filtered, sorted and optionally grouped: every small question about who rated
+    what. Filters: listener, voice, dataset, gene_type, genes (how many), genome (its number), verdict, pile,
+    search, from, to,
+    clip=genome|plain|all. group_by: listener|voice|dataset|gene_type|genes|verdict|genome|pile.
+    sort: score|above_plain|rated_on (rows), mean|mean_above_plain|count|beat_plain (groups). order, limit.
+    """
+    args = {k: v.strip()[:80] for k, v in request.args.items()}
+    by = args.get("group_by") or None
+    if by and by not in GROUPS:
+        raise Refused(f"group_by is one of: {', '.join(GROUPS)}.")
+    sort = args.get("sort") or ("mean" if by else "score")
+    if sort not in SORTS:
+        raise Refused(f"sort is one of: {', '.join(SORTS)}.")
+    try:
+        limit = max(1, min(200, int(args.get("limit") or 20)))
+    except ValueError:
+        raise Refused("limit is a whole number.")
+    rows = [r for r in score_rows() if _matches(r, args)]
+    items = _group(rows, by) if by else rows
+    if by and sort in ("score", "above_plain", "rated_on"):
+        sort = "mean" if sort == "score" else "mean_above_plain" if sort == "above_plain" else "count"
+    if not by and sort not in ("score", "above_plain", "rated_on"):
+        sort = "score"
+    present = [i for i in items if i.get(sort) is not None]
+    present.sort(key=lambda i: i[sort], reverse=args.get("order", "desc") != "asc")
+    shown = present[:limit] + ([] if len(present) >= limit else [i for i in items if i.get(sort) is None][:limit - len(present)])
+    filters = {k: v for k, v in args.items() if k not in ("limit", "order", "sort", "group_by") and v}
+    note = None if sees_others() else "Only your own scores: this account rates blind, so it does not see other listeners'."
+    return jsonify(filters=filters, group_by=by, sort=sort, total=len(items), rows_matched=len(rows),
+                   listeners=sorted({r["listener"] for r in rows}), **{"groups" if by else "rows": shown}, note=note)
+
+
+_charts = {"key": None, "summary": None}
+
+
+@app.get(f"{API}/evidence/questions/<int:number>")
+@needs_key
+def evidence_question(number):
+    """One of the six genome questions: the chart's claim and note, made from everyone's scores (from, to: dates)."""
+    from backend.genome import evidence_charts
+
+    if not sees_others():
+        raise Refused("The six questions are answered from every listener's scores, which this account may not see.", 403)
+    if not 1 <= number <= len(evidence_charts.QUESTIONS):
+        raise Refused(f"There are {len(evidence_charts.QUESTIONS)} questions, 1 to {len(evidence_charts.QUESTIONS)}.", 404)
+    start, end = request.args.get("from") or None, request.args.get("to") or None
+    records, _, _ = evidence()
+    key = (_evidence["key"], start, end)
+    with _evidence_lock:
+        if _charts["key"] != key:
+            try:
+                _charts.update(key=key, summary=evidence_charts.make_charts(start, end, records=records))
+            except ValueError as error:
+                raise Refused(str(error))
+        summary = _charts["summary"]
+    chart = next(c for c in summary["charts"] if c["number"] == str(number))
+    out = {"number": number, "question": chart["question"], "range": summary["range"],
+           "genome_scores": summary["genome_scores"], "sanity_checks": summary["sanity_checks"],
+           "sanity_source": summary.get("sanity_source")}
+    if "skipped" in chart:
+        return jsonify(**out, skipped=chart["skipped"])
+    query = "?" + urlencode({k: v for k, v in (("from", start), ("to", end)) if v}) if start or end else ""
+    return jsonify(**out, answer=chart["claim"], keep_in_mind=chart["note"],
+                   chart=f"{API}/evidence/questions/{number}/chart{query}")
+
+
+@app.get(f"{API}/evidence/questions/<int:number>/chart")
+@needs_key
+def evidence_chart(number):
+    """The JPEG chart of one question (made by GET /evidence/questions/<n> with the same range)."""
+    if not sees_others():
+        raise Refused("The six questions are answered from every listener's scores, which this account may not see.", 403)
+    evidence_question(number)                   # makes the charts for this range if needed
+    chart = next(c for c in _charts["summary"]["charts"] if c["number"] == str(number))
+    if "file" not in chart:
+        raise Refused("No chart for this range: " + chart.get("skipped", "no data") + ".", 404)
+    return send_file(chart["file"], mimetype="image/jpeg")
+
+
+@app.get(f"{API}/evidence/search")
+@needs_key
+def evidence_search():
+    """The evidence records best matching a question (BM25): scores, searches' rankings, sanity checks."""
+    q = " ".join(request.args.get("q", "").split())[:300]
+    if not q:
+        raise Refused("Ask something: ?q=words")
+    kind = request.args.get("kind") or None
+    if kind not in (None, "clip", "run", "sanity"):
+        raise Refused("kind is clip, run or sanity.")
+    try:
+        k = max(1, min(20, int(request.args.get("k") or 6)))
+    except ValueError:
+        raise Refused("k is a whole number.")
+    from backend.rag import baseline
+
+    records, index, _ = evidence()
+    query = list(dict.fromkeys(baseline.words(q)))
+    scored = []
+    for i, r in enumerate(records):                    # by position: a clip's ID is shared by its listeners
+        if kind not in (None, r["kind"]):
+            continue
+        if not sees_others() and (r["kind"] == "run" or r["kind"] == "clip" and r["fields"]["listener"] != g.user):
+            continue                                   # rankings and others' scores need sees_others
+        score = index.score(query, i)
+        if score > 0:
+            scored.append((score, i))
+    scored.sort(key=lambda x: (-x[0], records[x[1]]["id"], x[1]))
+    return jsonify(question=q, hits=[{"rank": n, "id": records[i]["id"], "kind": records[i]["kind"],
+                                      "title": records[i]["title"], "text": records[i]["text"], "score": round(sc, 3)}
+                                     for n, (sc, i) in enumerate(scored[:k], start=1)])
+
+
+@app.get(f"{API}/evidence/answer")
+@needs_key
+def evidence_answer():
+    """An answer from the evidence that cites its records, or says that nothing answers it (backend/rag/answer.py).
+    Made only from the records this caller may see."""
+    q = " ".join(request.args.get("q", "").split())[:300]
+    if not q:
+        raise Refused("Ask something: ?q=words")
+    from backend.rag import answer
+
+    records, index, _ = evidence()
+    a = answer.answer(q, records, index, listener=None if sees_others() else g.user)
+    a.pop("cited_ids", None)
+    return jsonify(a)
+
+
+# --- Ask the Dramatizer: About, and questions answered by the chatbot or the records ---------------------
+
+ABOUT_QUESTION = re.compile(r"contribut|who (made|built|created|wrote|works? on|is behind)|what is (the )?dramatizer"
+                            r"|how (do|can|should) (i|we|you)\b|how to use|\bhelp\b|what can (i|you) do",
+                            re.IGNORECASE)
+ASK_CHARS = 500
+DECLINED = "I only answer questions about the Dramatizer"     # how the chatbot starts its off-topic reply (chatbot.OFF_TOPIC)
+FACTS_QUESTION = re.compile(r"\b(how many|number of|which|what|list)\b.*\b(voices?|speakers?|datasets?|clips?|listeners?|"
+                            r"raters?|data|split)\b", re.IGNORECASE)
+
+
+def _facts_answer(question):
+    """Questions about the data itself (voices, datasets, clips, listeners), counted from the site's own data."""
+    from backend.genome import search
+    from backend.rag import answer
+    from backend.voice_data.split_voice_data import load_splits
+
+    if not FACTS_QUESTION.search(question):
+        return None
+    splits = load_splits()
+    lib = library()
+    sets = [(name, len({c.speaker for c in lib[name]["clips"]})) for name in DATASETS]
+    records, _, _ = evidence()
+    everyone = sees_others()
+    clips = [r for r in answer.visible(records, None if everyone else g.user) if r["kind"] == "clip"]
+    rated_voices = {r["fields"]["voice"] for r in clips}
+    listeners = {r["fields"].get("listener") for r in clips} - {None}
+    searched = {run["voice"] for _, run in search.list_runs()}
+    text = (f"The project uses {len(splits['validation']) + len(splits['test'])} voices, one clip each, from VCTK, "
+            f"CREMA-D and LibriTTS-R: {len(splits['validation'])} validation voices for all the work, and "
+            f"{len(splits['test'])} test voices kept locked until the final evaluation. "
+            "Validation voices per dataset: " + ", ".join(f"{name} {n}" for name, n in sets) + ". "
+            f"Genome searches have been run on {len(searched)} voices. "
+            f"Listener scores ({'everyone' if everyone else 'yours'}): {len(clips)} clip scores on "
+            f"{len(rated_voices)} voices" + (f", from {len(listeners)} listeners" if everyone else "") + ".")
+    return {"answer": text, "source": "records", "route": "facts", "citations": [], "cited": [], "absent": False}
+
+
+@app.get(f"{API}/about")
+@needs_key
+def about():
+    """What the Dramatizer is, how to use it, and its contributors (backend/api/about.py)."""
+    from backend.api.about import ABOUT
+    return jsonify(ABOUT)
+
+
+@app.get(f"{API}/assistant")
+@needs_key
+def assistant_status():
+    """Whether the language model behind "Ask the Dramatizer" is off, idle, starting, ready or failed."""
+    from backend.api.assistant import ASSISTANT
+    return jsonify(ASSISTANT.status())
+
+
+def _answer_from_records(question):
+    """The answer without the model: About for questions about the project, else the records (answer.py)."""
+    from backend.api import about as about_text
+    from backend.rag import answer
+
+    if ABOUT_QUESTION.search(question):
+        return {"answer": about_text.as_text(), "source": "about", "citations": [], "absent": False}
+    records, index, _ = evidence()
+    a = answer.answer(question, records, index, listener=None if sees_others() else g.user)
+    if a["absent"]:
+        facts = _facts_answer(question)        # a question about the data itself, not about the scores
+        if facts:
+            return facts
+    return {"answer": a["answer"], "source": "records", "citations": a["citations"], "cited": a["cited"],
+            "absent": a["absent"], "route": a["route"]}
+
+
+@app.post(f"{API}/assistant/ask")
+@needs_key
+def assistant_ask():
+    """
+    Answer a question about the Dramatizer: {question, history?: [{role, content}]}. The chatbot (Gemma 4)
+    answers when it is ready, calling this API with the asker's own token; otherwise, or if it fails, the
+    records answer (with citations). "source" says which: model, records or about. "note" says why.
+    """
+    from backend.api.assistant import ASSISTANT
+
+    data = request.get_json(silent=True) or {}
+    question = " ".join(str(data.get("question") or "").split())[:ASK_CHARS]
+    if not question:
+        raise Refused("Ask something.")
+    history = [{"role": m.get("role"), "content": str(m.get("content", ""))[:2000]}
+               for m in (data.get("history") or [])[-6:] if isinstance(m, dict) and m.get("role") in ("user", "assistant")]
+    status = ASSISTANT.status()
+    note = None
+    if status["state"] == "ready":
+        try:
+            reply = ASSISTANT.ask(question, _token(), history)
+            if str(reply.get("answer", "")).startswith(DECLINED):
+                out = _answer_from_records(question)        # declined, but About or the records may still answer it
+                if not out.get("absent"):
+                    out["note"] = None
+                    return jsonify(out)
+            return jsonify(answer=reply["answer"], source="model", model=status["model"], tools=reply.get("tools", []),
+                           seconds=reply.get("seconds"), citations=[])
+        except RuntimeError as error:
+            note = f"The language model could not answer ({error}), so this answer comes from the records."
+    elif status["state"] in ("idle", "failed"):
+        ASSISTANT.start()
+        note = ("The language model is starting (about a minute); until then answers come straight from the records."
+                if ASSISTANT.status()["state"] == "starting" else None)
+    elif status["state"] == "starting":
+        note = "The language model is still loading; this answer comes straight from the records."
+    out = _answer_from_records(question)
+    out["note"] = note
+    return jsonify(out)
+
+
 # --- Results -----------------------------------------------------------------
+
+def summaries(kind):
+    """Every OUTPUT/kind/NAME/summary.json, from the project's output/ and the render folder (the first one wins)."""
+    found = {}
+    for base in (model.PROJECT_DIR / "output", model.OUTPUT_DIR):
+        for path in sorted((base / kind).glob("*/summary.json")):
+            found.setdefault(path.parent.name, path)
+    return [found[name] for name in sorted(found)]
+
 
 @app.get(f"{API}/results")
 @needs_key
 def results():
     out = {"baselines": [], "milestone2": []}
-    for folder in sorted((model.OUTPUT_DIR / "baseline").glob("*/summary.json")):
+    for folder in summaries("baseline"):
         record_path = folder.parent / "record.json"
         record = json.loads(record_path.read_text(encoding="utf-8")) if record_path.is_file() else {}
         checks_path = folder.parent / "checks.json"
@@ -1091,7 +1474,7 @@ def results():
                                  "git_commit": record.get("git_commit"), "git_dirty": record.get("git_dirty"),
                                  "checks": [{"name": c["name"], "passed": c["passed"]} for c in checks],
                                  "summary": json.loads(folder.read_text(encoding="utf-8"))})
-    for folder in sorted((model.OUTPUT_DIR / "milestone2").glob("*/summary.json")):
+    for folder in summaries("milestone2"):
         out["milestone2"].append({"name": folder.parent.name, "summary": json.loads(folder.read_text(encoding="utf-8"))})
     return jsonify(out)
 
@@ -1166,6 +1549,11 @@ Dramatizer API on https://127.0.0.1:{port}{API}
   playit.gg: a TCP tunnel to local address 127.0.0.1, port {port}. Only tunnel this port.
   Stop with Ctrl+C.
 """, flush=True)
+    from backend.api.assistant import ASSISTANT
+    ASSISTANT.configure(f"https://127.0.0.1:{port}", fingerprint())     # where "Ask the Dramatizer"'s model calls back
+    atexit.register(ASSISTANT.stop)
+    if ASSISTANT._optional("CHATBOT_PRELOAD").strip().lower() not in ("0", "no", "false", "off"):
+        ASSISTANT.start()          # load the model now, so the first question does not wait for it (it calls back later)
     app.run(host="127.0.0.1", port=port, threaded=True, ssl_context=context, request_handler=ClosesIdleConnections)
 
 

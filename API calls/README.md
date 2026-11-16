@@ -72,7 +72,96 @@ scripts you save or share.
 A login ends when the script finishes (it logs out). An API key is sent as it is and stays valid until
 the host removes it.
 
-## 3. By hand with curl
+## 3. Questions about results, for a chatbot: `API_REQUEST.py`
+
+`API_REQUEST.py` asks the API about results and answers with small JSON, sized for a language model's
+prompt. It is meant as the tools of a chatbot (for example Gemma 4 with function calling, through
+Ollama, vLLM or llama.cpp). It uses the same connection, fingerprint check and environment variables as
+the script above.
+
+| Function | Answers |
+|---|---|
+| `overview()` | How much there is: searches, rated searches, voices, piles, named genomes, renders, result sets |
+| `list_searches(voice, batch, pile, rated, limit)` | Genome searches with their line, status and how many genomes passed the checks |
+| `search_details(run_id)` | One search: every genome with its genes, verdict and MOS, best first |
+| `top_genomes(voice, limit)` | The best-rated genomes across searches by MOS |
+| `named_genomes()` | The genomes listeners picked and named |
+| `listening_piles()` / `pile(batch, pile, voice)` | The piles, and one pile's clips with scores |
+| `renders(query, mine, page)` | Lines people rendered in the website |
+| `baseline_results(name)` | The baselines' WER, similarity, PESQ, STOI and SI-SDR |
+| `milestone2_results(name)` | Milestone 2: share of genomes that passed, and why the others failed |
+| `voices(dataset, query, page)` | The datasets, or one dataset's validation voices |
+
+```python
+from API_REQUEST import Results, TOOLS      # TOOLS: the functions as JSON schemas for the model
+with Results.connect() as results:          # DRAMATIZER_URL, _FINGERPRINT, _USER or _KEY from the environment
+    print(results.run_tool("top_genomes", {"limit": 3}))   # the model's tool call -> a JSON string
+```
+
+```bash
+python API_REQUEST.py overview
+python API_REQUEST.py milestone2_results
+python API_REQUEST.py tools                 # print the schemas
+```
+
+A listener account sees no MOS (listeners rate blind), so `top_genomes` finds nothing for it. Give the
+chatbot a researcher account or an API key.
+
+### The evidence tools: any small question, and the six questions
+
+| Function | Answers |
+|---|---|
+| `query_scores(listener, voice, dataset, gene_type, genes, genome, verdict, pile, clip, group_by, sort, order, limit, from_date, to_date)` | Listeners' scores, filtered, sorted or grouped (mean, count, range, mean above the plain line, share better than it). "Which genomes did Rama rate highest?" is `query_scores(listener="Rama")` |
+| `evidence_question(number, from_date, to_date)` | One of the six genome questions, answered with the same numbers as its chart |
+| `search_evidence(query, kind, k)` | The evidence records that best match a question in words |
+
+They use three API routes: `GET /evidence/scores`, `GET /evidence/questions/<1-6>` (and `/chart`, the
+JPEG) and `GET /evidence/search`. Only an **admin account or an API key** sees every listener's scores
+and the six questions. Anyone else gets only their own scores.
+
+## 4. The chatbot: `chatbot.py`
+
+Gemma 4 picks a tool, the tool asks the API, and Gemma words the answer from what came back. The
+model never makes up or calculates a number.
+
+```bash
+D:/envs/llm/python.exe chatbot.py                       # chat in the terminal
+D:/envs/llm/python.exe chatbot.py --ask "Which genomes did Rama rate highest?" --steps
+D:/envs/llm/python.exe chatbot.py --model gemma-4-E2B-it               # the smaller Gemma 4
+python chatbot.py --server http://127.0.0.1:11434/v1 --model gemma4    # or an Ollama / llama.cpp server
+```
+
+`D:/envs/llm` is the environment with Gemma 4's newer transformers. The model is loaded from
+`LLM_LIBRARY_DIR` (.env) in 4-bit. The API must be running, and the `DRAMATIZER_*` variables set as
+above, with an admin account or an API key.
+
+The model answers each turn with one JSON object: `{"tool": ..., "arguments": {...}}` or
+`{"answer": "..."}`. That works with any chat model, local or on a server.
+
+Every question and how the chatbot answers it through the API: [QUESTIONS.md](QUESTIONS.md).
+
+**How well it answers:** `chatbot_eval.py` asks the 25 questions in `chatbot_questions.json`:
+- 16 small ones, like Rama's highest;
+- 3 about the results;
+- the six questions.
+
+The right answer is computed from the data at test time, so the test stays right as scores come in. Each
+answer gets two marks: did the chatbot call the right tool, and does its answer hold the right numbers or
+names. The report goes to `history/chatbot/` (git-ignored, because it holds listeners' scores).
+
+```bash
+D:/envs/llm/python.exe chatbot_eval.py                  # or --model gemma-4-E2B-it, --only s01,q6
+```
+
+**On the website (Ask the Dramatizer, on Home).** Anyone logged in can ask in the box on the Home page.
+The API starts the chatbot itself on the first question (`backend/api/assistant.py`, which runs
+`chatbot.py --serve` with `CHATBOT_PYTHON` from .env; loading Gemma takes about two minutes). Each
+question is sent with the asker's own session, so every tool call is made as that person: a listener
+gets answers about their own scores only. Until the model is ready, or if it fails, the API answers from
+the records itself (`backend/rag/answer.py`, with the record IDs), and the page says which one answered.
+Routes: `GET /about`, `GET /assistant` (is the model ready?) and `POST /assistant/ask {question, history}`.
+
+## 5. By hand with curl
 
 `curl` is on Windows 10 and later as `curl.exe`. These examples skip the certificate check (`-k`), so
 **use them only on the host's own PC** (`127.0.0.1`). From elsewhere, use the script, which checks
@@ -100,7 +189,7 @@ curl -k -X POST -H "Authorization: Bearer TOKEN" -H "Content-Type: application/j
 
 With an API key, send the key instead of a token: `-H "Authorization: Bearer KEY"` (no login, no logout).
 
-## 4. What you can ask for
+## 6. What you can ask for
 
 All under `/api/v1`. **Bold** routes are the ones for pulling data.
 
@@ -129,7 +218,7 @@ at the top of `backend/api/server.py`. They need a researcher or admin account, 
   scores are included only for accounts allowed to see them.
 - An API key may do and see everything.
 
-## 5. When it goes wrong
+## 7. When it goes wrong
 
 | Message | What it means |
 |---|---|
@@ -141,12 +230,10 @@ at the top of `backend/api/server.py`. They need a researcher or admin account, 
 | `429` | Many refused logins on the server just now: wait a few minutes |
 | Connection refused | The API isn't running on the host, or the address or port is wrong |
 
-## 6. Limits
+## 8. Limits
 
 - **There is no bulk export route.** For example, there's no single route for every score as one CSV.
   `searches --no-audio` gives every search's scores as JSON. On the host, `python main_backend.py
   ratings --export FILE.csv` writes the CSV.
-- **`/results` can come back empty** (`{"baselines": [], "milestone2": []}`). It looks for the
-  baselines in the render folder on D:, but they are in the project's `output/` folder.
 - **Downloads hold listeners' scores and voice recordings.** Keep them in `downloads/` (git-ignored)
   or somewhere private, and don't share them outside the project.

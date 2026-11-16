@@ -766,7 +766,14 @@ def synthesize(cosyvoice, plan: TTSPlan, prompt_wav: str, prompt_text: str | Non
         _warn(plan, "synthesize: text_frontend=True collapses '...' into '.', so the dramatic pause is lost; "
                     "leave text_frontend off, or use a breath or timed pause")
 
-    kwargs.update(stream=False, speed=plan.speed)
+    # NEW: a speed other than 1.0 is spoken at that pace, not stretched afterwards (pacing.py):
+    # the reference is paced, the line rendered at 1.0, and its pauses scaled
+    rate = float(plan.speed)
+    natural = rate != 1.0 and speed_method() == "natural"
+    if natural:
+        from backend.speech import pacing
+        prompt_wav = pacing.paced_prompt(prompt_wav, rate, _paced_dir())
+    kwargs.update(stream=False, speed=1.0 if natural else plan.speed)
     chunks = []
     for segment in split_on_pauses(plan.text):
         if isinstance(segment, TextSegment) and not text_frontend:
@@ -780,7 +787,8 @@ def synthesize(cosyvoice, plan: TTSPlan, prompt_wav: str, prompt_text: str | Non
                 _warn(plan, f"synthesize: a text segment has {words} words, which is not split into sentences "
                             f"with text_frontend=False; keep segments under about {FRONTEND_OFF_MAX_WORDS} words")
         if isinstance(segment, SilenceSegment):
-            chunks.append(torch.zeros(1, int(cosyvoice.sample_rate * segment.ms / 1000)))
+            ms = segment.ms / rate if natural else segment.ms
+            chunks.append(torch.zeros(1, int(cosyvoice.sample_rate * ms / 1000)))
         elif instruct:
             outputs = cosyvoice.inference_instruct2(segment.text, instruct, prompt_wav, **kwargs)
             chunks.extend(out["tts_speech"] for out in outputs)
@@ -793,7 +801,37 @@ def synthesize(cosyvoice, plan: TTSPlan, prompt_wav: str, prompt_text: str | Non
                                                         prompt_wav, **kwargs)
             chunks.extend(out["tts_speech"] for out in outputs)
 
-    return torch.cat(chunks, dim=1) if chunks else torch.zeros(1, 0)
+    audio = torch.cat(chunks, dim=1) if chunks else torch.zeros(1, 0)
+    if natural and audio.shape[1]:
+        from backend.speech import pacing
+        scaled = pacing.scale_pauses(audio[0].detach().cpu().numpy(), cosyvoice.sample_rate, 1.0 / rate)
+        audio = torch.from_numpy(scaled).to(audio.dtype).unsqueeze(0)
+    return audio
+
+
+SPEED_METHODS = ("natural", "stretch")
+
+
+def speed_method() -> str:
+    """NEW: how a speed other than 1.0 is made: "natural" (pacing.py, the default) or "stretch" (CosyVoice's speed=,
+    which stretches the finished spectrogram and sounds edited). SPEED_METHOD in .env."""
+    import os
+    method = os.environ.get("SPEED_METHOD")
+    if method is None:
+        try:
+            from backend import model
+            method = model.setting("SPEED_METHOD", "natural")
+        except Exception:
+            method = "natural"
+    method = str(method).strip().lower()
+    if method not in SPEED_METHODS:
+        raise ValueError(f"SPEED_METHOD must be one of {', '.join(SPEED_METHODS)}, not {method!r}")
+    return method
+
+
+def _paced_dir():
+    from backend import model
+    return model.OUTPUT_DIR / "paced_prompts"
 
 
 if __name__ == "__main__":

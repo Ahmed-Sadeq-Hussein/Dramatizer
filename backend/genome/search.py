@@ -101,6 +101,7 @@ def draw_guided(text, genes, count, seed, starting_genome, reference_audio, *, c
     """Rank a pool of mutations and reserve part of the render budget for exploration."""
     from backend.genome import preference
     from backend.genome.descriptors import genome_vector
+    from backend.genome.editor import unusable
     from backend.speech.tts_formatter import process_tts_string
 
     artifact = preference.load_model()
@@ -118,6 +119,8 @@ def draw_guided(text, genes, count, seed, starting_genome, reference_audio, *, c
         if len(parent.operations) != genes:
             parent = child
         if len(child.operations) != genes:
+            continue
+        if unusable(child.operations):           # a disabled gene or an old speed kept from the starting genome
             continue
         plan = process_tts_string(text, child.resolve(text))
         key = (plan.text, plan.speed, plan.instruct)
@@ -187,6 +190,28 @@ def summary(run):
         "terrible": verdicts.count("terrible"),
         "failed": verdicts.count("failed"),
     }
+
+
+def diverse_shortlist(run, n=5):
+    """
+    Up to n of a run's fine genomes that differ most from each other (from Baesar's select_diverse):
+    the first is the one farthest from the plain line, then each next one is the farthest from those
+    already chosen, in descriptor space. Ties keep the run's order. Returns genome numbers.
+    """
+    from backend.genome.descriptors import genome_vector
+
+    fine = [g for g in run["genomes"] if g.get("verdict") == "fine"]
+    if n < 1 or not fine:
+        return []
+    import math
+    vectors = [genome_vector(g["genes"]) for g in fine]
+    nearest = [math.dist(v, genome_vector([])) for v in vectors]
+    chosen = []
+    while len(chosen) < min(n, len(fine)):
+        i = max((i for i in range(len(fine)) if i not in chosen), key=lambda i: (nearest[i], -i))
+        chosen.append(i)
+        nearest = [min(d, math.dist(v, vectors[i])) for d, v in zip(nearest, vectors)]
+    return [fine[i]["number"] for i in chosen]
 
 
 def _safe_name(text):
@@ -422,6 +447,9 @@ def print_run(run):
     counts = summary(run)
     print(f"{counts['done']} of {counts['total']} judged: {counts['fine']} fine, {counts['terrible']} terrible"
           + (f", {counts['failed']} failed" if counts["failed"] else ""))
+    shortlist = diverse_shortlist(run)
+    if len(shortlist) > 1:
+        print("Most different fine genomes: " + ", ".join(str(n) for n in shortlist))
 
 
 if __name__ == "__main__":

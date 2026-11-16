@@ -54,16 +54,19 @@ const audioOf = (run, name) => el("audio", { controls: true, preload: "none", sr
 // ------------------------------------------------------------------ modes --
 // A mode is a set of tabs for one kind of work; a tab can be in more than one mode.
 const MODES = {
-  rank: { tabs: ["rate", "results"], note: "Score the deliveries in your pile, and see the results." },
-  audio: { tabs: ["voices", "speak", "renders"], note: "Choose a voice and have it speak a line." },
-  listen: { tabs: ["genomes", "renders", "results"], note: "Listen to the searches' clips, everyone's renders, and the rankings." },
-  build: { tabs: ["voices", "genomes", "studio", "renders"], note: "Start genome searches, and edit, name and render genomes." },
+  home: { tabs: ["home"], note: "" },
+  rate: { tabs: ["rate"], note: "Choose a pile of clips meant for rating, and score each one." },
+  generate: { tabs: ["voices", "studio"], note: "Choose a voice, then optionally a genome, and render a line." },
+  listen: { tabs: ["voices", "renders"], note: "Listen to a voice in the data, or to the renders people have made." },
+  research: { tabs: ["genomes", "speak", "results"], note: "Genome searches, their rankings, and the measured results.",
+              needs: "search" },
 };
 const MODE_KEY = "dramatizer-mode";
 let mode = null;
 const lastTab = {};          // each mode reopens on the tab last used in it
 
 const modeTabs = (name) => MODES[name].tabs;
+const usableModes = () => Object.keys(MODES).filter((m) => !MODES[m].needs || can(MODES[m].needs));
 
 function applyMode(name) {
   mode = name;
@@ -73,6 +76,7 @@ function applyMode(name) {
   $("mode-note").textContent = MODES[name].note;
   const tabs = modeTabs(name);
   document.querySelectorAll(".tabs button").forEach((b) => (b.hidden = !tabs.includes(b.dataset.tab)));
+  document.querySelector(".tabs").hidden = tabs.length < 2;      // one page: no tab bar
 }
 
 function setMode(name) {
@@ -83,21 +87,22 @@ function setMode(name) {
   showTab(tabs.includes(lastTab[name]) ? lastTab[name] : current && !current.hidden ? current.dataset.tab : tabs[0]);
 }
 
-// The mode to open on: the current one, else the one this browser used last, else the first
+// Show the modes this account may use. The page opens on Home; later checks keep the current page as it is.
 function renderModes() {
-  const usable = Object.keys(MODES);
-  let saved = null;
-  try { saved = localStorage.getItem(MODE_KEY); } catch { /* none */ }
-  const pick = usable.includes(mode) ? mode : usable.includes(saved) ? saved : usable[0];
-  if (pick) setMode(pick);
+  const usable = usableModes();
+  document.querySelectorAll(".modes button").forEach((b) => (b.hidden = !usable.includes(b.dataset.mode)));
+  $("home-research").hidden = !usable.includes("research");
+  if (!mode || !usable.includes(mode)) setMode("home");
+  else applyMode(mode);
 }
+document.querySelectorAll(".home-card").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.go)));
 document.querySelectorAll(".modes button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
 
 // ------------------------------------------------------------------- tabs --
 function showTab(name) {
   // A tab outside the current mode (e.g. a listener sent to Rate genomes): switch to a mode that has it
   if (mode && !modeTabs(mode).includes(name)) {
-    const other = Object.keys(MODES).find((m) => modeTabs(m).includes(name));
+    const other = usableModes().find((m) => modeTabs(m).includes(name));
     if (other) applyMode(other);
   }
   if (mode) lastTab[mode] = name;
@@ -128,6 +133,7 @@ async function connect() {
     c.textContent = `${state.me.name}${role} · ${local.host}` + (state.me.jobs_waiting ? ` · ${state.me.jobs_waiting} job(s) on the host` : "");
     c.className = "conn ok";
     applyPermissions();
+    loadExtras();
     return true;
   } catch (error) {
     c.textContent = error.message;
@@ -145,6 +151,16 @@ function applyPermissions() {
   document.body.classList.toggle("can-name", can("name"));
   document.body.classList.toggle("own-scores-only", !can("rate_for_others"));
   renderModes();
+}
+
+// Extensions the host offers this account only (/me "extras"), each a script of its own, loaded once
+const loadedExtras = new Set();
+function loadExtras() {
+  for (const name of (state.me && state.me.extras) || []) {
+    if (loadedExtras.has(name) || !/^[a-z]+$/.test(name)) continue;
+    loadedExtras.add(name);
+    document.body.append(el("script", { src: `${API}/${name}/${name}.js` }));
+  }
 }
 
 // ------------------------------------------------------------------ login --
@@ -230,7 +246,8 @@ function chooseVoice(clip, src) {
   $("chosen-name").textContent = `${clip.speaker} · ${clip.dataset}`;
   $("chosen-text").textContent = clip.text;
   $("chosen-audio").src = src;
-  toast(`Voice chosen: ${clip.speaker}. Now Speak or start a genome search.`);
+  toast(`Voice chosen: ${clip.speaker}.`);
+  if (mode === "generate") showTab("studio");          // step 2: the line and, optionally, a genome
 }
 
 $("voice-search").addEventListener("submit", (e) => { e.preventDefault(); loadVoices(1); });
@@ -563,10 +580,12 @@ function start() {
   }
   started = true;
   loadDatasets();
-  // Whoever has a pile to rate (or may do nothing else) starts on the Rate genomes tab, on their pile
+  setMode("home");                                    // every login opens on the home page
   const account = state.me && state.me.account;
-  if (account && account.permissions.includes("rate") &&
-      ((account.assignments || []).length || (!can("speak") && !can("search")))) showTab("rate");
+  $("home-hello").textContent = `Welcome, ${state.me ? state.me.name : ""}`;
+  const piles = (account && account.assignments) || [];
+  $("home-rate-note").textContent = piles.length ? `You have ${piles.length} pile${piles.length === 1 ? "" : "s"} to rate.` : "";
+  if (typeof Ask !== "undefined") Ask.init();         // Ask the Dramatizer and About, on the home page (ask.js)
 }
 connect().then((ok) => ok && start());
 setInterval(() => { if (state.me) connect(); }, 30000);

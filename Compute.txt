@@ -1,0 +1,70 @@
+COMPUTE LIST
+============
+Everything we want to run on the GPU (or that takes long), with how to run it and why.
+Keep it current: add an item when it comes up, and mark it when it has run.
+Status: TODO | RUNNING | DONE (date, result) | WAITING (on what)
+
+Budget given on 14 Nov 2026: 3 hours of compute.
+
+
+1. Ask the Dramatizer with Gemma 4, end to end                         DONE (14 Nov)
+   How:  python main_backend.py api   (CHATBOT_PYTHON=D:/envs/llm/python.exe in .env), log in on the
+         website, ask on Home. The API starts API calls/chatbot.py --serve; log in history/api/assistant.log.
+   Why:  the website's question box must really be answered by the model, with the asker's own login,
+         not only by the records fallback. Check load time, answer time and GPU memory next to the API.
+   Result: works. Loading took about 2 minutes (weights 1 min 40 s); answers took 12 to 27 s, each with
+         one tool call through the API as the logged-in account (test_user_1). GPU about 5 GB with the
+         API; some of Gemma's weights were offloaded to the CPU, which makes answers slower. Before it
+         was ready, the records answered (with the note on the page), as designed.
+
+2. Chatbot evaluation with the new tools                               DONE (15 Nov)
+   How:  cd "API calls";  D:/envs/llm/python.exe chatbot_eval.py      (API running with CHATBOT_PRELOAD=0, so
+         only one Gemma is on the GPU; DRAMATIZER_KEY = the local "chatbot-eval" key in history/api/eval_key.txt)
+   Why:  the last run (13 Nov: right tool 24/25, right answer 25/25) was before the answer_evidence and
+         about_dramatizer tools existed. The tool list changed, so the score must be measured again.
+   Result: first run with 17 tools 22/25 right tool, 23/25 right answer (it counted searches with list_searches,
+         counted plain lines as genome scores, used top_genomes for an average). The tool descriptions and
+         rules were sharpened; second run 24/25 right tool, 25/25 right answer, 18.1 s a question
+         (history/chatbot/eval_gemma-4-E4B-it_*.json). The miss is q5, right answer through query_scores.
+
+3. A private listening batch (Ash only)                                DONE (14 Nov, rendered and published)
+   How and why: in private/Compute_private.txt (git-ignored). Took 44 minutes on the GPU.
+   Next: give the listeners their piles (commands in the private file), then rate.
+
+4. Speed A/B renders (natural vs stretch)                              DONE (14 Nov)
+   How:  scratchpad script, 2 voices x {plain, natural, stretch} x {0.85, 1.15}, plus natural 0.7.
+         Output: D:/Dramatizer 2 renders/speed_ab/ (results.json, results_070.json).
+   Why:  to hear whether natural pacing removes the "edited recording" sound. Result: natural kept as the
+         default; the model follows the paced reference only partly (0.87 and 0.95 when asked 0.85).
+
+5. A private model retraining (Ash only, CPU)                          DONE (13 Nov)
+   How and why: in private/Compute_private.txt (git-ignored).
+
+6. Preference model training (CPU, Baesar's guidance)                  DONE (14 Nov)
+   How:  python main_backend.py preference train
+   Why:  first trained model for guided search. 19 training choices; on 5 held-out speakers it picks the
+         winner 1 in 5, the same as chance. Retrain after the next listening batch is rated.
+
+7. New calibration of the sanity check's words limit                   DONE (15-16 Nov): no stricter rule passes
+   How:  python -m backend.metrics.calibrate_words     (9 new validation voices x Milestone 2's 6 lines x 4 seeds,
+         216 plain renders, 1 h 10 min; plus the 6 Nov 400 pairs = 1,048 plain pairs; then every rule applied
+         to Milestone 2's 720 genomes). Output: D:/Dramatizer 2 renders/calibration/words/summary.json
+   Why:  Milestone 2 showed the 0.10 limit is too loose for a guard (119 of 483 passing genomes changed a word).
+         OBJECTIVE.md says the limit is only changed after a new calibration.
+   Rule tested (fixed before rendering): "no_new", a clip may not get a word wrong against the script that its
+         own plain render gets right; kept only if it passes at least 95 % of plain pairs.
+   Result (plain pairs passed, 95 % interval; Milestone 2 genomes passed; of those, with a word wrong):
+         current rule  95.6 % (94.2-96.7)   483 / 720   119
+         flat 1 word   94.7 % (93.1-95.9)   467 / 720   103
+         no difference 86.5 % (84.2-88.4)   363 / 720     0
+         no_new        93.5 % (91.9-94.8)   371 / 720     3 (none broken by the genome)
+         With more voices, plain renders differ more than the 6 Nov set showed (96.5 % there). no_new misses the
+         95 % bar, so by the rule set in advance the limit stays as it is. The chance errors sit in a few voices
+         (VCTK/p247: 17 words, CREMA-D/1060: 11, the other 7 voices: 0-5), and on the longer lines.
+   Next (needs a decision): compare a genome with several plain renders of its voice (e.g. 3 seeds) instead
+         of one, so a voice that the recogniser often mishears is not held against the genome. That rule would
+         need its own calibration (the same command with a new rule; no new renders for the plain side).
+
+8. Combined speed method (natural, then a small stretch for the rest)  TODO (only if wanted)
+   How:  add SPEED_METHOD=combined in tts_formatter.synthesize; A/B render as in item 4.
+   Why:  natural pacing reaches the asked speed only partly on some voices (p286: 0.95 for 0.85).

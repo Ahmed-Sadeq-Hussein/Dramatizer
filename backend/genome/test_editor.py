@@ -21,10 +21,10 @@ class Genes(unittest.TestCase):
     def test_good_genes_are_kept_and_rounded(self):
         genes = editor.clean_genes([{"feature": "laughter", "position": 0.12345, "extra": "dropped"},
                                     {"feature": "pause", "position": 1, "kind": "realization"},
-                                    {"feature": "speed", "rate": "1.234"}])
+                                    {"feature": "speed", "rate": "1.1234"}])
         self.assertEqual(genes, [{"feature": "laughter", "position": 0.123},
                                  {"feature": "pause", "position": 1.0, "kind": "realization"},
-                                 {"feature": "speed", "rate": 1.23}])
+                                 {"feature": "speed", "rate": 1.12}])
 
     def test_a_pause_without_a_kind_is_dramatic(self):
         self.assertEqual(editor.clean_genes([{"feature": "pause", "position": 0.5}])[0]["kind"], "dramatic")
@@ -38,6 +38,32 @@ class Genes(unittest.TestCase):
                     [{"feature": "sigh", "position": 0.5}] * (editor.MAX_GENES + 1), [None]):
             with self.assertRaises(ValueError, msg=bad):
                 editor.clean_genes(bad)
+
+    def test_disabled_genes_and_old_speeds_only_show(self):
+        for old in ([{"feature": "hissing", "position": 0.5}], [{"feature": "vocalized_noise", "position": 0.2}],
+                    [{"feature": "speed", "rate": 0.7}], [{"feature": "speed", "rate": 1.3}]):
+            with self.assertRaises(ValueError, msg=old):
+                editor.clean_genes(old)                                   # not saved or rendered any more
+            self.assertEqual(len(editor.clean_genes(old, usable=False)), 1)   # but an old genome still shows
+            self.assertIsNotNone(editor.unusable(old))
+        self.assertIsNone(editor.unusable([{"feature": "sigh", "position": 0.5}, {"feature": "speed", "rate": 0.85}]))
+        self.assertEqual(editor.options()["speed_bounds"], [0.85, 1.15])
+        self.assertEqual(editor.options()["disabled"], ["hissing", "vocalized_noise"])
+
+    def test_the_factory_never_makes_a_disabled_gene_or_an_old_speed(self):
+        from backend.genome.genome_factory import GenomeFactory
+        factory = GenomeFactory(seed=0)
+        line = "Well, you really did it this time, and I honestly didn't think you had it in you."
+        genomes = [factory.random_genome(line) for _ in range(400)]
+        for g in list(genomes[:100]):
+            for _ in range(10):
+                g, _ = factory.mutate(g, line)
+                genomes.append(g)
+        genes = [x for g in genomes for x in g.operations]
+        self.assertFalse({"hissing", "vocalized_noise"} & {x["feature"] for x in genes})
+        rates = [x["rate"] for x in genes if x["feature"] == "speed"]
+        self.assertTrue(rates and all(0.85 <= r <= 1.15 for r in rates))
+        self.assertTrue(all(editor.unusable(g.operations) is None for g in genomes))
 
     def test_no_genes_only_for_a_render(self):
         self.assertEqual(editor.clean_genes([], allow_empty=True), [])
@@ -136,7 +162,7 @@ class Routes(Library):
         self.assertEqual(saved.status_code, 200, saved.get_json())
         self.assertEqual(saved.get_json()["named"]["named_by"], "Researcher")
         library = self.client.get("/api/v1/genome/library", headers=auth).get_json()
-        self.assertEqual(library["genomes"][0]["name"], "Giggle")
+        self.assertIn("Giggle", [g["name"] for g in library["genomes"]])      # sorted by voice, then MOS
         self.assertIn("speed", library["options"]["features"])
         self.assertIn("genome saved", (self.dir / "audit.jsonl").read_text(encoding="utf-8"))
         self.assertEqual(self.client.post("/api/v1/genome/edited/remove", headers=auth, json={"name": "Giggle"}).status_code, 200)
@@ -161,13 +187,13 @@ class Routes(Library):
                                    json={"dataset": "VCTK", "clip_id": "p250_001", "text": LINE, "genes": "sigh"})
             self.assertEqual(bad.status_code, 400)
 
-    def test_a_listener_may_not_save_or_render_and_sees_no_mos(self):
+    def test_a_listener_may_render_but_not_save_and_sees_no_mos(self):
         ratings.save_scores(self.runs / "r1", {"Ash": {"genome_01": 4}})
         auth = self.auth("listener")
         genes = [{"feature": "sigh", "position": 0.2}]
         self.assertEqual(self.client.post("/api/v1/genome/edited", headers=auth, json={"name": "X", "genes": genes}).status_code, 403)
-        self.assertEqual(self.client.post("/api/v1/genome/render", headers=auth,
-                                          json={"dataset": "VCTK", "clip_id": "x", "text": LINE, "genes": genes}).status_code, 403)
+        self.assertEqual(self.client.post("/api/v1/genome/render", headers=auth,            # allowed ("speak"):
+                                          json={"dataset": "VCTK", "clip_id": "x", "text": LINE, "genes": genes}).status_code, 404)   # no clip x
         library = self.client.get("/api/v1/genome/library", headers=auth).get_json()
         self.assertTrue(all(g["mos"] is None for g in library["genomes"]))
         self.assertNotIn("Ash", json.dumps(library))

@@ -16,7 +16,11 @@ A gene is checked strictly, because it comes from a web page:
 
     {"feature": <a targeted feature>, "position": 0..1}
     {"feature": "pause", "position": 0..1, "kind": "dramatic" | "realization"}
-    {"feature": "speed", "rate": 0.5..2.0}                at most one
+    {"feature": "speed", "rate": 0.85..1.15}              at most one
+
+A disabled feature (genome_factory.DISABLED_FEATURES: hissing, vocalized noise) or a speed outside
+SPEED_BOUNDS is refused for saving and rendering. Old genomes that have one still show and preview
+(usable=False), and the library marks them, so they can be looked at but not used again as they are.
 
 A saved genome has 1 to MAX_GENES genes. A render may have none: that is the
 plain line, to compare with.
@@ -27,7 +31,7 @@ from pathlib import Path
 from backend import safe_files
 from backend.genome import ratings, search
 from backend.genome.candidate import WORDS, Candidate
-from backend.genome.genome_factory import FEATURES, PAUSE_KINDS, SPEED_BOUNDS, TARGETED_FEATURES
+from backend.genome.genome_factory import DISABLED_FEATURES, FEATURES, PAUSE_KINDS, SPEED_BOUNDS, TARGETED_FEATURES
 
 MAX_GENES = 10          # by hand; random genomes have at most genome_factory.MAX_OPERATIONS
 
@@ -35,7 +39,22 @@ MAX_GENES = 10          # by hand; random genomes have at most genome_factory.MA
 def options():
     """What the editor offers, for the page."""
     return {"features": FEATURES, "targeted": TARGETED_FEATURES, "pause_kinds": PAUSE_KINDS,
-            "speed_bounds": list(SPEED_BOUNDS), "max_genes": MAX_GENES}
+            "disabled": list(DISABLED_FEATURES), "speed_bounds": list(SPEED_BOUNDS), "max_genes": MAX_GENES}
+
+
+def unusable(genes):
+    """Why a genome may not be saved or rendered any more (a disabled gene, a speed out of bounds), or None."""
+    for gene in genes or []:
+        if gene.get("feature") in DISABLED_FEATURES:
+            return f"{gene['feature'].replace('_', ' ')} is disabled"
+        if gene.get("feature") == "speed":
+            try:
+                rate = float(gene.get("rate"))
+            except (TypeError, ValueError):
+                continue
+            if not SPEED_BOUNDS[0] <= rate <= SPEED_BOUNDS[1]:
+                return f"speed {rate:g} is outside {SPEED_BOUNDS[0]:g} to {SPEED_BOUNDS[1]:g}"
+    return None
 
 
 def _number(value, low, high, what):
@@ -50,8 +69,9 @@ def _number(value, low, high, what):
     return value
 
 
-def clean_genes(genes, allow_empty=False):
-    """The genes as plain dicts with only the known keys, or ValueError saying what is wrong."""
+def clean_genes(genes, allow_empty=False, usable=True):
+    """The genes as plain dicts with only the known keys, or ValueError saying what is wrong.
+    usable=False lets disabled features and old speeds through, for showing an old genome."""
     if not isinstance(genes, list):
         raise ValueError("The genes must be a list.")
     if not genes and not allow_empty:
@@ -65,8 +85,11 @@ def clean_genes(genes, allow_empty=False):
         feature = gene.get("feature")
         if feature not in FEATURES:
             raise ValueError(f"Gene {number}: unknown feature {feature!r}.")
+        if usable and feature in DISABLED_FEATURES:
+            raise ValueError(f"Gene {number}: {feature.replace('_', ' ')} is disabled; it can no longer be used.")
         if feature == "speed":
-            out.append({"feature": "speed", "rate": round(_number(gene.get("rate"), *SPEED_BOUNDS, f"Gene {number}'s speed"), 2)})
+            bounds = SPEED_BOUNDS if usable else (0.5, 2.0)
+            out.append({"feature": "speed", "rate": round(_number(gene.get("rate"), *bounds, f"Gene {number}'s speed"), 2)})
             continue
         clean = {"feature": feature, "position": round(_number(gene.get("position"), 0, 1, f"Gene {number}'s position"), 3)}
         if feature == "pause":
@@ -139,7 +162,7 @@ def library(runs, with_mos=True):
                     "run": e.get("run"), "genome": e.get("genome"), "voice": e.get("voice"), "text": e.get("text"),
                     "genes": e["genes"], "described": e.get("described"), "markup": e.get("markup"),
                     "verdict": e.get("verdict"), "named_by": e.get("named_by"), "based_on": e.get("based_on"),
-                    "mos": (e.get("mos") or {}).get("mos") if with_mos else None})
+                    "mos": (e.get("mos") or {}).get("mos") if with_mos else None, "unusable": unusable(e["genes"])})
     for folder, run in runs:
         rated = ratings.load(folder) if with_mos and (folder / ratings.RATINGS_FILE).is_file() else None
         for g in run["genomes"]:
@@ -147,7 +170,8 @@ def library(runs, with_mos=True):
             out.append({"key": f"search:{run['id']}/{g['number']}", "source": "search", "name": None,
                         "run": run["id"], "genome": g["number"], "voice": run["voice"], "text": run["text"],
                         "genes": g["genes"], "described": g.get("described"), "markup": g.get("markup"),
-                        "verdict": g.get("verdict"), "mos": score["mos"] if score else None})
+                        "verdict": g.get("verdict"), "mos": score["mos"] if score else None,
+                        "unusable": unusable(g["genes"])})
     return out
 
 

@@ -2,11 +2,14 @@
 import argparse
 import hashlib
 import json
+import re
 from collections import defaultdict
 from pathlib import Path
 from statistics import mean
 
 from checks import EVAL_DIR, SPLIT, sha256
+
+TEST_RATER = re.compile(r"^test[ _]user[ _]\d+$", re.IGNORECASE)   # as backend/genome/ratings.py: not evidence
 
 OBJECTIVE = (
     "For each listener and run, subtract the plain clip score from the mean score "
@@ -30,6 +33,7 @@ def summarize(export):
     cases = defaultdict(list)
     methods = set()
     skipped = 0
+    tests_left_out = 0
     for ratings_path in folders:
         run_path = ratings_path.with_name("run.json")
         for path in (run_path, ratings_path):
@@ -43,6 +47,9 @@ def summarize(export):
         clips = {"baseline"} if run["baseline"].get("audio") else set()
         clips.update(f"genome_{g['number']:02d}" for g in run["genomes"] if g.get("audio"))
         for listener, scores in sorted(ratings["scores"].items()):
+            if TEST_RATER.match(listener.strip()):
+                tests_left_out += 1                # an account made to try the website, not a listener
+                continue
             for clip, score in scores.items():
                 if (clip not in clips or type(score) not in (int, float) or not 0 <= score <= 5):
                     raise ValueError(f"Invalid clip or score for {clip!r} in {ratings_path}.")
@@ -78,6 +85,7 @@ def summarize(export):
         "paired_listener_runs": len(pairs),
         "scores_used": sum(len(pair["scores"]) for pair in pairs),
         "unpaired_listener_runs": skipped,
+        "test_account_runs_left_out": tests_left_out,
     }
     digest = hashlib.sha256(json.dumps(inputs, sort_keys=True).encode()).hexdigest()
     return {

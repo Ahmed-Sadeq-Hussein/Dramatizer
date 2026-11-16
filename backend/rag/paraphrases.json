@@ -1,0 +1,21 @@
+{
+  "about": "Questions worded differently from questions.json, each with the route answer.py should take, and whether nothing in the evidence answers it (absent). Written before the check was first run, so the routing rules were not tuned to them. A failure is reported, not fixed by changing this file.",
+  "paraphrases": [
+    {"question": "For every voice, which genome did the listener score highest?", "route": "summary:best"},
+    {"question": "Did anyone hear glitches or distortion in the genomes?", "route": "summary:artifacts"},
+    {"question": "Which genomes got poor ratings?", "route": "summary:bad"},
+    {"question": "How many genomes beat the unedited line?", "route": "summary:better"},
+    {"question": "Does the number of genes change how often a genome beats the plain line?", "route": "summary:by_features"},
+    {"question": "Which gene types should we drop from the search?", "route": "summary:exclude"},
+    {"question": "Are any gene combinations reliably good across voices?", "route": "summary:consistent"},
+    {"question": "Which genomes of LibriTTS-R/1089 did better than its plain line?", "route": "summary:better"},
+    {"question": "Tell me about genome 3 of VCTK/p248.", "route": "genome"},
+    {"question": "What was genome 7 of voice CREMA-D/1014 and its score?", "route": "genome"},
+    {"question": "What did genome 4 of VCTK/p999 do?", "route": "genome", "absent": true},
+    {"question": "Which random search genome on voice CREMA-D_1028 failed the sanity check?", "route": "search"},
+    {"question": "What is the best recipe for chocolate cake?", "route": "summary:best", "absent": false, "note": "'best' routes it to the summary; a known weakness, kept to show it"},
+    {"question": "Which voice sounds like a pirate?", "route": "search", "absent": true},
+    {"question": "How much did the GPU cost?", "route": "search", "absent": true},
+    {"question": "Which emotion does the listener prefer on Tuesdays?", "route": "search", "absent": true}
+  ]
+}

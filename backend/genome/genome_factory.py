@@ -7,9 +7,14 @@
     child, mutation = factory.mutate(genome, text)
 
 A random genome has min_operations to max_operations genes. Each gene's feature
-is drawn with equal odds from FEATURES: 14 that sit on a word (emphasis,
-laughing while speaking and the 12 sound tokens), a pause, and the speed. Only
-one speed gene has an effect, so a genome never gets a second one.
+is drawn with equal odds from ENABLED_FEATURES: the features that sit on a word
+(emphasis, laughing while speaking and the sound tokens), a pause, and the
+speed. Only one speed gene has an effect, so a genome never gets a second one.
+
+DISABLED_FEATURES (hissing, vocalized noise) are still known everywhere, so the
+genomes already made, rendered and rated with them read and describe as before,
+but no new genome gets them: the factory never draws them and the editor refuses
+them (editor.clean_genes). The speed is kept to SPEED_BOUNDS, 0.85 to 1.15.
 
 The same as the first Dramatizer's genome_factory.py, with one change: it draws
 from its own random generator, so a seed gives the same genomes every time.
@@ -38,10 +43,15 @@ TARGETED_FEATURES = [
 FEATURES = TARGETED_FEATURES + ["pause", "speed"]
 PAUSE_KINDS = ["dramatic", "realization"]
 
+# Known (old genomes keep them) but never used in a new genome
+DISABLED_FEATURES = ("hissing", "vocalized_noise")
+ENABLED_TARGETED_FEATURES = [f for f in TARGETED_FEATURES if f not in DISABLED_FEATURES]
+ENABLED_FEATURES = [f for f in FEATURES if f not in DISABLED_FEATURES]
+
 MIN_OPERATIONS = 1
 MAX_OPERATIONS = 5
-SPEED_RANGE = (0.7, 1.3)     # where a new speed gene starts
-SPEED_BOUNDS = (0.5, 2.0)    # how far a mutation may take it
+SPEED_RANGE = (0.85, 1.15)   # where a new speed gene starts
+SPEED_BOUNDS = (0.85, 1.15)  # how far a mutation or the editor may take it
 POSITION_STEP = 0.15         # how far "modify" moves a gene through the sentence
 SPEED_STEP = 0.1             # how far "modify" changes the rate
 
@@ -54,8 +64,8 @@ class GenomeFactory:
         self.max_operations = max_operations
         self.random = random.Random(seed)
 
-        self.targeted_features = list(TARGETED_FEATURES)
-        self.features = list(FEATURES)
+        self.targeted_features = list(ENABLED_TARGETED_FEATURES)
+        self.features = list(ENABLED_FEATURES)
 
     def random_genome(self, text):
         """Create a completely random candidate."""

@@ -41,10 +41,11 @@
 <div id="app">
 
 <nav class="modes" id="modes" aria-label="Mode">
-  <button type="button" data-mode="rank" aria-pressed="false">Rank</button>
-  <button type="button" data-mode="audio" aria-pressed="false">Make audio</button>
+  <button type="button" data-mode="home" aria-pressed="false">Home</button>
+  <button type="button" data-mode="rate" aria-pressed="false">Rate</button>
+  <button type="button" data-mode="generate" aria-pressed="false">Generate</button>
   <button type="button" data-mode="listen" aria-pressed="false">Listen</button>
-  <button type="button" data-mode="build" aria-pressed="false">Make genomes</button>
+  <button type="button" data-mode="research" aria-pressed="false" hidden>Research</button>
   <span class="mode-note" id="mode-note"></span>
 </nav>
 
@@ -55,19 +56,73 @@
 </div>
 
 <nav class="tabs" role="tablist">
-  <button role="tab" data-tab="voices" class="on">Choose a voice</button>
+  <button role="tab" data-tab="home" class="on">Home</button>
+  <button role="tab" data-tab="voices"><span class="step">1 · </span>Voices</button>
+  <button role="tab" data-tab="studio"><span class="step">2 · </span>Line and genome</button>
   <button role="tab" data-tab="speak">Speak</button>
-  <button role="tab" data-tab="genomes">Genomes</button>
-  <button role="tab" data-tab="studio">Genome studio</button>
-  <button role="tab" data-tab="rate">Rate genomes</button>
+  <button role="tab" data-tab="genomes">Searches</button>
+  <button role="tab" data-tab="rate">Rate</button>
   <button role="tab" data-tab="renders">Renders</button>
   <button role="tab" data-tab="results">Results</button>
 </nav>
 
 <main>
+  <!-- Home: the page after logging in -->
+  <section class="tab" id="tab-home">
+    <h2 id="home-hello">Welcome</h2>
+    <p class="intro">The Dramatizer clones a voice and gives its lines a delivery: stress, pauses, sighs and speed,
+      written as a <em>genome</em>. Pick what you want to do.</p>
+    <div class="home-cards">
+      <button type="button" class="home-card" data-go="rate">
+        <strong>Rate</strong>
+        <span>Choose a pile of clips meant for rating, listen, and score each one.</span>
+        <span class="muted small" id="home-rate-note"></span>
+      </button>
+      <button type="button" class="home-card" data-go="generate">
+        <strong>Generate</strong>
+        <span>Choose a voice, then a genome if you like, type a line and render it.</span>
+      </button>
+      <button type="button" class="home-card" data-go="listen">
+        <strong>Listen</strong>
+        <span>Listen to the voices in the data, or to the renders people have made.</span>
+      </button>
+      <button type="button" class="home-card" data-go="research" id="home-research" hidden>
+        <strong>Research</strong>
+        <span>Genome searches, their rankings, and the measured results.</span>
+      </button>
+    </div>
+
+    <div class="home-columns">
+      <section class="home-panel ask" aria-labelledby="ask-title">
+        <h3 id="ask-title">Ask the Dramatizer</h3>
+        <p class="muted small">Ask about the ratings, the genomes, the results or how to use the site. Answers come from
+          the project's own records, and you only get what your account may see.</p>
+        <div class="ask-log" id="ask-log" aria-live="polite"></div>
+        <form class="ask-form" id="ask-form">
+          <label class="grow"><span class="visually-hidden">Your question</span>
+            <input type="text" id="ask-q" maxlength="500" autocomplete="off"
+                   placeholder="e.g. Which genomes work best for each voice?"></label>
+          <button type="submit" id="ask-send">Ask</button>
+        </form>
+        <div class="ask-examples" id="ask-examples"></div>
+        <p class="muted small" id="ask-status"></p>
+      </section>
+
+      <section class="home-panel about" aria-labelledby="about-title">
+        <h3 id="about-title">About the Dramatizer</h3>
+        <p id="about-what"></p>
+        <h4>How to use it</h4>
+        <ol class="about-how" id="about-how"></ol>
+        <h4>Contributors</h4>
+        <ul class="about-people" id="about-people"></ul>
+      </section>
+    </div>
+  </section>
+
   <!-- 1. Voices -->
-  <section class="tab" id="tab-voices">
-    <p class="intro">Pick the voice to clone. Only validation speakers are offered; the final test speakers stay locked.</p>
+  <section class="tab" id="tab-voices" hidden>
+    <p class="intro for-generate">Step 1: pick the voice to clone, then go on to the line and genome. Only validation speakers are offered; the final test speakers stay locked.</p>
+    <p class="intro for-listen">The voices in the data: play any recording. Only validation speakers are offered.</p>
     <form class="row" id="voice-search">
       <label>Dataset <select id="dataset"></select></label>
       <label class="grow">Speaker or words <input type="search" id="voice-q" placeholder="e.g. p231, or: the door"></label>
@@ -201,11 +256,11 @@
   <!-- 4. Genome studio -->
   <section class="tab" id="tab-studio" hidden>
 <p class="notice" data-lacks="speak" hidden>Your account can look at and edit genomes here, but not render or save them. Ask the host for a researcher account.</p>
-    <p class="intro">Pick a genome, change its genes, then save it under a new name or render it in the chosen voice.
-      A gene's position runs from the first word (0) to the last (1), so a genome fits any line.</p>
+    <p class="intro">Step 2: type a line and render it in the chosen voice. A genome is optional: pick one, or start an
+      empty one and add genes. A gene's position runs from the first word (0) to the last (1), so a genome fits any line.</p>
 
     <div class="card stack">
-      <strong>1 · Pick a genome</strong>
+      <strong>Genome (optional)</strong>
       <div class="row">
         <label class="grow">Find <input type="search" id="st-find" placeholder="a name, voice, gene type or word"></label>
         <label>Show <select id="st-source">
@@ -221,7 +276,7 @@
     </div>
 
     <div class="card stack">
-      <strong>2 · Edit</strong>
+      <strong>Line and genes</strong>
       <label>Line <textarea id="st-text" rows="2" maxlength="300">Well, you really did it this time, and I honestly didn't think you had it in you, so I'll be waiting.</textarea></label>
       <ol class="genes" id="st-genes"></ol>
       <div class="row"><button type="button" class="quiet" id="st-add">+ Add gene</button>
@@ -235,13 +290,13 @@
     </div>
 
     <div class="card stack can-name-only">
-      <strong>3 · Save as a new genome</strong>
+      <strong>Save as a new shared genome</strong>
       <div class="row"><label class="grow">Name <input type="text" id="st-name" maxlength="60" placeholder="e.g. Sigh then pause"></label>
         <button type="button" id="st-save">Save</button></div>
     </div>
 
     <div class="card stack">
-      <strong>4 · Render in the chosen voice</strong>
+      <strong>Render in the chosen voice</strong>
       <p class="muted small" id="st-voice"></p>
       <div class="row"><label>Seed <input type="number" id="st-seed" min="0" placeholder="default"></label>
         <label class="check"><input type="checkbox" id="st-plain" checked> Also the plain line, to compare</label>
@@ -280,5 +335,6 @@
 <script src="/static/rate.js"></script>
 <script src="/static/studio.js"></script>
 <script src="/static/renders.js"></script>
+<script src="/static/ask.js"></script>
 </body>
 </html>

@@ -16,7 +16,7 @@ const Studio = (() => {
 
   function showVoice() {
     $("st-voice").textContent = state.voice ? `Voice: ${state.voice.speaker} · ${state.voice.dataset}`
-                                            : "No voice chosen yet: choose one in tab 1.";
+                                            : "No voice chosen yet: choose one in step 1, Voices.";
   }
 
   async function load(selectKey) {
@@ -32,7 +32,8 @@ const Studio = (() => {
   // ------------------------------------------------------------ picking --
   function title(g) {
     const what = (g.described && g.described.length ? g.described : g.genes.map((x) => label(x.feature))).join(", ");
-    const mos = g.mos !== null && g.mos !== undefined ? ` · MOS ${Number(g.mos).toFixed(2)}` : "";
+    const mos = (g.mos !== null && g.mos !== undefined ? ` · MOS ${Number(g.mos).toFixed(2)}` : "") +
+      (g.unusable ? " · can't render as it is" : "");
     if (g.source === "search") return `#${g.genome}${mos} — ${what}`;
     if (g.source === "private") return `● ${g.name} — ${what}`;
     return `${g.source === "edited" ? "✎" : "★"} ${g.name}${mos} — ${what}`;
@@ -68,7 +69,8 @@ const Studio = (() => {
     const from = g.source === "search" ? `Genome ${g.genome} of the search ${g.run}` :
       g.source === "edited" ? `Made by hand${g.named_by ? " by " + g.named_by : ""}${g.based_on ? ", from " + g.based_on : ""}`
                             : `Named${g.named_by ? " by " + g.named_by : ""}, genome ${g.genome} of ${g.voice}`;
-    const parts = [from + (g.verdict ? ` · sanity: ${g.verdict}` : "")];
+    const parts = [from + (g.verdict ? ` · sanity: ${g.verdict}` : "") +
+      (g.unusable ? ` · ${g.unusable}: change or remove that gene to render it` : "")];
     $("st-picked").replaceChildren(parts.join(""), g.text ? " · " : "",
       g.text ? el("button", { type: "button", class: "quiet small", onclick: () => { $("st-text").value = g.text; schedulePreview(); } },
                   "Use its own line") : "");
@@ -102,7 +104,10 @@ const Studio = (() => {
         }
         changed();
       } },
-      ...S.options.features.map((f) => el("option", { value: f, disabled: f === "speed" && hasSpeed }, label(f))));
+      ...S.options.features.map((f) => {
+        const off = (S.options.disabled || []).includes(f);
+        return el("option", { value: f, disabled: (f === "speed" && hasSpeed) || off }, label(f) + (off ? " (disabled)" : ""));
+      }));
     feature.value = gene.feature;
 
     let where;

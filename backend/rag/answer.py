@@ -126,8 +126,15 @@ def summary(intent, records, voice=None):
                 if c["fields"]["score"] == top:
                     cited[c["id"]] = 2
         ties = sum("(a tie)" in x for x in lines)
-        return (f"The best-scored genome{scope}, per voice and listener ({len(lines)}; {ties} have a tie):\n  "
-                + "\n  ".join(lines)), cited
+        heard_by = Counter(len({c["fields"]["listener"] for c in clips
+                                if (c["fields"]["voice"], c["fields"]["genome"]) == key})
+                           for key in {(c["fields"]["voice"], c["fields"]["genome"]) for c in clips})
+        alone = heard_by.get(1, 0)
+        caution = (f"\nNot a winner: {alone} of {sum(heard_by.values())} genomes{scope} were scored by one listener "
+                   "only, so each line is one listener's highest score, not a result. A winner needs at least 2 "
+                   "listeners (GET /evidence/snapshot gives the rule and each voice's status)." if alone else "")
+        return (f"The highest-scored genome{scope}, per voice and listener ({len(lines)}; {ties} have a tie):\n  "
+                + "\n  ".join(lines) + caution), cited
     if intent == "artifacts":
         heard = [c for c in clips if c["fields"]["artifact"] is True]
         failed = [r for r in records if r["kind"] == "sanity" and r["fields"]["verdict"] == "failed"

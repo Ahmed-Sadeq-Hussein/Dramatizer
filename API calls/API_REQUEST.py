@@ -258,6 +258,11 @@ class Results:
         """One of the six genome questions, answered as its chart answers it (the same numbers)."""
         return self._get(f"evidence/questions/{int(number)}", **{"from": from_date, "to": to_date})
 
+    def evidence_status(self, voice=None):
+        """The analysis's conclusions and how sure they are: snapshot_id, ratings up to, rule, coverage, per voice
+        a winner only with enough evidence (else why not), artifact checks, caveats."""
+        return self._get("evidence/snapshot", voice=voice)
+
     def about_dramatizer(self):
         """What the Dramatizer is, how to use the website, and who made it (the Home page's About)."""
         return self._get("about")
@@ -355,6 +360,11 @@ TOOLS = [
               "number": {**INTEGER, "description": "1 to 6"},
               "from_date": {**STRING, "description": "YYYY-MM-DD"}, "to_date": {**STRING, "description": "YYYY-MM-DD"}},
           ["number"]),
+    _tool("evidence_status", "What the analysis concluded and how sure it is: the snapshot_id and the newest rating "
+          "it used, the aggregation rule, coverage (genomes rated, listeners per genome), per voice whether there is a "
+          "winner or not enough evidence and why, the artifact checks, and caveats. Use it for 'which genome should I "
+          "use', 'is there a winner', 'how sure are we', 'which ratings is this based on'.", {
+              "voice": {**STRING, "description": "One voice, DATASET/SPEAKER, e.g. VCTK/p250; all when left out"}}),
     _tool("about_dramatizer", "What the Dramatizer is, how to use the website (Rate, Generate, Listen, Ask, "
           "Research), and the project's contributors."),
     _tool("answer_evidence", "Answer a question from the evidence records, citing their IDs, or say that nothing "

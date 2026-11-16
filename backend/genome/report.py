@@ -1,141 +1,123 @@
-"""report.py | Answers the genome questions from the listener ratings.
+"""report.py | The six genome questions, answered in text from the evidence snapshot (evidence_snapshot.py).
 
-    python main_backend.py genome-report            # the six answers, printed
-    python main_backend.py genome-report --csv FILE # also one row per rated genome as CSV,
-                                                    # and a manifest.json next to it
+    python main_backend.py genome-report            # coverage, provenance and the six answers, printed
+    python main_backend.py genome-report --csv FILE # also one row per genome as CSV, the snapshot as
+                                                    # evidence.json and a manifest.json next to it
 
-The manifest records the hash of every ratings file and of the review log, the
-code commit, the date and the settings, so the same numbers can be reproduced.
+Every printout and file starts with what the numbers rest on: the snapshot_id, the newest rating used,
+the code commit, the aggregation rule, and the coverage check (genomes in the rated runs against genomes
+with a score, listing any without one). A report made while rating is still going on therefore says so:
+on 11 Nov at 18:40, 227 of the 240 genomes of mos-diverse-v1 had a score; the last 13 were rated later.
 
-Scores are MOS on 0-5 (see ratings.py). A genome beats the plain line when its
-MOS is higher than the plain line's MOS for the same run. Only genomes with at
-least MIN_LISTENERS scores are used in the answers; the rest are counted and left out.
+A winner is named only when the snapshot's WINNER_RULE allows it; otherwise the answer says "not enough
+evidence" or "no clear winner", with the number of listeners. A genome is only recommended after three
+artifact checks (sanity, audio, listeners) and when it can still be rendered (see evidence_snapshot.py).
 
-GOOD, BAD and MIN_LISTENERS are working choices. They must be justified in the
-report, for example from the spread of the scores, before they are used to decide.
-
-Test accounts' scores (Test user N) are not counted: ratings.mos leaves them out.
-A genome that uses a gene type disabled since (hissing, vocalized noise) or a speed
-outside 0.85-1.15 is marked "can no longer be rendered" (editor.unusable): its
-score is still evidence, but it cannot be chosen again as it is.
+GOOD and BAD are working choices for questions 3 and 4, not measured thresholds; they are printed with
+the answers. Test accounts' scores (Test user N) are not counted: ratings.mos leaves them out.
 """
 import argparse
 import csv
-import hashlib
 import json
-import subprocess
 import sys
 from collections import defaultdict
-from datetime import datetime
 from pathlib import Path
 from statistics import mean
 
-from backend import model
-from backend.genome import ratings as R
-from backend.genome import search as S
-from backend.genome.editor import unusable
+from backend.genome import evidence_snapshot as E
+from backend.genome import search as S      # tests patch S.list_runs
 
 GOOD = 4.0
 BAD = 2.5
-MIN_LISTENERS = 1
-FIELDS = ["voice", "run", "genome", "features", "verdict", "mos", "n", "low", "high",
-          "above_baseline", "baseline_mos", "markup", "unusable"]
+MIN_LISTENERS = E.MIN_LISTENERS
+FIELDS = ["snapshot_id", "voice", "run", "genome", "features", "gene_types", "mos", "n", "listeners", "low", "high",
+          "above_baseline", "baseline_mos", "sanity", "audio_check", "artifact_heard", "artifact_answers",
+          "unusable", "safe", "blocked_by", "recommendable", "markup"]
 
 
-def rated_genomes():
+def rated_genomes(snapshot=None):
+    """One row per rated genome, from the snapshot (built from search.list_runs() when not given)."""
+    snapshot = snapshot or E.build(S.list_runs())
+    plain = {v["voice"]: v["plain_mos"] for v in snapshot["voices"]}
     rows = []
-    for folder, run in S.list_runs():
-        if not (folder / R.RATINGS_FILE).is_file():
+    for g in snapshot["genomes"]:
+        if not g["rated"]:
             continue
-        rank = R.ranked(folder, run)
-        base = rank["baseline"]
-        for g in rank["genomes"]:
-            if not g["mos"]:
-                continue
-            rows.append({
-                "voice": run["voice"], "run": run["id"], "genome": g["number"],
-                "features": len(g["genes"]), "verdict": g["verdict"],
-                "mos": g["mos"]["mos"], "n": g["mos"]["n"], "low": g["mos"]["low"], "high": g["mos"]["high"],
-                "above_baseline": g["above_baseline"], "baseline_mos": base["mos"] if base else None,
-                "markup": g["markup"], "genes": json.dumps(g["genes"], sort_keys=True),
-                "unusable": unusable(g["genes"]) or "",
-            })
+        gone = next((b.split(": ", 1)[1] for b in g["blocked_by"] if b.startswith("can no longer be rendered")), "")
+        rows.append({**g, "snapshot_id": snapshot["provenance"]["snapshot_id"],
+                     "above_baseline": g["above_plain"], "baseline_mos": plain.get(g["voice"]), "unusable": gone,
+                     "verdict": g["sanity"], "listeners": ";".join(g["listeners"]), "gene_types": ";".join(g["gene_types"]),
+                     "audio_check": "ok" if g["audio_check"]["ok"] else ",".join(g["audio_check"]["failed"]),
+                     "blocked_by": "; ".join(g["blocked_by"])})
     return rows
 
 
-def _hash_files(paths):
-    h = hashlib.sha256()
-    for path in sorted(paths, key=lambda p: str(p)):
-        h.update(str(path.name).encode("utf-8"))
-        h.update(path.read_bytes())
-    return h.hexdigest()
-
-
-def _code_commit():
-    try:
-        out = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True,
-                             cwd=model.PROJECT_DIR, timeout=10)
-        return out.stdout.strip() or "unknown"
-    except (OSError, subprocess.SubprocessError):
-        return "unknown"
-
-
-def write_manifest(path, rows):
-    rating_files = [folder / R.RATINGS_FILE for folder, _ in S.list_runs()
-                    if (folder / R.RATINGS_FILE).is_file()]
-    log = R.read_log()                     # the rating_log table (storage.py)
+def write_manifest(path, rows, snapshot):
+    p, c = snapshot["provenance"], snapshot["coverage"]
     manifest = {
-        "created": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "runs_with_ratings": len(rating_files),
-        "genomes_in_report": len(rows),
-        "ratings_sha256": _hash_files(rating_files) if rating_files else None,
-        "review_log_sha256": hashlib.sha256("".join(json.dumps(e, ensure_ascii=False) + "\n" for e in log)
-                                            .encode("utf-8")).hexdigest() if log else None,
-        "code_commit": _code_commit(),
-        "settings": {"GOOD": GOOD, "BAD": BAD, "MIN_LISTENERS": MIN_LISTENERS},
+        "snapshot_id": p["snapshot_id"], "created": p["created"], "code_commit": p["code_commit"],
+        "ratings_up_to": p["ratings_up_to"], "rating_log_sha256": p["rating_log_sha256"], "runs": p["runs"],
+        "genomes_in_runs": c["genomes_in_runs"], "genomes_in_report": len(rows),
+        "genomes_without_a_score": c["genomes_unrated"], "scores_used": c["scores_used"],
+        "listeners_per_genome": c["listeners_per_genome"], "rule": p["rule"], "winner_rule": p["winner_rule"],
+        "settings": {**p["settings"], "GOOD": GOOD, "BAD": BAD}, "caveats": snapshot["caveats"],
     }
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
     return manifest
 
 
 def show(title, lines):
     print(f"\n{title}")
-    for line in lines or ["  (no data yet)"]:
+    for line in lines or ["  (none)"]:
         print(f"  {line}")
 
 
 def describe(r):
     note = f"  [can no longer be rendered: {r['unusable']}]" if r.get("unusable") else ""
-    return f"{r['voice']}, genome {r['genome']} in {r['run']}: MOS {r['mos']:.2f} ({r['n']} listeners)  {r['markup']}{note}"
+    who = f"{r['n']} listener{'s' if r['n'] != 1 else ''}"
+    spread = f", 95% interval {r['low']}-{r['high']}" if r.get("low") is not None else ", no interval"
+    return f"{r['voice']}, genome {r['genome']} in {r['run']}: MOS {r['mos']:.2f} ({who}{spread})  {r['markup']}{note}"
 
 
-def answers(rows):
-    ok = [r for r in rows if r["n"] >= MIN_LISTENERS]
-    print(f"{len(rows)} rated genomes, {len(ok)} with at least {MIN_LISTENERS} listeners "
-          f"({len(rows) - len(ok)} left out, too few listeners).")
+def header(snapshot, rows):
+    p, c = snapshot["provenance"], snapshot["coverage"]
+    print(f"Evidence snapshot {p['snapshot_id']} (made {p['created']}, code {p['code_commit'][:10]}, "
+          f"ratings up to {p['ratings_up_to']})")
+    status = "complete" if c["complete"] else f"INCOMPLETE: {len(c['genomes_unrated'])} without a score"
+    print(f"Coverage: {c['genomes_rated']} of {c['genomes_in_runs']} genomes in {c['runs_with_ratings']} rated runs have "
+          f"a score ({status}); {len(rows)} report rows; {c['scores_used']} scores used "
+          f"({c['test_account_scores_left_out']} test-account scores left out).")
+    for g in c["genomes_unrated"]:
+        print(f"  no score yet: {g['voice']}, genome {g['genome']} in {g['run']}")
+    print("Listeners per genome: " + ", ".join(f"{k} listener(s): {v} genomes" for k, v in c["listeners_per_genome"].items()))
+    print(f"Rule: {p['rule']}")
+    for line in snapshot["caveats"]:
+        print(f"Caveat: {line}")
 
+
+def answers(rows, snapshot):
     # 1. Which genomes work best for each voice?
-    best = {}
-    for r in ok:
-        if r["voice"] not in best or r["mos"] > best[r["voice"]]["mos"]:
-            best[r["voice"]] = r
-    show("1. Best genome per voice", [describe(r) for _, r in sorted(best.items())])
+    lines = []
+    for v in snapshot["voices"]:
+        top = v["candidates"][0] if v["candidates"] else None
+        lead = (f"; highest safe: genome {top['genome']}, MOS {top['mos']} ({top['n']} listener(s))" if top else "")
+        lines.append(f"{v['voice']}: {v['status'].replace('_', ' ')}{lead}. {v['reason']}")
+    show(f"1. Best genome per voice ({E.WINNER_RULE})", lines)
 
-    # 2. Which genomes produce artifacts?
-    # Listener comments are not stored, so the automatic sanity check is the artifact flag.
-    flagged = [r for r in ok if r["verdict"] != "fine"]
-    show("2. Genomes that produce artifacts (flagged by the sanity check)", [describe(r) for r in flagged])
+    # 2. Which genomes produce artifacts? Sanity check, audio check and listeners.
+    show("2. Genomes that fail an artifact check (sanity, audio, or a listener heard one)",
+         [f"{describe(r)}\n      blocked by: {r['blocked_by']}" for r in rows
+          if r["sanity"] != "fine" or r["audio_check"] != "ok" or r["artifact_heard"]])
 
     # 3. Which configurations give bad MOS?
-    bad = [r for r in ok if r["mos"] < BAD]
-    show(f"3. Bad MOS (below {BAD})", [describe(r) for r in bad])
+    show(f"3. Bad MOS (below {BAD}; a working choice)", [describe(r) for r in rows if r["mos"] < BAD])
 
     # 4. Which configurations are consistently good?
     by_config = defaultdict(list)
-    for r in ok:
-        by_config[r["genes"]].append(r)
+    for r in rows:
+        by_config[r["markup"]].append(r)
     consistent = []
     for group in by_config.values():
         good_voices = {r["voice"] for r in group if r["mos"] >= GOOD}
@@ -145,39 +127,50 @@ def answers(rows):
     show(f"4. Good (MOS >= {GOOD}) for at least 2 voices", consistent)
 
     # 5. How often does a genome beat its plain line, per number of features?
-    by_size = defaultdict(lambda: [0, 0])
-    for r in ok:
+    by_size = defaultdict(lambda: [0, 0, 0])
+    for r in rows:
         if r["above_baseline"] is None:
             continue
         by_size[r["features"]][1] += 1
+        by_size[r["features"]][2] += r["n"]
         if r["above_baseline"] > 0:
             by_size[r["features"]][0] += 1
-    show("5. Beats the plain line, by number of features",
-         [f"{k} features: {wins} of {total} ({wins / total:.0%})" for k, (wins, total) in sorted(by_size.items())])
+    show("5. Beats the plain line (same listener), by number of features",
+         [f"{k} features: {wins} of {total} genomes ({wins / total:.0%}), {scores} scores"
+          + ("  [fewer than 20 genomes]" if total < 20 else "")
+          for k, (wins, total, scores) in sorted(by_size.items())])
 
     # 6. Which genomes can we exclude?
-    excluded = {(r["voice"], r["run"], r["genome"]): r for r in bad + flagged}
-    show("6. Can be excluded (bad MOS or flagged as artifacts)", [describe(r) for r in excluded.values()])
+    excluded = {(r["voice"], r["run"], r["genome"]): r for r in rows if r["mos"] < BAD or not r["safe"]}
+    show("6. Can be excluded (bad MOS, an artifact check failed, or no longer renderable)",
+         [describe(r) for r in excluded.values()])
+    print(f"\nRecommendable now (all checks passed and at least {MIN_LISTENERS} listeners): "
+          f"{sum(1 for r in rows if r['recommendable'])} of {len(rows)} genomes.")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Answer the genome questions from the listener ratings.")
-    parser.add_argument("--csv", metavar="FILE", help="write one row per rated genome as CSV, and a manifest.json beside it")
+    parser = argparse.ArgumentParser(description="Answer the genome questions from the evidence snapshot.")
+    parser.add_argument("--csv", metavar="FILE", help="write one row per rated genome as CSV, with evidence.json and "
+                                                      "manifest.json beside it")
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")     # the markup's pause marks on a Windows console
 
-    rows = rated_genomes()
+    snapshot = E.build(S.list_runs())
+    rows = rated_genomes(snapshot)
+    header(snapshot, rows)
+    print(f"Snapshot written to {E.write(snapshot)}")
     if args.csv:
         csv_path = Path(args.csv)
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
         with open(csv_path, "w", newline="", encoding="utf-8-sig") as f:
             writer = csv.DictWriter(f, fieldnames=FIELDS, extrasaction="ignore")
             writer.writeheader()
             writer.writerows(rows)
-        manifest_path = csv_path.parent / "manifest.json"
-        write_manifest(manifest_path, rows)
-        print(f"{len(rows)} rows written to {csv_path}, manifest written to {manifest_path}")
-    answers(rows)
+        E.write(snapshot, csv_path.parent / "evidence.json")
+        write_manifest(csv_path.parent / "manifest.json", rows, snapshot)
+        print(f"{len(rows)} rows written to {csv_path}, with evidence.json and manifest.json beside it")
+    answers(rows, snapshot)
 
 
 if __name__ == "__main__":

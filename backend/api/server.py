@@ -71,6 +71,9 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
     GET  /evidence/scores?listener=&voice=&dataset=&gene_type=&genes=&genome=&verdict=&pile=&clip=&from=&to=
                          &group_by=&sort=&order=&limit=    the listeners' scores, filtered, sorted or grouped
                                                   (only your own unless you may see others')
+    GET  /evidence/snapshot?voice=               the analysis the assistant explains: provenance (snapshot_id,
+                                                  ratings up to, commit, rule), coverage, per voice a winner
+                                                  only with enough evidence, artifact checks, caveats
     GET  /evidence/questions/<1-6>?from=&to=     one of the six genome questions, answered from its chart
     GET  /evidence/questions/<1-6>/chart          that chart (JPEG)
     GET  /evidence/search?q=&kind=&k=             the evidence records best matching a question (BM25)
@@ -100,6 +103,7 @@ import threading
 import time
 import traceback
 import uuid
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from ipaddress import ip_address
@@ -717,8 +721,10 @@ def listening():
                    and r["status"] == "finished" and not searching(r["id"])), key=lambda item: item[1]["voice"])
     if not runs:
         raise Refused("No such pile.", 404)
-    return jsonify(piles=piles, rater=g.user, assigned=assigned, batch=batch, pile=int(pile), max_raters=ratings.MAX_RATERS,
-                   sees_others=sees_others(), **ratings.collection(runs, g.user, others=sees_others()))
+    others = sees_others() and not any(r.get("blind") for _, r in runs)     # a blind pile (second_listen.py): no one
+    return jsonify(piles=piles, rater=g.user, assigned=assigned, batch=batch, pile=int(pile),  # sees others' scores
+                   max_raters=ratings.MAX_RATERS, sees_others=others, blind=not others and sees_others(),
+                   **ratings.collection(runs, g.user, others=others))
 
 
 @app.post(f"{API}/genome/searches")
@@ -1192,6 +1198,22 @@ def evidence():
         return _evidence["records"], _evidence["index"], _evidence["genomes"]
 
 
+_snapshot = {"key": None, "snapshot": None}
+
+
+def evidence_snapshot():
+    """The evidence snapshot (backend/genome/evidence_snapshot.py), rebuilt when the scores change."""
+    from backend.genome import evidence_snapshot as E
+    from backend.genome import ratings
+
+    who = ratings.who_path()
+    key = who.stat().st_mtime if who.is_file() else None
+    with _evidence_lock:
+        if _snapshot["snapshot"] is None or _snapshot["key"] != key:
+            _snapshot.update(key=key, snapshot=E.build())
+        return _snapshot["snapshot"]
+
+
 def score_rows():
     """Every score this caller may see, one row per listener per clip."""
     records, _, genomes = evidence()
@@ -1293,6 +1315,21 @@ def evidence_scores():
 _charts = {"key": None, "summary": None}
 
 
+@app.get(f"{API}/evidence/snapshot")
+@needs_key
+def evidence_snapshot_route():
+    """What the analysis concluded and how sure it is: the assistant retrieves this, it does not decide."""
+    from backend.genome import evidence_snapshot as E
+
+    if not sees_others():
+        raise Refused("The snapshot is built from every listener's scores, which this account may not see.", 403)
+    voice = (request.args.get("voice") or "").strip() or None
+    out = E.summary(evidence_snapshot(), voice)
+    if voice and not out["voices"]:
+        raise Refused(f"No rated voice {voice!r}. Voices are written DATASET/SPEAKER, e.g. VCTK/p250.", 404)
+    return jsonify(out)
+
+
 @app.get(f"{API}/evidence/questions/<int:number>")
 @needs_key
 def evidence_question(number):
@@ -1314,9 +1351,15 @@ def evidence_question(number):
                 raise Refused(str(error))
         summary = _charts["summary"]
     chart = next(c for c in summary["charts"] if c["number"] == str(number))
+    snap = evidence_snapshot()
     out = {"number": number, "question": chart["question"], "range": summary["range"],
            "genome_scores": summary["genome_scores"], "sanity_checks": summary["sanity_checks"],
-           "sanity_source": summary.get("sanity_source")}
+           "sanity_source": summary.get("sanity_source"),
+           "provenance": {k: snap["provenance"][k] for k in ("snapshot_id", "ratings_up_to", "code_commit", "rule")},
+           "listeners_per_genome": snap["coverage"]["listeners_per_genome"], "caveats": snap["caveats"]}
+    if number == 1:                                  # a winner only where the snapshot's rule allows one
+        out["voice_status"] = dict(Counter(v["status"] for v in snap["voices"]))
+        out["winner_rule"] = snap["provenance"]["winner_rule"]
     if "skipped" in chart:
         return jsonify(**out, skipped=chart["skipped"])
     query = "?" + urlencode({k: v for k, v in (("from", start), ("to", end)) if v}) if start or end else ""

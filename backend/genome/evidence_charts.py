@@ -199,11 +199,15 @@ def chart_best_per_voice(plt, data):
     ax.set_xticks(range(-5, 6), [f"+{x}" if x > 0 else str(x) for x in range(-5, 6)])
     ax.set_xlabel("Genome score minus the plain line of its voice (same listener; mean if several listened)")
     _grid(ax)
-    _legend(ax, [_dot(plt, BLUE, "Best for its voice"), _dot(plt, OTHER, "Other genomes")])
-    claim = (f"Every voice has a best genome, but {tied} of {len(voices)} voices share first place between two or more "
-             f"genomes, and {better} of {len(voices)} voices have at least one genome rated above their plain line.")
-    note = ("Right of the line: better than the plain line. Where one listener scored a voice, \"best\" is that "
-            f"listener's choice. Data: {_span(data)}.")
+    _legend(ax, [_dot(plt, BLUE, "Highest-scored for its voice"), _dot(plt, OTHER, "Other genomes")])
+    alone = sum(1 for v in above.values() if len(v) == 1)
+    claim = (f"{better} of {len(voices)} voices have at least one genome rated above their plain line, and "
+             f"{tied} of {len(voices)} share first place between two or more genomes. "
+             + (f"{alone} of {len(above)} genomes were scored by one listener only, so the highest point per voice "
+                "is that listener's choice, not a winner: there is not enough evidence to name one."
+                if alone else "Each genome had at least two listeners."))
+    note = ("Right of the line: better than the plain line. A winner per voice, with its rule, is in the evidence "
+            f"snapshot (GET /evidence/snapshot). Data: {_span(data)}.")
     return (fig, claim, note), None
 
 

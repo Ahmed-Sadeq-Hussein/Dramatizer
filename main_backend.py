@@ -25,6 +25,7 @@ The back end lives in backend/:
 
 The front end (the website and logging in) is run by main_frontend.py.
 """
+import os
 import runpy
 import subprocess
 import sys
@@ -79,6 +80,8 @@ COMMANDS = {
         "tunnel": ("A public https:// address for the website and API through Cloudflare (phones; run api first)",
                    "backend.api.tunnel"),
         "api-key": ("Who may use the API: api-key add NAME | list | remove NAME", "backend.api.keys"),
+        "storage": ("The database of accounts, sessions and ratings: storage migrate (once) | check | backup",
+                    "backend.storage"),
         "account": ("Login accounts: account add USERNAME --name NAME [--role listener|researcher|admin] | list | reset | disable | remove",
                     "backend.api.accounts"),
     },
@@ -110,7 +113,7 @@ COMMANDS = {
 # package each needs beyond requirements.txt (None: nothing more). The MCP server
 # has its own environment (see requirements.txt), so its test is skipped where
 # "mcp" is not installed.
-TESTS = [("backend/evaluation/test_checks.py", None), ("backend/metrics/test_calibrate_words.py", None), ("backend/speech/test_pacing.py", None), ("backend/evaluation/test_sanity_all_genes.py", None), ("backend/voice_data/test_voice_map.py", None), ("backend/voice_data/test_voice_similarity.py", None), ("backend/genome/test_explore.py", None), ("backend/genome/test_editor.py", None), ("backend/genome/test_guidance_and_report.py", None), ("backend/genome/test_evidence_charts.py", None), ("backend/api/test_accounts.py", None), ("backend/api/test_assistant.py", None), ("API calls/test_chatbot.py", None), ("backend/rag/test_rag.py", None), ("backend/mcp_server/test_api_calls.py", None), ("backend/mcp_server/test_graph.py", "mcp")]
+TESTS = [("backend/evaluation/test_checks.py", None), ("backend/metrics/test_calibrate_words.py", None), ("backend/speech/test_pacing.py", None), ("backend/evaluation/test_sanity_all_genes.py", None), ("backend/voice_data/test_voice_map.py", None), ("backend/voice_data/test_voice_similarity.py", None), ("backend/genome/test_explore.py", None), ("backend/genome/test_editor.py", None), ("backend/genome/test_guidance_and_report.py", None), ("backend/genome/test_evidence_charts.py", None), ("backend/api/test_accounts.py", None), ("backend/api/test_assistant.py", None), ("API calls/test_chatbot.py", None), ("backend/rag/test_rag.py", None), ("backend/test_storage.py", None), ("backend/mcp_server/test_api_calls.py", None), ("backend/mcp_server/test_graph.py", "mcp")]
 
 
 def all_commands():
@@ -140,14 +143,19 @@ def run(target, args):
 def run_tests():
     import importlib.util
 
+    import tempfile
+
     failed, skipped = [], []
+    # A safety net: a test that forgets to point the database elsewhere still never touches the real one
+    scratch = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+    env = {**os.environ, "DATABASE_PATH": str(Path(scratch.name) / "tests.db")}
     for test, needs in TESTS:
         print(f"\n=== {test}", flush=True)
         if needs and importlib.util.find_spec(needs) is None:
             print(f"skipped: needs the package {needs!r}, which is not in this environment")
             skipped.append(test)
             continue
-        if subprocess.run([sys.executable, str(PROJECT_DIR / test)], cwd=PROJECT_DIR).returncode:
+        if subprocess.run([sys.executable, str(PROJECT_DIR / test)], cwd=PROJECT_DIR, env=env).returncode:
             failed.append(test)
     print(("\nAll tests passed." if not failed else f"\nFailed: {', '.join(failed)}.")
           + (f" Skipped: {', '.join(skipped)}." if skipped else ""))

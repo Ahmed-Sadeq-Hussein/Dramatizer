@@ -83,13 +83,14 @@ def _code_commit():
 def write_manifest(path, rows):
     rating_files = [folder / R.RATINGS_FILE for folder, _ in S.list_runs()
                     if (folder / R.RATINGS_FILE).is_file()]
-    log = R.LOG_PATH if R.LOG_PATH.is_file() else None
+    log = R.read_log()                     # the rating_log table (storage.py)
     manifest = {
         "created": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "runs_with_ratings": len(rating_files),
         "genomes_in_report": len(rows),
         "ratings_sha256": _hash_files(rating_files) if rating_files else None,
-        "review_log_sha256": _hash_files([log]) if log else None,
+        "review_log_sha256": hashlib.sha256("".join(json.dumps(e, ensure_ascii=False) + "\n" for e in log)
+                                            .encode("utf-8")).hexdigest() if log else None,
         "code_commit": _code_commit(),
         "settings": {"GOOD": GOOD, "BAD": BAD, "MIN_LISTENERS": MIN_LISTENERS},
     }

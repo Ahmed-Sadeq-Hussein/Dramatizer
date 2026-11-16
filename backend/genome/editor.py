@@ -28,7 +28,7 @@ plain line, to compare with.
 from datetime import datetime
 from pathlib import Path
 
-from backend import safe_files
+from backend import safe_files, storage
 from backend.genome import ratings, search
 from backend.genome.candidate import WORDS, Candidate
 from backend.genome.genome_factory import DISABLED_FEATURES, FEATURES, PAUSE_KINDS, SPEED_BOUNDS, TARGETED_FEATURES
@@ -125,7 +125,7 @@ def save(name, genes, named_by=None, text=None, based_on=None):
     name = ratings.clean_name(name)
     genes = clean_genes(genes)
     shown = preview(text, genes) if text else None
-    with ratings._lock:
+    with storage.connect(write=True):       # named.json: one writer at a time, across processes
         library = ratings.load_named()
         if any(e["name"].lower() == name.lower() for e in library["genomes"]):
             raise ValueError(f"There is already a genome named {name!r}: choose another name.")
@@ -140,7 +140,7 @@ def save(name, genes, named_by=None, text=None, based_on=None):
 
 def remove(name):
     """Delete a genome made by hand (named search genomes are unnamed from their search instead)."""
-    with ratings._lock:
+    with storage.connect(write=True):       # named.json: one writer at a time, across processes
         library = ratings.load_named()
         found = [e for e in library["genomes"] if e["name"].lower() == str(name).lower()]
         if not found:

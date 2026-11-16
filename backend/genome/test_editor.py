@@ -10,6 +10,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))    # run as a file by main_backend.py test
 
+from backend import storage  # noqa: E402
 from backend.api import accounts  # noqa: E402
 from backend.api.test_accounts import Temporary, fake_run  # noqa: E402
 from backend.genome import editor, ratings, search  # noqa: E402
@@ -89,7 +90,8 @@ class Library(Temporary):
     def setUp(self):
         super().setUp()
         for p in (mock.patch.object(ratings, "NAMED_PATH", self.dir / "named.json"),
-                  mock.patch.object(ratings, "LOG_PATH", self.dir / "mos.jsonl")):
+                  mock.patch.object(ratings, "LOG_PATH", self.dir / "mos.jsonl"),
+                  mock.patch.object(storage, "DB_PATH", self.dir / "test.db")):
             p.start()
             self.addCleanup(p.stop)
         self.runs = self.dir / "runs"

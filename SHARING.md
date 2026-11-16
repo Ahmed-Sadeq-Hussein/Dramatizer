@@ -88,7 +88,7 @@ see their own pile and their own scores: no other searches, no other pile's
 audio, no other listener's scores, and no MOS, because the MOS would show what
 the others gave. Admins and researchers see everything.
 
-Only a salted PBKDF2 hash of each password is kept (`history/api/accounts.json`).
+Only a salted PBKDF2 hash of each password is kept (the `accounts` table of `history/dramatizer.db`).
 After 5 wrong passwords an account is locked for 15 minutes. Send each person
 their username and password privately, then delete the password file. They can
 change their password under **Account** on the page.
@@ -156,8 +156,8 @@ personal data):
 | File | What is in it |
 |---|---|
 | `history/ratings/who_rated_what.csv` | The current score of every listener for every clip: listener, account, batch, pile, voice, run, clip, genome, score, artifact heard (yes, no, or empty when not asked), score minus their plain-line score, date last scored, date first scored, number of changes. Rebuilt after every save, so it opens in a spreadsheet as it stands. |
-| `history/ratings/mos.jsonl` | Every score or artifact answer ever given or changed, one line each, never rewritten. It includes the score and answer it replaced. |
-| `<run folder>/ratings.json` | That run's scores, with the same date and account details per score. |
+| `history/dramatizer.db` (`rating_log` table) | Every score or artifact answer ever given or changed, one row each; the database refuses to change or delete a row. It includes the score and answer it replaced. (Until 16 Nov this was `history/ratings/mos.jsonl`.) |
+| `<run folder>/ratings.json` | A copy of that run's scores (the database is the truth), with the same date and account details per score. |
 | `history/api/audit.jsonl` | Logins, refused logins, logouts, password changes and saves: when, who, and from where. Never passwords or tokens. |
 
 ```bash

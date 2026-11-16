@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))    # run as a file by main_backend.py test
 
@@ -32,6 +33,23 @@ def row(clip, genome, score, above, rated_on="2026-11-11 10:00:00", artifact="")
             "above_plain_line": above, "rated_on": rated_on, "first_given": rated_on, "changes": "0", "verdict": "fine",
             "markup": "", "text": ""}
 
+
+
+_scratch = None
+
+
+def setUpModule():
+    """Every test here reads ratings through a temporary database, never the real one."""
+    global _scratch, _patch
+    from backend import storage
+    _scratch = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+    _patch = mock.patch.object(storage, "DB_PATH", Path(_scratch.name) / "test.db")
+    _patch.start()
+
+
+def tearDownModule():
+    _patch.stop()
+    _scratch.cleanup()
 
 class Words(unittest.TestCase):
     def test_split_lower_and_voice_names(self):

@@ -35,6 +35,8 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
 
     GET  /health                                  no key needed: is it up?
     POST /login   {username, password}            no key needed: an account logs in -> {token, account}
+    POST /register {username, display_name, email, password}   no key needed: ask for a listener account;
+                                                  it waits for the host's approval (account approve)
     POST /logout                                  end this session
     POST /me/password {current, new}              change your own password (ends your sessions)
     GET  /me                                      who this key or session belongs to, and the queue
@@ -119,6 +121,7 @@ CERT_PATH, KEY_PATH = API_DIR / "api_cert.pem", API_DIR / "api_key.pem"
 ACCESS_LOG = API_DIR / "access.log"
 AUDIT_LOG = API_DIR / "audit.jsonl"
 LOGIN_WINDOW_MINUTES, LOGIN_FAILURES_ALLOWED = 10, 30
+REGISTER_WINDOW_MINUTES, REGISTRATIONS_ALLOWED = 60, 10      # from anyone: an open form is a target for scripts
 SPEAK_DIR = model.OUTPUT_DIR / "api"
 DATASETS = ("VCTK", "CREMA-D", "LibriTTS-R")
 PAGE_SIZE = 50
@@ -167,6 +170,7 @@ def crashed(error):
 
 _audit_lock = threading.Lock()
 _failed_logins = []          # times of recent refused logins, from anyone
+_registrations = []          # times of recent registrations, from anyone
 
 
 def audit(event, **details):
@@ -191,6 +195,20 @@ def _too_many_failed_logins(add=False):
         if add:
             _failed_logins.append(now)
         return len(_failed_logins) > LOGIN_FAILURES_ALLOWED
+
+
+def registration_open():
+    """REGISTRATION=off (or 0, no, false) in .env turns registering on the website off."""
+    return model.setting("REGISTRATION", "on").strip().lower() not in ("0", "no", "false", "off")
+
+
+def _too_many_registrations(add=False):
+    now = time.monotonic()
+    with _audit_lock:
+        _registrations[:] = [t for t in _registrations if now - t < REGISTER_WINDOW_MINUTES * 60]
+        if add:
+            _registrations.append(now)
+        return len(_registrations) >= REGISTRATIONS_ALLOWED
 
 
 def _bearer():
@@ -431,6 +449,37 @@ def login():
         return reply
     audit("login")
     return jsonify(token=token, account=account.public(), expires_in_hours=accounts.SESSION_HOURS)
+
+
+@app.get(f"{API}/register")
+def registration_state():
+    """Whether the website may offer registering."""
+    return jsonify(open=registration_open(), needs_approval=True, email_required=True)
+
+
+@app.post(f"{API}/register")
+def register():
+    """Ask for a listener account: {username, display_name, email, password}. It waits for the host's approval."""
+    if not registration_open():
+        raise Refused("Registering is switched off on this server. Ask the host for an account.", 403)
+    _same_page_only()
+    data = body()
+    tried = str(data.get("username") or "")[:40]
+    if _too_many_registrations():
+        audit("registration held back", username=tried)
+        raise Refused("Too many accounts were asked for just now. Try again later.", 429)
+    try:
+        account = accounts.register(data.get("username"), data.get("display_name"), data.get("email"),
+                                    data.get("password"))
+    except accounts.RegistrationRefused as error:
+        audit("registration refused", username=tried, reason=str(error))      # never the email or password
+        time.sleep(0.5)
+        raise Refused(str(error), 400)
+    _too_many_registrations(add=True)
+    g.user = account.display_name
+    audit("registered", username=account.username)
+    return jsonify(ok=True, username=account.username, pending=True,
+                   message="Thank you. The host will approve your account; then you can log in."), 201
 
 
 @app.post(f"{API}/logout")

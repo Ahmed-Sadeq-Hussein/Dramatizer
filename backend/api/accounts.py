@@ -1,8 +1,10 @@
 """accounts.py | Who may log in: accounts with a username and password, and the sessions they open.
 
-    python main_backend.py account add julius --name Julius               # a listener account
+    python main_backend.py account add julius --name Julius --email j@x.org   # a listener account
     python main_backend.py account add ana --name Ana --role admin        # an account that may do everything
     python main_backend.py account list                                   # who has an account
+    python main_backend.py account approve julius                         # let a registered account log in
+    python main_backend.py account email julius j@x.org                   # set or change an email
     python main_backend.py account reset julius                           # a new password for julius
     python main_backend.py account disable julius | enable julius         # stop or allow logging in
     python main_backend.py account remove julius                          # delete the account
@@ -13,7 +15,13 @@
 --password-file FILE it is written to that file instead of the screen, so it
 can be passed on privately. Give each password only to its owner.
 
-How passwords are kept (history/api/accounts.json, never committed):
+Where it is kept: the project's database (backend/storage.py, history/dramatizer.db, never
+committed): the accounts, account_piles and sessions tables. Every change is one transaction,
+so the API and a command run at the same time cannot overwrite each other. (Until 16 Nov 2026
+these were history/api/accounts.json and sessions.json; `python main_backend.py storage migrate`
+imports them once.) The `path` argument of the functions below is the database file, for tests.
+
+How passwords are kept:
 
     - never as text: only a salted PBKDF2-SHA256 hash, 600,000 rounds (the OWASP
       2023 advice for PBKDF2-SHA256), stored as "pbkdf2_sha256$rounds$salt$hash",
@@ -23,15 +31,26 @@ How passwords are kept (history/api/accounts.json, never committed):
     - after MAX_FAILURES wrong passwords in a row the account is locked for
       LOCK_MINUTES; logging in successfully resets the count
 
+Registering (POST /register on the website): anyone who reaches the site may ask
+for a listener account with a username, display name, email and their own
+password. The account is made pending: it cannot log in until the host approves
+it (`account approve`), because only members of the group may use the API
+(LIMITATIONS.md, Ethics). REGISTRATION=off in .env turns registering off. The
+email is not checked by sending a message yet (there is no mail service); it is
+for the host to know who asked, and to reach them.
+
 A login opens a session: a random token that the client sends as
 "Authorization: Bearer <token>". Only its SHA-256 hash is stored
-(history/api/sessions.json), it ends after SESSION_HOURS or at logout, and
+(the sessions table), it ends after SESSION_HOURS or at logout, and
 resetting, disabling or removing an account ends its sessions at once.
 
 The account record is the model the login system grows from. Its fields:
 
     username          the login name: lower case, 2-32 letters, digits, . _ -
     display_name      the name shown in the page and saved with ratings
+    email             the owner's email, lower case (personal data: shown only to the
+                      owner and the host, never logged); None on accounts made before it
+    pending           true: registered on the website and not yet approved by the host
     role              what the account may do (ROLES below)
     disabled          true: cannot log in
     created, password_changed, last_login      times, local
@@ -41,25 +60,24 @@ The account record is the model the login system grows from. Its fields:
                       (explore.py makes the piles). A listener with assignments
                       sees and rates only those; with none, every pile.
 
-Adding a field: give it a default in `new_account`, and `public` decides
-whether the page may see it. Records older than SCHEMA_VERSION are filled in by
-`_upgrade` when read.
+Adding a field: a new step in storage.MIGRATIONS (a column with a default),
+the field here, its column in _to_row/_from_row, and `public` decides whether
+the page may see it.
 """
 import argparse
 import hashlib
 import hmac
 import re
 import secrets
-import threading
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from backend import model, safe_files
+from backend import model, storage
 
-SCHEMA_VERSION = 1
-ACCOUNTS_PATH = model.PROJECT_DIR / "history" / "api" / "accounts.json"
-SESSIONS_PATH = model.PROJECT_DIR / "history" / "api" / "sessions.json"
+SCHEMA_VERSION = 2          # 2: email and pending
+ACCOUNTS_PATH = storage.LEGACY["accounts"]    # the old files, read only by `storage migrate`
+SESSIONS_PATH = storage.LEGACY["sessions"]
 
 # What each role may do. The API checks permissions, never role names, so a new
 # role is one line here.
@@ -71,6 +89,10 @@ ROLES = {
 PERMISSIONS = sorted(set().union(*ROLES.values()))
 
 USERNAME = re.compile(r"^[a-z0-9._-]{2,32}$")
+# A practical email check (one @, a dot in the domain, no spaces), not the full RFC 5322 grammar
+EMAIL = re.compile(r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+                   r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$")
+MAX_EMAIL = 254
 DISPLAY_NAME = re.compile(r"^[\w .'-]{1,40}$")      # the same rule as a listener's name in ratings.py
 MIN_PASSWORD = 12
 MAX_PASSWORD = 200
@@ -81,7 +103,6 @@ LOCK_MINUTES = 15
 SESSION_HOURS = 12
 TOKEN_PREFIX = "drs_"            # sessions; API keys start with drm_ (keys.py)
 
-_lock = threading.Lock()
 
 
 def _now():
@@ -94,10 +115,6 @@ def _stamp(time=None):
 
 def _parse(stamp):
     return datetime.strptime(stamp, "%Y-%m-%d %H:%M:%S") if stamp else None
-
-
-def _write(path, data):
-    safe_files.write_json(path, data)       # waits while another request reads the file (Windows)
 
 
 # --------------------------------------------------------------------------- #
@@ -162,6 +179,8 @@ class Account:
     failed_logins: int = 0
     locked_until: str | None = None
     assignments: list = field(default_factory=list)
+    email: str | None = None
+    pending: bool = False
     schema_version: int = SCHEMA_VERSION
 
     @property
@@ -185,7 +204,7 @@ class Account:
         """What the page may see: never the password hash or the lockout details."""
         return {"username": self.username, "display_name": self.display_name, "role": self.role,
                 "permissions": sorted(self.permissions), "last_login": self.last_login,
-                "assignments": list(self.assignments)}
+                "assignments": list(self.assignments), "email": self.email}
 
 
 def pile_key(batch, pile):
@@ -206,24 +225,66 @@ def clean_display_name(name):
     return name
 
 
+def clean_email(email):
+    email = str(email or "").strip()
+    if len(email) > MAX_EMAIL or not EMAIL.match(email):
+        raise ValueError("Give a valid email address, e.g. name@example.org.")
+    return email.lower()
+
+
 def _upgrade(record):
-    """An account record from any earlier schema, as the current Account."""
+    """An account record from any earlier schema, as the current Account (v1 had no email or pending)."""
     known = Account.__dataclass_fields__
-    return Account(**{k: v for k, v in record.items() if k in known})
+    account = Account(**{k: v for k, v in record.items() if k in known})
+    account.schema_version = SCHEMA_VERSION
+    return account
+
+
+COLUMNS = ("username", "display_name", "role", "password", "disabled", "pending", "email", "created",
+           "password_changed", "last_login", "failed_logins", "locked_until", "schema_version")
+
+
+def _from_row(row, piles):
+    record = dict(row)
+    record["disabled"], record["pending"] = bool(record["disabled"]), bool(record["pending"])
+    return Account(**record, assignments=list(piles))
+
+
+def _to_row(account):
+    return tuple(int(v) if isinstance(v, bool) else v for v in (getattr(account, c) for c in COLUMNS))
+
+
+def _not_migrated():
+    left = [p for p in (ACCOUNTS_PATH, SESSIONS_PATH) if Path(p).is_file()]
+    if left:
+        raise RuntimeError(f"The accounts are still in {left[0]}: run `python main_backend.py storage migrate` once.")
 
 
 def load(path=None):
     """{username: Account}."""
-    path = Path(path or ACCOUNTS_PATH)
-    if not path.is_file():
-        return {}
-    data = safe_files.read_json(path)
-    return {name: _upgrade(record) for name, record in data.get("accounts", {}).items()}
+    with storage.connect(path) as db:
+        piles = {}
+        for row in db.execute("SELECT username, pile FROM account_piles ORDER BY username, position"):
+            piles.setdefault(row["username"], []).append(row["pile"])
+        found = {row["username"]: _from_row(row, piles.get(row["username"], ()))
+                 for row in db.execute(f"SELECT {', '.join(COLUMNS)} FROM accounts ORDER BY username")}
+    if not found and path is None:
+        _not_migrated()
+    return found
 
 
 def _save(accounts, path=None):
-    _write(path or ACCOUNTS_PATH, {"schema_version": SCHEMA_VERSION,
-                                   "accounts": {name: asdict(a) for name, a in sorted(accounts.items())}})
+    """Make the accounts table hold exactly `accounts` (removed ones are deleted, with their sessions)."""
+    with storage.connect(path, write=True) as db:
+        keep = list(accounts)
+        db.execute(f"DELETE FROM accounts WHERE username NOT IN ({', '.join('?' * len(keep))})", keep)
+        for account in accounts.values():
+            db.execute(f"INSERT INTO accounts ({', '.join(COLUMNS)}) VALUES ({', '.join('?' * len(COLUMNS))}) "
+                       f"ON CONFLICT (username) DO UPDATE SET "
+                       + ", ".join(f"{c} = excluded.{c}" for c in COLUMNS[1:]), _to_row(account))
+            db.execute("DELETE FROM account_piles WHERE username = ?", (account.username,))
+            db.executemany("INSERT INTO account_piles VALUES (?, ?, ?)",
+                           [(account.username, pile, i) for i, pile in enumerate(account.assignments)])
 
 
 def get(username, path=None):
@@ -233,37 +294,87 @@ def get(username, path=None):
         return None
 
 
-def new_account(username, display_name, role="listener", password=None, path=None):
+def new_account(username, display_name, role="listener", password=None, path=None, email=None, pending=False):
     """Make an account and return (account, password). A random password is made when none is given."""
     username, display_name = clean_username(username), clean_display_name(display_name)
+    email = clean_email(email) if email else None
     if role not in ROLES:
         raise ValueError(f"The role must be one of: {', '.join(ROLES)}.")
     password = password or new_password()
     problem = password_problem(password)
     if problem:
         raise ValueError(problem)
-    with _lock:
+    with storage.connect(path, write=True):
         accounts = load(path)
         if username in accounts:
             raise ValueError(f"There is already an account called {username}.")
         if any(a.display_name.lower() == display_name.lower() for a in accounts.values()):
             raise ValueError(f"Another account is already shown as {display_name}; ratings would mix.")
-        account = Account(username=username, display_name=display_name, role=role, password=hash_password(password))
+        if email and any(a.email == email for a in accounts.values()):
+            raise ValueError("Another account already has that email.")
+        account = Account(username=username, display_name=display_name, role=role, password=hash_password(password),
+                          email=email, pending=bool(pending))
         accounts[username] = account
         _save(accounts, path)
     return account, password
 
 
+class RegistrationRefused(Exception):
+    """A registration that cannot be made. The message is safe to show."""
+
+
+def register(username, display_name, email, password, path=None):
+    """A pending listener account asked for on the website: the person's own password, an email required.
+
+    Returns the Account. It cannot log in until the host approves it. A username, display name or email
+    already in use gets one and the same answer, so registering does not tell whose email is here.
+    """
+    if not email:
+        raise RegistrationRefused("An email is required.")
+    try:
+        username, display_name, email = clean_username(username), clean_display_name(display_name), clean_email(email)
+    except ValueError as error:
+        raise RegistrationRefused(str(error))
+    problem = password_problem(password)
+    if problem:
+        raise RegistrationRefused(problem)
+    try:
+        account, _ = new_account(username, display_name, "listener", password, path, email=email, pending=True)
+    except ValueError:
+        raise RegistrationRefused("That username, name or email is already in use. Choose another, or ask the host.")
+    return account
+
+
+def approve(username, path=None):
+    """Let a registered (pending) account log in."""
+    def change(accounts, account):
+        if not account.pending:
+            raise ValueError(f"{account.username} is not waiting for approval.")
+        account.pending = False
+    _change(username, change, path)
+
+
+def set_email(username, email, path=None):
+    email = clean_email(email)
+
+    def change(accounts, account):
+        if any(a.email == email and a.username != account.username for a in accounts.values()):
+            raise ValueError("Another account already has that email.")
+        account.email = email
+    _change(username, change, path)
+
+
 def _change(username, change, path=None, sessions_path=None, end_sessions=False):
+    """Change one account in one transaction. sessions_path: unused (the sessions are in the same database)."""
     username = clean_username(username)
-    with _lock:
+    with storage.connect(path, write=True):
         accounts = load(path)
         if username not in accounts:
             raise ValueError(f"There is no account called {username}.")
         result = change(accounts, accounts[username])
         _save(accounts, path)
-    if end_sessions:
-        end_sessions_of(username, sessions_path)
+        if end_sessions:
+            end_sessions_of(username, path)
     return result
 
 
@@ -347,7 +458,8 @@ def authenticate(username, password, path=None, now=None):
     if not isinstance(password, str) or len(password) > MAX_PASSWORD:
         raise wrong
 
-    with _lock:
+    refused = None
+    with storage.connect(path, write=True):
         accounts = load(path)
         account = accounts.get(username)
         if account is None:
@@ -361,11 +473,16 @@ def authenticate(username, password, path=None, now=None):
                 account.locked_until = _stamp(now + timedelta(minutes=LOCK_MINUTES))
                 account.failed_logins = 0
             _save(accounts, path)
-            raise wrong
-        if account.disabled:
+            refused = wrong                # raised after the count is committed, not rolled back with it
+        elif account.pending:
+            raise LoginRefused("This account is waiting for the host's approval.")
+        elif account.disabled:
             raise LoginRefused("This account is switched off. Ask the host.")
-        account.failed_logins, account.locked_until, account.last_login = 0, None, _stamp(now)
-        _save(accounts, path)
+        else:
+            account.failed_logins, account.locked_until, account.last_login = 0, None, _stamp(now)
+            _save(accounts, path)
+    if refused:
+        raise refused
     return account
 
 
@@ -373,47 +490,44 @@ def _token_hash(token):
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-def _load_sessions(path=None):
-    path = Path(path or SESSIONS_PATH)
-    return safe_files.read_json(path, default={})
-
-
 def open_session(account, path=None, now=None):
     """A new session token for this account. Only its hash is kept; expired sessions are cleared out."""
     now = now or _now()
     token = TOKEN_PREFIX + secrets.token_urlsafe(32)
-    with _lock:
-        sessions = {h: s for h, s in _load_sessions(path).items() if _parse(s["expires"]) > now}
-        sessions[_token_hash(token)] = {"username": account.username, "created": _stamp(now),
-                                        "expires": _stamp(now + timedelta(hours=SESSION_HOURS))}
-        _write(path or SESSIONS_PATH, sessions)
+    with storage.connect(path, write=True) as db:
+        db.execute("DELETE FROM sessions WHERE expires <= ?", (_stamp(now),))
+        db.execute("INSERT INTO sessions VALUES (?, ?, ?, ?)",
+                   (_token_hash(token), account.username, _stamp(now), _stamp(now + timedelta(hours=SESSION_HOURS))))
     return token
 
 
 def session_account(token, path=None, accounts_path=None, now=None):
-    """The Account a live session token belongs to, or None (unknown, expired, or the account is off)."""
+    """The Account a live session token belongs to, or None (unknown, expired, or the account is off).
+
+    accounts_path: unused (accounts and sessions are in the same database).
+    """
     if not token or not token.startswith(TOKEN_PREFIX) or len(token) > 200:
         return None
-    entry = _load_sessions(path).get(_token_hash(token))
-    if entry is None or _parse(entry["expires"]) <= (now or _now()):
-        return None
-    account = load(accounts_path).get(entry["username"])
-    return account if account and not account.disabled else None
+    with storage.connect(path) as db:
+        row = db.execute(f"SELECT {', '.join('a.' + c for c in COLUMNS)} FROM sessions s "
+                         "JOIN accounts a ON a.username = s.username WHERE s.token_hash = ? AND s.expires > ?",
+                         (_token_hash(token), _stamp(now or _now()))).fetchone()
+        if row is None:
+            return None
+        piles = [r[0] for r in db.execute("SELECT pile FROM account_piles WHERE username = ? ORDER BY position",
+                                          (row["username"],))]
+    account = _from_row(row, piles)
+    return None if account.disabled or account.pending else account
 
 
 def close_session(token, path=None):
-    with _lock:
-        sessions = _load_sessions(path)
-        if sessions.pop(_token_hash(token or ""), None) is not None:
-            _write(path or SESSIONS_PATH, sessions)
+    with storage.connect(path, write=True) as db:
+        db.execute("DELETE FROM sessions WHERE token_hash = ?", (_token_hash(token or ""),))
 
 
 def end_sessions_of(username, path=None):
-    with _lock:
-        sessions = _load_sessions(path)
-        kept = {h: s for h, s in sessions.items() if s["username"] != username}
-        if len(kept) != len(sessions):
-            _write(path or SESSIONS_PATH, kept)
+    with storage.connect(path, write=True) as db:
+        db.execute("DELETE FROM sessions WHERE username = ?", (username,))
 
 
 # --------------------------------------------------------------------------- #
@@ -436,6 +550,7 @@ if __name__ == "__main__":
     add.add_argument("username")
     add.add_argument("--name", help="the name shown in the page and with ratings (default: the username)")
     add.add_argument("--role", default="listener", choices=list(ROLES))
+    add.add_argument("--email", help="the owner's email")
     add.add_argument("--password-file", help="append the password to this file instead of printing it")
     reset = sub.add_parser("reset", help="a new random password; ends the account's sessions")
     reset.add_argument("username")
@@ -443,6 +558,10 @@ if __name__ == "__main__":
     role = sub.add_parser("role", help="change an account's role")
     role.add_argument("username")
     role.add_argument("role", choices=list(ROLES))
+    sub.add_parser("approve", help="let a registered account log in").add_argument("username")
+    mail = sub.add_parser("email", help="set or change an account's email")
+    mail.add_argument("username")
+    mail.add_argument("email")
     for name in ("disable", "enable", "remove"):
         sub.add_parser(name).add_argument("username")
     for name, text in (("assign", "give an account a listening pile to rate"), ("unassign", "take a pile away")):
@@ -455,11 +574,17 @@ if __name__ == "__main__":
 
     try:
         if args.action == "add":
-            account, password = new_account(args.username, args.name or args.username, args.role)
+            account, password = new_account(args.username, args.name or args.username, args.role, email=args.email)
             print(f"Made {account.username} ({account.display_name}, {account.role}).")
             _hand_over(password, account.username, args.password_file)
         elif args.action == "reset":
             _hand_over(set_password(args.username), clean_username(args.username), args.password_file)
+        elif args.action == "approve":
+            approve(args.username)
+            print(f"{args.username} may log in now.")
+        elif args.action == "email":
+            set_email(args.username, args.email)
+            print(f"{args.username}'s email is changed.")
         elif args.action == "role":
             set_role(args.username, args.role)
             print(f"{args.username} is now {args.role}; they log in again.")
@@ -477,8 +602,9 @@ if __name__ == "__main__":
             if not accounts:
                 print("No accounts yet: python main_backend.py account add USERNAME --name NAME")
             for a in accounts.values():
-                state = "disabled" if a.disabled else ("locked" if a.locked() else "active")
-                print(f"  {a.username:16s} {a.display_name:16s} {a.role:11s} {state:9s} last login {a.last_login or 'never'}"
+                state = "pending" if a.pending else "disabled" if a.disabled else ("locked" if a.locked() else "active")
+                print(f"  {a.username:16s} {a.display_name:16s} {a.role:11s} {state:9s} {a.email or '(no email)':28s} "
+                      f"last login {a.last_login or 'never'}"
                       f"  piles: {', '.join(a.assignments) or 'any'}")
     except ValueError as error:
         raise SystemExit(str(error))

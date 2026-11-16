@@ -12,6 +12,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))    # run as a file by main_backend.py test
 
+from backend import storage  # noqa: E402
 from backend.api import accounts  # noqa: E402
 
 FAST = 1000     # hashing rounds in tests; the real number is accounts.ROUNDS
@@ -22,23 +23,27 @@ class Temporary(unittest.TestCase):
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
         self.dir = Path(folder.name)
-        patches = [mock.patch.object(accounts, "ACCOUNTS_PATH", self.dir / "accounts.json"),
+        patches = [mock.patch.object(storage, "DB_PATH", self.dir / "test.db"),
+                   mock.patch.object(accounts, "ACCOUNTS_PATH", self.dir / "accounts.json"),   # none: nothing to import
                    mock.patch.object(accounts, "SESSIONS_PATH", self.dir / "sessions.json"),
                    mock.patch.object(accounts, "ROUNDS", FAST)]
         for p in patches:
             p.start()
             self.addCleanup(p.stop)
 
+    def stored(self):
+        """Everything in the test database, as SQL text."""
+        with storage.connect() as db:
+            return "\n".join(db.iterdump())
+
 
 class Passwords(Temporary):
     def test_stored_only_as_a_salted_hash(self):
         account, password = accounts.new_account("julius", "Julius")
-        text = (self.dir / "accounts.json").read_text(encoding="utf-8")
-        self.assertNotIn(password, text)
+        self.assertNotIn(password, self.stored())
         self.assertTrue(account.password.startswith("pbkdf2_sha256$"))
         _, other = accounts.new_account("rama", "Rama", password=password)
-        stored = json.loads(text)["accounts"]["julius"]["password"]
-        self.assertNotEqual(stored, accounts.get("rama").password)      # same password, different salt
+        self.assertNotEqual(accounts.get("julius").password, accounts.get("rama").password)   # same password, other salt
 
     def test_check_password(self):
         stored = accounts.hash_password("correct horse battery")
@@ -96,7 +101,7 @@ class Logging_in(Temporary):
     def test_sessions(self):
         account, _ = accounts.new_account("julius", "Julius")
         token = accounts.open_session(account)
-        self.assertNotIn(token, (self.dir / "sessions.json").read_text(encoding="utf-8"))
+        self.assertNotIn(token, self.stored())
         self.assertEqual(accounts.session_account(token).username, "julius")
         later = accounts._now() + timedelta(hours=accounts.SESSION_HOURS + 1)
         self.assertIsNone(accounts.session_account(token, now=later))
@@ -137,6 +142,50 @@ def fake_run(folder, run_id, pile, genomes=3):
     return run
 
 
+class Registering(Temporary):
+    def test_a_registration_is_a_pending_listener_with_an_email(self):
+        account = accounts.register("ana", "Ana", " Ana@Example.org ", "a long password 1")
+        self.assertEqual((account.role, account.email, account.pending), ("listener", "ana@example.org", True))
+        with self.assertRaisesRegex(accounts.LoginRefused, "approval"):
+            accounts.authenticate("ana", "a long password 1")
+        accounts.approve("ana")
+        self.assertEqual(accounts.authenticate("ana", "a long password 1").username, "ana")
+        with self.assertRaises(ValueError):
+            accounts.approve("ana")                                 # not waiting any more
+
+    def test_email_is_required_and_checked(self):
+        for email in ("", None, "no-at-sign", "a@b", "a b@example.org", "x" * 250 + "@ex.org"):
+            with self.subTest(email=email), self.assertRaises(accounts.RegistrationRefused):
+                accounts.register("ana", "Ana", email, "a long password 1")
+
+    def test_a_used_name_or_email_gets_the_same_answer(self):
+        accounts.register("ana", "Ana", "ana@example.org", "a long password 1")
+        answers = set()
+        for username, name, email in (("ana", "Ana B", "other@example.org"), ("bo", "Ana", "bo@example.org"),
+                                      ("bo", "Bo", "ANA@example.org")):
+            with self.assertRaises(accounts.RegistrationRefused) as caught:
+                accounts.register(username, name, email, "a long password 1")
+            answers.add(str(caught.exception))
+        self.assertEqual(len(answers), 1)
+
+    def test_old_accounts_read_without_an_email_and_can_get_one(self):
+        record = {"username": "julius", "display_name": "Julius", "role": "listener",
+                  "password": accounts.hash_password("a long password 1"), "disabled": False,
+                  "created": "2026-11-01 10:00:00", "password_changed": "2026-11-01 10:00:00", "last_login": None,
+                  "failed_logins": 0, "locked_until": None, "assignments": ["b|1"], "schema_version": 1}
+        old_file = self.dir / "accounts.json"
+        old_file.write_text(json.dumps({"schema_version": 1, "accounts": {"julius": record}}), encoding="utf-8")
+        storage.migrate(rating_folders=[], backup_folder=self.dir / "backups",
+                        legacy={"accounts": old_file, "sessions": self.dir / "none.json",
+                                "rating_log": self.dir / "none.jsonl"})
+        self.assertFalse(old_file.exists())                                     # renamed .migrated
+        old = accounts.get("julius")
+        self.assertEqual(old.assignments, ["b|1"])
+        self.assertEqual((old.email, old.pending, old.schema_version), (None, False, accounts.SCHEMA_VERSION))
+        accounts.set_email("julius", "julius@example.org")
+        self.assertEqual(accounts.get("julius").email, "julius@example.org")
+
+
 class Api(Temporary):
     """The routes, through Flask's test client."""
 
@@ -153,7 +202,8 @@ class Api(Temporary):
                   mock.patch.object(server, "API_DIR", self.dir),
                   mock.patch.object(server, "ACCESS_LOG", self.dir / "access.log"),
                   mock.patch.object(server, "AUDIT_LOG", self.dir / "audit.jsonl"),
-                  mock.patch.object(server, "_failed_logins", [])):
+                  mock.patch.object(server, "_failed_logins", []),
+                  mock.patch.object(server, "_registrations", [])):
             p.start()
             self.addCleanup(p.stop)
         self.ratings = ratings
@@ -177,6 +227,35 @@ class Api(Temporary):
         self.assertNotIn("password", json.dumps(me))
         self.client.post("/api/v1/logout", headers={"Authorization": f"Bearer {token}"})
         self.assertEqual(self.client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"}).status_code, 401)
+
+    def test_register_then_approve_then_log_in(self):
+        new = {"username": "ana", "display_name": "Ana", "email": "Ana@Example.org", "password": "a long password 1"}
+        self.assertTrue(self.client.get("/api/v1/register").get_json()["open"])
+        self.assertEqual(self.client.post("/api/v1/register", json={**new, "email": ""}).status_code, 400)
+        reply = self.client.post("/api/v1/register", json=new)
+        self.assertEqual(reply.status_code, 201)
+        self.assertTrue(reply.get_json()["pending"])
+        login = {"username": "ana", "password": new["password"]}
+        refused = self.client.post("/api/v1/login", json=login)
+        self.assertEqual(refused.status_code, 401)
+        self.assertIn("approval", refused.get_json()["error"])
+        accounts.approve("ana")
+        token = self.client.post("/api/v1/login", json=login).get_json()["token"]
+        me = self.client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"}).get_json()
+        self.assertEqual((me["account"]["role"], me["account"]["email"]), ("listener", "ana@example.org"))
+        audit = (self.dir / "audit.jsonl").read_text(encoding="utf-8")
+        self.assertNotIn("example.org", audit)
+        self.assertNotIn(new["password"], audit)
+
+    def test_registering_can_be_switched_off_and_is_limited(self):
+        with mock.patch.object(self.server.model, "setting", lambda name, default=None: "off"
+                               if name == "REGISTRATION" else default):
+            self.assertEqual(self.client.post("/api/v1/register", json={}).status_code, 403)
+        with mock.patch.object(self.server, "REGISTRATIONS_ALLOWED", 1):
+            ok = {"username": "bo", "display_name": "Bo", "email": "bo@example.org", "password": "a long password 2"}
+            self.assertEqual(self.client.post("/api/v1/register", json=ok).status_code, 201)
+            again = {**ok, "username": "cy", "display_name": "Cy", "email": "cy@example.org"}
+            self.assertEqual(self.client.post("/api/v1/register", json=again).status_code, 429)
 
     # --- the website served by the API itself (phones, through a tunnel) ---------------------------
     PAGE = {"base_url": "https://localhost", "headers": {"Origin": "https://localhost", "Sec-Fetch-Site": "same-origin"}}
@@ -506,7 +585,7 @@ class Api(Temporary):
         given = json.loads((self.dir / "runs" / "r1" / "ratings.json").read_text(encoding="utf-8"))["given"]["Julius"]
         self.assertEqual((given["genome_01"]["score"], given["genome_01"]["account"], given["genome_01"]["changes"]),
                          (3.5, "julius", 1))
-        log = [json.loads(line) for line in (self.dir / "mos.jsonl").read_text(encoding="utf-8").splitlines()]
+        log = self.ratings.read_log()
         self.assertEqual(len(log), 3)                                   # the repeat added no line
         self.assertEqual((log[-1]["previous"], log[-1]["score"], log[-1]["account"], log[-1]["pile"]), (4.0, 3.5, "julius", 1))
 
@@ -583,7 +662,7 @@ class Api(Temporary):
         reply = self.client.post(url, headers=auth, json={"artifacts": {"Julius": {"genome_01": False}}})
         self.assertEqual(reply.status_code, 200, reply.get_json())
         self.assertEqual(reply.get_json()["stored"]["Julius"]["genome_01"], 2.0)
-        log = [json.loads(line) for line in (self.dir / "mos.jsonl").read_text(encoding="utf-8").splitlines()]
+        log = self.ratings.read_log()
         self.assertEqual((log[-1]["clip"], log[-1]["score"], log[-1]["artifact"], log[-1]["previous_artifact"]),
                          ("genome_01", 2.0, False, True))
         given = json.loads((self.dir / "runs" / "r1" / "ratings.json").read_text(encoding="utf-8"))["given"]["Julius"]

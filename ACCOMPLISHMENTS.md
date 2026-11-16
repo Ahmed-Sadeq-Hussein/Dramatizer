@@ -41,6 +41,17 @@ The MCP graph test is skipped where the `mcp` package is not installed.
 | 14 Nov | Private listening batch rendered and published (168 clips, 146 passed) | Next listening round | Ash |
 | 14 Nov | `ACCOMPLISHMENTS.md`, `MILESTONE.md`, `Compute.txt` | Hand-in documentation | Ash |
 
+### Since then (15 to 16 Nov 2026)
+
+| Date | Accomplishment | Milestone it serves | By |
+|---|---|---|---|
+| 15 Nov | Chatbot re-scored with all tools: 24/25 right tool, 25/25 right answer | Evidence milestone (in the product) | Ash |
+| 15-16 Nov | Words-limit calibration (1,048 plain pairs): no stricter rule passes, limit kept | M2 follow-up (the guard) | Ash |
+| 16 Nov | MCP and login API calls planned as stubs (`backend/mcp_server/api_calls.py`) | MCP access with logins | Ash |
+| 16 Nov | `Improvement angles.txt`: the 16 features in 7 groups, 16 ways to better speech | Next listening round | Ash |
+| 16 Nov | Registration on the website with a required email; host approves (`account approve`) | Website / study infrastructure | Ash |
+| 16 Nov | Accounts, sessions and ratings moved into one SQLite database (`backend/storage.py`), imported and checked; `Best practices.txt` | Website / study infrastructure | Ash |
+
 ### The evidence milestone, part by part
 
 | # | Part | Done | What we did |
@@ -201,4 +212,5 @@ Merged into `main` through Ahmed Hussein's merge of pull request #5 (`feature/mi
 - **One listener per genome:** most comparisons rest on one person's score, and no listener has answered the artifact question yet.
 - **The words limit:** calibrated again on 15-16 Nov (1,048 plain pairs). The stricter rule tested passed only 93.5 % of plain renders, under the 95 % bar, so the limit stays as it is (`OBJECTIVE.md`). The next candidate, comparing with several plain renders, needs a decision.
 - **Natural pacing** reaches the asked speed only partly on some voices. A combined method (natural first, then a small stretch for the rest) is possible if wanted.
+- **Other machines** with their own `history/` run `python main_backend.py storage migrate` once; until then logging in says so. The named genomes (`named.json`), API keys (`keys.json`) and render notes are still JSON files.
 - **The MCP graph test** needs an environment with the `mcp` package.

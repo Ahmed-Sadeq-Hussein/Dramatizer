@@ -157,6 +157,7 @@ th { color: var(--muted); font-weight: 600; }
 .login { max-width: 380px; margin: 8vh auto; padding: 0 16px; }
 .login h2 { margin: 0; }
 .login-error { margin: 0; color: var(--bad); font-size: 0.9rem; }
+.login .link { background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; cursor: pointer; font: inherit; }
 body:not(.can-name) .pick { display: none; }
 .own-scores-only #rater-count { pointer-events: none; opacity: 0.6; }
 

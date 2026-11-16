@@ -1,0 +1,163 @@
+BEST PRACTICES: STORAGE, TOOLS AND METRICS
+=========================================
+A review of how the Dramatizer keeps its information, what would make it more standard, which tools would
+make the project more professional, and which numbers to watch so it goes well. Written 16 Nov 2026.
+Suggestions only: nothing here is changed yet. Pick, then move the chosen ones to PLAN.md or Compute.txt.
+
+
+PART 1. HOW WE STORE INFORMATION NOW
+------------------------------------
+Four places, about 3.3 GB:
+
+  Where                         Size     What                                      Format
+  ----------------------------  -------  ----------------------------------------  ------------------------------
+  history/  (git-ignored)       38 MB    accounts, sessions, API keys, audit log   JSON files rewritten whole;
+                                         ratings (mos.jsonl), RAG corpus, MLflow,  JSONL logs appended; CSV
+                                         voice embeddings, chatbot evals           reports; .npy/.npz; SQLite
+                                                                                   (mlflow.db only)
+  output/   (in the repo folder) 711 MB  older renders, baselines v1-v4,           folders of .wav + .json
+                                         calibration, Milestone 2, genome searches
+  D:/Dramatizer 2 renders       2.5 GB   everything rendered since OUTPUT_DIR:     folders of .wav + run.json,
+            (OUTPUT_DIR)                 searches, API renders, piles, charts      ratings.json, summary.json
+  measurements/                 6 MB     1,234 cached measurements, named by       one JSON per hash
+                                         hash
+
+What works well, and should stay:
+  - Audio is never committed, and secrets are git-ignored (.gitignore explains each rule).
+  - Passwords are salted PBKDF2 hashes; session tokens and API keys are stored only as hashes.
+  - Ratings are an append-only log (mos.jsonl): nothing is overwritten, every score keeps its time and rater.
+  - Results carry a manifest hash, seeds, versions and the git commit (record.json), and go to MLflow.
+  - Writes go through a temporary file and a swap (safe_files.py), so a crash does not leave half a file.
+  - accounts.json has a schema_version and an upgrade step (used today for email and pending).
+
+What is not standard, and the risk it carries:
+  1. Shared state lives in JSON files rewritten whole (accounts, sessions, keys, render ratings, private
+     genomes). The lock is inside one process, so the API and a command such as `account add` run at the
+     same moment can overwrite each other's change. It also slows down as the files grow (every login
+     reads and rewrites sessions.json).
+  2. Results are in two places: output/ in the repo folder (711 MB, from before OUTPUT_DIR) and D:/.
+  3. Names and IDs differ between files: a voice is "CREMA-D/1014" in ratings and "CREMA-D_1014" in folder
+     names; a run is known only by its folder name; a genome by its number inside a run.
+  4. Times are local, with no time zone ("2026-11-11 10:17:04"). They are ambiguous around summer time and
+     when the team is in different places.
+  5. Only accounts.json has a schema version. run.json, ratings and the render notes have none, so a
+     changed field is found by reading code.
+  6. Personal data and secrets sit next to research data in history/: emails (now), test-user and
+     hand-out password files in plain text (history/api/test_users.txt, passwords_to_hand_out.txt).
+  7. No backup: one disk failure loses accounts, every rating and every render.
+  8. The cached measurements sit at the top of the repo folder, named only by a hash.
+
+
+PART 2. A MORE STANDARD WAY (suggested, in order of value)
+----------------------------------------------------------
+A. One SQLite database for shared state: history/dramatizer.db              DONE 16 Nov (accounts, sessions,
+   ratings; backend/storage.py: `storage migrate | check | backup`. Still JSON: keys, named genomes, render notes)
+   Accounts, sessions, API keys, ratings, render notes, private and named genomes, and an index of runs
+   (id, voice, line, folder, status). SQLite comes with Python, needs no server, and gives what the JSON
+   files lack: transactions that are safe between processes (WAL mode), foreign keys (a rating must point
+   to a real run and account), and indexes (no reading every file to answer a question).
+   - Migrations: numbered SQL files (or Alembic, if we use SQLAlchemy), run at start-up, instead of
+     _upgrade() per record.
+   - The ratings stay append-only: a new score is a new row, never an update.
+   - A one-time import from the JSON and JSONL files, with a check that every record arrived.
+   - Later, if the API ever runs on a server for many users: the same tables on PostgreSQL.
+
+B. Files only for what is big: audio, embeddings, charts
+   Audio stays as files in OUTPUT_DIR; the database keeps each file's path, length and SHA-256, so a file can
+   be checked and found. Move output/ from the repo folder to OUTPUT_DIR, and measurements/ to
+   OUTPUT_DIR/cache/measurements (it is a cache: safe to delete and rebuild).
+   One layout for every kind of run:
+       OUTPUT_DIR/<kind>/<run_id>/run.json, *.wav, summary.json
+   with kind one of search, baseline, calibration, milestone, render, pile.
+
+C. One naming standard, written down in DATA_CONTRACT.md
+   - voice_id     "<dataset>/<speaker>", e.g. "CREMA-D/1014"; in folder names "/" becomes "__"
+   - run_id       "<kind>-<yyyymmddThhmmss>-<6 random hex>", made once, never re-used
+   - genome_id    "<run_id>#<n>"
+   - times        ISO 8601 in UTC with a Z, e.g. "2026-11-11T09:17:04Z"; the page shows local time
+   - every JSON file a program writes carries "schema_version"
+
+D. Check records where they enter
+   Pydantic models (or JSON Schema) for run.json, a rating and an account, checked when written and when read.
+   A wrong field then fails at once, with its name, not three steps later.
+
+E. Personal data and secrets apart, with rules
+   - history/private/ (or the database's own tables) for accounts and emails; research exports never
+     contain emails, only display names.
+   - Delete the plain-text password files once each password is handed over; keep test-user passwords
+     only in a password manager.
+   - Under the GDPR (the team is in the EU), write down why emails are kept, who can see them, and that an
+     account and its email are deleted on request (`account remove` already does this). A short
+     PRIVACY.md is enough.
+
+F. Backups                                     PARTLY 16 Nov: `python main_backend.py storage backup` (not yet daily)
+   A daily copy of history/ (with SQLite: `sqlite3 dramatizer.db ".backup ..."`) and of the ratings to another
+   disk or a private cloud folder, keeping the last 14 days. Try a restore once, so we know it works.
+
+G. Versioned data, if datasets or renders must be shared between computers
+   DVC (Data Version Control) keeps large files outside git but versioned with the code, so a commit says
+   exactly which renders and manifest it used.
+
+
+PART 3. TOOLS THAT WOULD MAKE THE PROJECT MORE PROFESSIONAL
+-----------------------------------------------------------
+  Area                Tool                               Why it helps here
+  ------------------  ---------------------------------  ----------------------------------------------------
+  Planning            GitHub Issues + Projects board     the milestone backlog in PLAN.md as cards with owners
+                      (one card per milestone part)      and dates; ACCOMPLISHMENTS.md links to closed cards
+  Code review         Pull requests into a protected     every change read by one other person; nothing lands
+                      main branch                        on main untested
+  Automatic tests     GitHub Actions                     runs `python main_backend.py test` (the tests need no
+                                                         GPU) on every push and PR
+  Code style          ruff (lint and format) +           one style for everyone; mistakes caught before a
+                      pre-commit hooks                   commit
+  Secrets             gitleaks (in pre-commit and CI)    stops a key or password from being committed
+  Dependencies        pyproject.toml + uv (a lock file)  the same package versions on every computer, instead
+                                                         of a 148-line requirements.txt per environment
+  Types               mypy or pyright on backend/api     catches wrong arguments in the code that handles logins
+  Coverage            pytest + coverage.py               shows which code no test touches
+  Experiments         MLflow (already used) + DVC        every result tied to its code, data and settings
+  Running the API     Docker (one image for the API)     the same setup on any machine; easy to hand over
+  Errors              structured JSON logs; Sentry (free  errors seen without reading log files; strip emails
+                      tier) if the site goes public      and tokens before sending
+  Documentation       MkDocs (from the .md files)        one browsable site of the docs we already write
+  Decisions           Decision records (docs/decisions/)  why a limit or rule was chosen, as OBJECTIVE.md does
+                                                         today, one short file per decision
+  Listening tests     the ITU-T P.800 (MOS) / MUSHRA     a known method makes the ratings comparable with
+                      protocol in LISTENING_PROTOCOL.md  published work
+
+  If only three: GitHub Actions running the tests, ruff + pre-commit, and Issues/Projects for milestones.
+
+
+PART 4. METRICS: WATCH THESE EACH WEEK
+--------------------------------------
+Model quality (the point of the project). Now = 11 Nov ratings and Milestone 2.
+
+  Metric                                         Now                 Target / why
+  ---------------------------------------------  ------------------  ------------------------------------------
+  Share of genomes rated above their plain line  31 % (240 scores)   over 50 % in a blind A/B: the search then
+                                                                     beats plain speech
+  Mean score, genome minus plain line            2.22 - 3.25 = -1.0  rising each round; above 0 is the goal
+  Share of genomes passing the sanity check      67 % (Milestone 2)  over 80 %, with the checks unchanged
+  Word errors, similarity, PESQ of fine genomes  WER +0.017 above    inside the baseline's interval: the
+  compared with the baseline                     plain               genome must not cost clarity
+  Agreement between listeners                    not measured        Krippendorff's alpha or ICC over 0.6;
+                                                                     below it, the scores mean little
+  Scores per feature                             about 40            at least 100 before dropping a feature
+  Chatbot right answer / right tool              25/25, 24/25        stays there after every tool change
+
+Project health (the odds it finishes well):
+
+  Metric                                         How to measure                 Why
+  ---------------------------------------------  -----------------------------  ---------------------------------
+  Milestone parts done against planned, a week   Projects board                 a slipping milestone shows early
+  Ratings collected, a week, and active raters   rating_log                     the evidence grows only with these
+  Tests passing in CI, and their number          GitHub Actions                 a red build is fixed the same day
+  Days since main was last green and released    git log, CI                    long gaps hide broken work
+  Share of commits per person, per area          git log                        one person owning an area alone is
+                                                                                a risk if they are away
+  Open issues older than two weeks               Issues                         stale work is either done or cut
+  GPU hours per accepted genome                  Compute.txt, MLflow            keeps the 3-hour compute budget real
+  Restore of a backup, tried                     once a month                   a backup no one tried is not one
+
+A simple weekly ritual: one line per metric in ACCOMPLISHMENTS.md ("this week"), so a trend is visible.

@@ -1,0 +1,198 @@
+IMPROVEMENT ANGLES
+==================
+Ideas that could make the Dramatizer's speech better: the voice model (CosyVoice 3), the genomes it is given,
+and the judges that decide what counts as good. Each idea says what we saw, what to try, and how we would know
+it worked. Ideas only: nothing here is decided. An idea that needs the GPU goes to Compute.txt once it is chosen.
+Status: IDEA | CHOSEN | TRYING | DONE (date, result) | DROPPED (why)
+
+Started 16 Nov 2026. The numbers come from:
+  - the listeners' scores: 240 genome scores and 24 plain-line scores (Ash, Julius, Rama; 24 voices; all given
+    on 11 Nov 2026, so BEFORE the 13-14 Nov changes: natural speed, speed kept to 0.85-1.15, hissing and
+    vocalized noise switched off), on a scale of 0 to 5;
+  - Milestone 2 (random-v2, 8 Nov): 720 genomes put through the automatic checks (backend/evaluation/MILESTONE_2.md);
+  - the words calibration (15-16 Nov, Compute.txt item 7).
+The scores are few (about 40 per feature, from 3 people), so a gap of a few tenths between two features is
+not a finding on its own. Treat them as hints of where to look.
+
+
+PART 1. THE PARALINGUISTIC FEATURES, IN GROUPS
+----------------------------------------------
+16 features are mapped as genes (backend/genome/genome_factory.py). Each gene either puts a CosyVoice token
+next to a word ([breath], [laughter], ...), wraps a word (<strong>), adds a pause, or sets the speed
+(backend/speech/tts_formatter.py). In groups:
+
+  Score = the listeners' mean for genomes that have the feature (plain line: 3.25).
+  Beat  = share of those genomes rated above their own plain line.
+
+  Group                     Feature               What it does                         Score   Beat
+  ------------------------  --------------------  -----------------------------------  -----  -----
+  A. Pauses and timing      pause (realization)   an em dash after a word: a sudden    2.49   32 %
+                                                  stop
+                            pause (dramatic)      "..." after a word: a held pause     2.05   32 %
+                            speed                 the whole line slower or faster      1.69   13 %
+                                                  (0.85 to 1.15)
+  B. Breathing              breath                [breath]                             2.26   30 %
+                            quick_breath          [quick_breath]                       2.33   32 %
+                            sigh                  [sigh]                               2.26   41 %
+  C. Laughter               laughing_speech       the word spoken while laughing       2.65   41 %
+                            laughter              [laughter], a laugh after a word     2.38   28 %
+  D. Hesitation             mn                    [mn], a hesitation hum ("mm")        2.46   41 %
+  E. Mouth sounds           lipsmack              [lipsmack]                           2.80   40 %
+                            clucking              [clucking], a tongue click           1.91   28 %
+  F. Throat and other       cough                 [cough]                              2.42   40 %
+     noises                 noise                 [noise]                              2.62   40 %
+                            vocalized_noise       [vocalized-noise]   (switched off)    1.62   24 %
+                            hissing               [hissing]           (switched off)    1.52   23 %
+  G. Word stress            emphasis              <strong> around a word               2.21   28 %
+                            accent                [accent] on a word                   2.44   41 %
+
+  What the groups show:
+  - No group beats the plain line on average: every feature's mean is below 3.25. The best are mouth sounds
+    (lipsmack), laughter while speaking, and plain [noise]; the worst are speed and the two noises already
+    switched off (which the scores support).
+  - Timing (group A) is the weakest group that is still switched on. Speed was rated with the old stretch
+    method and a wider range; it has not been rated since the 13-14 Nov changes.
+  - Within groups the features differ more than between groups: laughing_speech 2.65 against laughter 2.38,
+    lipsmack 2.80 against clucking 1.91. So a group is a way to organise the features, not a verdict on them.
+
+  Mapped in the formatter but not yet genes (CosyVoice 3 instructions and abilities, unused by the search):
+  H. Emotion                happy, sad, angry                      a trained instruction for the whole line
+  I. Volume                 loud, soft                             a trained instruction for the whole line
+  J. Pronunciation          CMU phonemes, e.g. [R][EH1][D]         can move the stress inside one word
+  (The 17 Chinese dialects and the two character voices are mapped too, but do not fit English lines.)
+
+  Genes per genome (scores): 1 gene 1.83 (9 scores), 2 genes 1.88 (25), 3 genes 2.68 (41),
+  4 genes 2.19 (65), 5 genes 2.17 (100).
+
+
+PART 2. IMPROVEMENT ANGLES
+--------------------------
+
+-- The voice model and how a feature is rendered --
+
+1. Listen to every token on CosyVoice 3 before trusting it                                       IDEA
+   Seen:  VERIFIED_FEATURES in tts_formatter.py is empty. The tokens were confirmed by listening on
+          CosyVoice 2 only, and CosyVoice says some tokens were barely trained, so a token may be ignored,
+          mumbled or turned into a noise.
+   Try:   per feature, 10 renders on validation voices, heard by two people: was the sound there, and was
+          it the right sound? Mark the ones that pass in VERIFIED_FEATURES and draw only those, or draw
+          the others less often.
+   Know:  each feature gets "heard as asked" in at least 8 of 10 clips, or is switched off like hissing.
+
+2. Timed pauses instead of punctuation                                                           IDEA
+   Seen:  the dramatic pause is "..." and the realization pause an em dash: hints whose length CosyVoice
+          picks itself (SOFT_PAUSES). Dramatic pauses score 2.05, among the lowest still switched on.
+   Try:   a pause gene with a length (pause_ms, already supported as a silence between segments), e.g.
+          250 to 900 ms, mutated like the speed.
+   Know:  pause genomes score at least as well as the "..." ones in a blind A/B, and the pause is where
+          the gene put it.
+
+3. Re-rate speed with the natural method                                                         IDEA
+   Seen:  speed is the lowest-scoring feature still in use (1.69; beats the plain line 13 % of the time),
+          but every score came before natural speed (pacing.py) and the 0.85-1.15 range.
+   Try:   a small listening pile of speed-only genomes, natural and stretch at the same rates (the A/B
+          renders from 13-14 Nov can be reused).
+   Know:  if natural speed still scores under 2.5, narrow the range again or keep speed off by default.
+
+4. Even out the loudness of inserted sounds                                                      IDEA
+   Seen:  coughs, laughs and breaths come out at the model's own level, sometimes louder than the words.
+   Try:   after rendering, measure each inserted sound against the speech around it and bring it to a set
+          level below it; a short fade at its edges.
+   Know:  fewer "artifact heard" answers and no worse PESQ or similarity.
+
+5. Better reference clips                                                                         IDEA
+   Seen:  CREMA-D's clips are short (3.0-4.8 s at most) and its clones less like the speaker
+          (LIMITATIONS.md); 30 % of CREMA-D's rejected genomes failed on similarity, against 5 % for
+          LibriTTS-R.
+   Try:   join two or three clean clips of the same actor into one longer reference, or clean them first
+          (Clean_Audio_Distortion.py). Only validation voices.
+   Know:  CREMA-D's plain renders come closer to the reference (similarity) with no rise in WER.
+
+6. Teach the model the sounds (longer term)                                                      IDEA
+   Seen:  every inserted sound depends on how well CosyVoice 3 learnt its token.
+   Try:   fine-tune on speech with marked laughter, breaths and pauses. First check which datasets have
+          such marks and a licence that allows it; a fine-tuned model needs its own baseline.
+   Know:  a new baseline run, then the same listening protocol as now.
+
+-- The genomes the search makes --
+
+7. Put genes where people would put them                                                          IDEA
+   Seen:  a gene's place is a random point in the sentence, so a breath can land in the middle of a phrase
+          or emphasis on "the".
+   Try:   rules per group: breaths, sighs and pauses at a comma, a clause or the line's start; laughter at
+          the end of a phrase; emphasis and accent on content words (nouns, verbs, adjectives), not on
+          "a", "the" or "of". Random placement stays possible, but less often.
+   Know:  in a blind A/B, rule-placed genomes beat randomly placed ones with the same features.
+
+8. Fewer genes by default                                                                         IDEA
+   Seen:  3 genes scored best (2.68); 4 and 5 genes about 2.2. Milestone 2: short lines fail much more
+          often (42 % fine against 80 %), because one inserted sound is a large share of a short clip.
+   Try:   at most 3 genes, and at most one inserted sound per 6 words or so.
+   Know:  a higher share of fine genomes on short lines, and scores no lower.
+
+9. Drop or rarely use the weakest features                                                        IDEA
+   Seen:  clucking 1.91 and dramatic pause 2.05 score lowest of those switched on.
+   Try:   after angle 1 (the listening check), draw features in proportion to how well they score
+          (more lipsmack, laughing speech and [noise]; less clucking), instead of with equal odds.
+   Know:  the next listening round's mean rises without losing variety (each feature still appears).
+
+10. New genes: emotion, volume and stress inside a word                                           IDEA
+   Seen:  CosyVoice 3 was trained on happy, sad and angry, loud and soft, and phoneme input that can move
+          a word's stress (group H, I, J above). The formatter supports them; the genome does not.
+   Try:   one gene per line for emotion or volume (they act on the whole line, so at most one), and a
+          pronunciation gene that moves stress inside a word. Calibrate the sanity check on them first:
+          an angry line may change the pace and the similarity.
+   Know:  they pass the sanity check as often as the others and are rated at least as well.
+
+11. Let the ratings guide the search                                                              IDEA
+   Seen:  Milestone 2 drew genomes at random. 240 ratings now exist, and preference.py and the genome
+          descriptors (genome_distance, diverse_shortlist) can learn from them.
+   Try:   pick the next genomes near the well-rated ones (and away from the poorly rated ones), keeping
+          a share of random ones so the search does not narrow too early.
+   Know:  a guided round beats a random round of the same size in the listeners' scores.
+
+12. Best of a few seeds                                                                           IDEA
+   Seen:  the same genome sounds different with another seed; the words calibration showed how much plain
+          renders already vary.
+   Try:   render each fine genome with 2-3 seeds and keep the one the judges like best (words, similarity,
+          PESQ). Costs 2-3 times the render time.
+   Know:  higher scores at the same genome, measured blind.
+
+-- The judges (what counts as good) --
+
+13. Pace counts speech time only                                                                   IDEA
+   Seen:  pace is the main reason a genome is rejected (125 of 237 failed on pace alone; 106 of the 153
+          pace failures had no speed gene). Inserted sounds lengthen the clip, so words per second drop.
+   Try:   measure pace over the speech only (leave out the inserted sounds and the added pauses). This is a
+          change to the judge, so it needs its own calibration on plain pairs first, like item 7.
+   Know:  the plain pairs still pass at least 95 %, and fewer genomes with sounds but no speed gene fail.
+
+14. The words rule: compare with several plain renders                                            IDEA
+   Seen:  the words limit lets a word be wrong (120 of 483 fine genomes in Milestone 2). The stricter rule
+          tried on 15-16 Nov passed only 93.5 % of plain pairs, under the 95 % bar (Compute.txt item 7).
+   Try:   a genome may not get more words wrong than the worst of 3-4 plain renders of its voice and line.
+          The plain renders from item 7 can be reused.
+   Know:  at least 95 % of plain renders pass, and genomes that break a word are stopped.
+
+15. The start of a line                                                                           IDEA
+   Seen:  13 of 176 baseline renders were misheard, almost all at the first word ("finally" heard as
+          "find the").
+   Try:   find out whether the model swallows the first word or Whisper mishears it (listen to them); if
+          it is the model, a short silence or a breath before the first word may help.
+   Know:  fewer first-word errors in the baseline.
+
+-- The listening data the improvements rest on --
+
+16. More and broader ratings                                                                      IDEA
+   Seen:  all 240 genome scores came from 3 people on one day; no artifact answers were recorded with them;
+          about 40 scores per feature.
+   Try:   ask the artifact question in every pile, add listeners, and rate the new renders (natural speed,
+          the switched-off features gone) so the groups above can be compared again.
+   Know:  at least 100 scores per feature, with artifact answers, before any feature is dropped for good.
+
+
+ORDER WE WOULD SUGGEST
+  First, cheap and needed by the rest: 1 (listen to the tokens), 16 (ratings with artifact answers), 3 (speed).
+  Then the search: 7 (placement), 8 (fewer genes), 2 (timed pauses).
+  Then the judges: 13 (pace), 14 (words).
+  Later: 10 (new genes), 11 (guided search), 12 (best of seeds), 4, 5, 15, 6.

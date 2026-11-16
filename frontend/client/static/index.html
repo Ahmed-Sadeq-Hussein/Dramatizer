@@ -35,6 +35,22 @@
     <label>Password <input id="login-pass" type="password" autocomplete="current-password" required></label>
     <p class="login-error" id="login-error" role="alert" hidden></p>
     <button type="submit">Log in</button>
+    <p class="muted small" id="register-offer" hidden>No account yet? <button type="button" class="link" id="show-register">Register</button></p>
+  </form>
+  <form id="register-form" class="stack card" hidden>
+    <h2>Register</h2>
+    <p class="muted small">Ask for a listener account. The host approves it before you can log in.</p>
+    <label>Username <input id="reg-user" autocomplete="username" autocapitalize="none" spellcheck="false"
+      pattern="[a-z0-9._\-]{2,32}" title="2 to 32 lower-case letters, digits, or . _ -" required></label>
+    <label>Name shown with your ratings <input id="reg-name" autocomplete="name" maxlength="40" required></label>
+    <label>Email <input id="reg-email" type="email" autocomplete="email" maxlength="254" required></label>
+    <label>Password (12 or more characters) <input id="reg-pass" type="password" autocomplete="new-password" minlength="12" required></label>
+    <label>Password again <input id="reg-again" type="password" autocomplete="new-password" minlength="12" required></label>
+    <p class="muted small">Your email stays on the host's computer, to know who asked and to reach you.</p>
+    <p class="login-error" id="register-error" role="alert" hidden></p>
+    <p class="muted" id="register-done" role="status" hidden></p>
+    <button type="submit">Register</button>
+    <p class="muted small"><button type="button" class="link" id="show-login">Back to log in</button></p>
   </form>
 </section>
 

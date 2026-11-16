@@ -19,14 +19,19 @@ before this was asked have no answer (None).
 
 Where it is stored (all under .gitignore: listener ratings are personal data):
 
-    <run folder>/ratings.json        the run's current scores, artifact answers and picks, rewritten
-                                     on every save; "given" holds, per listener and clip, the score,
-                                     the artifact answer, when it was first given and last changed,
-                                     and the account that gave it
-    history/ratings/mos.jsonl        every score ever given or changed, one line each, never
-                                     rewritten: when, who (name and login account), the run,
-                                     batch, pile, voice, line, clip, markup, the artifact answer,
-                                     and the score and answer before
+    the project's database           (backend/storage.py, history/dramatizer.db) the truth:
+        rating_runs, ratings         each run's raters and picks, and every listener's current score
+                                     of every clip: the score, the artifact answer, when it was first
+                                     given and last changed, and the account that gave it
+        rating_log                   every score ever given or changed, never updated or deleted (the
+                                     database refuses it): when, who (name and login account), the run,
+                                     batch, pile, voice, line, clip, markup, the artifact answer, and
+                                     the score and answer before
+    <run folder>/ratings.json        a copy of the run's ratings, written after every change, for
+                                     reading the folder on its own (exports, import_mos.py). A run
+                                     folder that has a ratings.json but is not in the database yet
+                                     (copied in from elsewhere) is read from it, and saved to the
+                                     database on its first change.
     history/ratings/who_rated_what.csv
                                      the current score of every listener for every clip, with its
                                      date: rebuilt after every save, open it in a spreadsheet
@@ -41,26 +46,23 @@ Where it is stored (all under .gitignore: listener ratings are personal data):
 import argparse
 import csv
 import json
-import os
 import re
-import threading
 from datetime import datetime
 from pathlib import Path
 
-from backend import model, safe_files
+from backend import model, safe_files, storage
 from backend.genome import search as genome_search
 
 SCHEMA_VERSION = 1
 MAX_RATERS = 4
 LOWEST, HIGHEST = 0.0, 5.0
 RATINGS_FILE = "ratings.json"
-LOG_PATH = model.PROJECT_DIR / "history" / "ratings" / "mos.jsonl"
+LOG_PATH = storage.LEGACY["rating_log"]   # the old log, read only by `storage migrate`; who_rated_what.csv is beside it
 NAMED_PATH = model.PROJECT_DIR / "history" / "genomes" / "named.json"
 CLIP = re.compile(r"^(baseline|genome_\d{2})$")
 RATER = re.compile(r"^[\w .'-]{1,40}$")
 NAME = re.compile(r"^[\w .,'!?()&+-]{1,60}$")
 
-_lock = threading.Lock()   # the web page may save from two requests at once
 
 
 def _now():
@@ -70,6 +72,66 @@ def _now():
 def _write(path, data):
     """A temporary file first, so a crash never leaves half a file; waits while a reader has it open."""
     safe_files.write_json(path, data)
+
+
+# --------------------------------------------------------------------------- #
+# The database (storage.py): one run's ratings document <-> rows
+# --------------------------------------------------------------------------- #
+
+def _from_db(db, run):
+    """The ratings document of `run` as load() returns it, or None when the run is not in the database."""
+    head = db.execute("SELECT raters, picked, updated FROM rating_runs WHERE run = ?", (run,)).fetchone()
+    if head is None:
+        return None
+    doc = {"schema_version": SCHEMA_VERSION, "run": run, "scale": [LOWEST, HIGHEST],
+           "raters": json.loads(head["raters"]), "scores": {}, "picked": json.loads(head["picked"]),
+           "updated": head["updated"], "given": {}, "artifacts": {}}
+    for r in db.execute("SELECT * FROM ratings WHERE run = ? ORDER BY rowid", (run,)):
+        artifact = None if r["artifact"] is None else bool(r["artifact"])
+        doc["scores"].setdefault(r["rater"], {})[r["clip"]] = r["score"]
+        doc["given"].setdefault(r["rater"], {})[r["clip"]] = {
+            "first_given": r["first_given"], "changes": r["changes"], "score": r["score"], "time": r["time"],
+            "account": r["account"], "submitted_by": r["submitted_by"], "artifact": artifact}
+        if artifact is not None:
+            doc["artifacts"].setdefault(r["rater"], {})[r["clip"]] = artifact
+    return doc
+
+
+def _store(db, run_dir, ratings):
+    """Write one run's ratings document into the database (inside the caller's transaction)."""
+    run = Path(run_dir).name
+    db.execute("INSERT INTO rating_runs (run, folder, raters, picked, updated) VALUES (?, ?, ?, ?, ?) "
+               "ON CONFLICT (run) DO UPDATE SET folder = excluded.folder, raters = excluded.raters, "
+               "picked = excluded.picked, updated = excluded.updated",
+               (run, str(run_dir), json.dumps(ratings.get("raters", []), ensure_ascii=False),
+                json.dumps(ratings.get("picked", []), ensure_ascii=False), ratings.get("updated")))
+    given, said = ratings.get("given", {}), ratings.get("artifacts", {})
+    for rater, clips in ratings.get("scores", {}).items():
+        for clip, score in clips.items():
+            d = given.get(rater, {}).get(clip, {})
+            artifact = said.get(rater, {}).get(clip, d.get("artifact"))
+            db.execute("INSERT INTO ratings (run, rater, clip, score, artifact, first_given, time, changes, account, "
+                       "submitted_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (run, rater, clip) DO UPDATE SET "
+                       "score = excluded.score, artifact = excluded.artifact, first_given = excluded.first_given, "
+                       "time = excluded.time, changes = excluded.changes, account = excluded.account, "
+                       "submitted_by = excluded.submitted_by",
+                       (run, rater, clip, score, None if artifact is None else int(artifact), d.get("first_given"),
+                        d.get("time"), d.get("changes", 0), d.get("account"), d.get("submitted_by")))
+
+
+def _log(db, entries):
+    """Add entries to the rating log (it only grows)."""
+    db.executemany("INSERT INTO rating_log (time, run, rater, account, clip, score, entry) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                   [(e["time"], e["run"], e["rater"], e.get("account"), e["clip"], e.get("score"),
+                     json.dumps(e, ensure_ascii=False)) for e in entries])
+
+
+def _copy_to_folder(run_dir, ratings):
+    """The run folder's ratings.json, a copy for reading; the database stays right if it cannot be written."""
+    try:
+        _write(Path(run_dir) / RATINGS_FILE, ratings)
+    except OSError:
+        pass
 
 
 def clip_key(number):
@@ -104,9 +166,13 @@ def clean_score(value):
 
 def load(run_dir):
     """The run's ratings: {"raters", "scores": {rater: {clip: score}}, "picked": [...]}; empty when none yet."""
+    with storage.connect() as db:
+        stored = _from_db(db, Path(run_dir).name)
+    if stored is not None:
+        return stored
     path = Path(run_dir) / RATINGS_FILE
     if path.is_file():
-        return safe_files.read_json(path)
+        return safe_files.read_json(path)          # not in the database yet: stored there on its first change
     return {"schema_version": SCHEMA_VERSION, "run": Path(run_dir).name, "scale": [LOWEST, HIGHEST],
             "raters": [], "scores": {}, "picked": [], "updated": None}
 
@@ -183,7 +249,7 @@ def save_scores(run_dir, scores, submitted_by=None, account=None, artifacts=None
     if not cleaned and not heard:
         return load(run_dir)
 
-    with _lock:
+    with storage.connect(write=True) as db:            # one writer at a time, also across processes
         ratings = load(run_dir)
         raters = list(ratings["raters"])
         for rater in cleaned:
@@ -232,17 +298,13 @@ def save_scores(run_dir, scores, submitted_by=None, account=None, artifacts=None
         if not log:
             return ratings
         ratings["updated"] = time
-        _write(run_dir / RATINGS_FILE, ratings)
-        LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with LOG_PATH.open("a", encoding="utf-8") as f:
-            for entry in log:
-                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-            f.flush()
-            os.fsync(f.fileno())
-        try:
-            write_current(who_path(), run_dir.parent)
-        except OSError:
-            pass                                   # open in a spreadsheet, say; rebuilt on the next save
+        _store(db, run_dir, ratings)
+        _log(db, log)
+    _copy_to_folder(run_dir, ratings)
+    try:
+        write_current(who_path(), run_dir.parent)
+    except OSError:
+        pass                                       # open in a spreadsheet, say; rebuilt on the next save
     return ratings
 
 
@@ -366,7 +428,7 @@ def pick(run_dir, number, name, named_by=None):
     if genome is None:
         raise ValueError(f"This run has no genome {number}.")
 
-    with _lock:
+    with storage.connect(write=True) as db:            # also keeps two namings of named.json apart
         library = load_named()
         same_genome = lambda entry: entry["run"] == run["id"] and entry["genome"] == genome["number"]
         if any(e["name"].lower() == name.lower() and not same_genome(e) for e in library["genomes"]):
@@ -386,7 +448,8 @@ def pick(run_dir, number, name, named_by=None):
         ratings["picked"] = [p for p in ratings["picked"] if p["genome"] != genome["number"]]
         ratings["picked"].append({"genome": genome["number"], "name": name, "time": entry["named"]})
         ratings["updated"] = entry["named"]
-        _write(run_dir / RATINGS_FILE, ratings)
+        _store(db, run_dir, ratings)
+    _copy_to_folder(run_dir, ratings)
     return entry
 
 
@@ -394,13 +457,14 @@ def unpick(run_dir, number):
     """Take the name off a genome again (in the run and in the library)."""
     run_dir = Path(run_dir)
     run_id = genome_search.load_run(run_dir)["id"]
-    with _lock:
+    with storage.connect(write=True) as db:
         library = load_named()
         library["genomes"] = [e for e in library["genomes"] if not (e["run"] == run_id and e["genome"] == int(number))]
         _write(NAMED_PATH, library)
         ratings = load(run_dir)
         ratings["picked"] = [p for p in ratings["picked"] if p["genome"] != int(number)]
-        _write(run_dir / RATINGS_FILE, ratings)
+        _store(db, run_dir, ratings)
+    _copy_to_folder(run_dir, ratings)
 
 
 # --------------------------------------------------------------------------- #
@@ -417,9 +481,9 @@ def rated_runs(runs_dir=None):
 
 
 def read_log():
-    if not LOG_PATH.is_file():
-        return []
-    return [json.loads(line) for line in LOG_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
+    """Every score ever given or changed, oldest first (the rating_log table)."""
+    with storage.connect() as db:
+        return [json.loads(r[0]) for r in db.execute("SELECT entry FROM rating_log ORDER BY id")]
 
 
 CURRENT_FIELDS = ["rater", "account", "batch", "pile", "voice", "run", "clip", "genome", "score", "artifact",

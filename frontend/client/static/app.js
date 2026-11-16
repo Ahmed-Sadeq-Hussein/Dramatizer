@@ -172,7 +172,42 @@ function showLogin() {
   $("conn").textContent = state.host ? `Not logged in · ${state.host}` : "Not logged in";
   $("conn").className = "conn";
   setTimeout(() => $("login-user").focus(), 0);
+  call("/register").then((r) => { $("register-offer").hidden = !r.open; }).catch(() => {});
 }
+
+// ------------------------------------------------------------------ register --
+function showForm(register) {
+  $("login-form").hidden = register;
+  $("register-form").hidden = !register;
+  setTimeout(() => $(register ? "reg-user" : "login-user").focus(), 0);
+}
+$("show-register").addEventListener("click", () => showForm(true));
+$("show-login").addEventListener("click", () => showForm(false));
+
+$("register-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const button = $("register-form").querySelector("button[type=submit]");
+  $("register-error").hidden = true;
+  $("register-done").hidden = true;
+  if ($("reg-pass").value !== $("reg-again").value) {
+    $("register-error").textContent = "The two passwords are not the same.";
+    $("register-error").hidden = false;
+    return;
+  }
+  button.disabled = true;
+  try {
+    const reply = await call("/register", { body: {
+      username: $("reg-user").value.trim().toLowerCase(), display_name: $("reg-name").value.trim(),
+      email: $("reg-email").value.trim(), password: $("reg-pass").value } });
+    $("reg-pass").value = $("reg-again").value = "";
+    $("login-user").value = reply.username;
+    $("register-done").textContent = reply.message;
+    $("register-done").hidden = false;
+  } catch (error) {
+    $("register-error").textContent = error.message;
+    $("register-error").hidden = false;
+  } finally { button.disabled = false; }
+});
 
 $("login-form").addEventListener("submit", async (e) => {
   e.preventDefault();

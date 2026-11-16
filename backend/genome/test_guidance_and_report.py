@@ -31,6 +31,23 @@ def scores():
             "artifacts": {"Test user 3": {"genome_01": True}}, "picked": [], "updated": None}
 
 
+
+_scratch = None
+
+
+def setUpModule():
+    """Every test here reads ratings through a temporary database, never the real one."""
+    global _scratch, _patch
+    from backend import storage
+    _scratch = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+    _patch = mock.patch.object(storage, "DB_PATH", Path(_scratch.name) / "test.db")
+    _patch.start()
+
+
+def tearDownModule():
+    _patch.stop()
+    _scratch.cleanup()
+
 class TestAccounts(unittest.TestCase):
     def test_test_accounts_do_not_count_in_the_mos(self):
         self.assertTrue(ratings.is_test_rater("Test user 3") and ratings.is_test_rater("test_user_12"))

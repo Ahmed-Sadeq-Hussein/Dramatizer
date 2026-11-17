@@ -211,7 +211,13 @@ def is_rated(run_dir):
 
 
 def who_path():
-    return LOG_PATH.parent / "who_rated_what.csv"
+    """who_rated_what.csv, beside the database it is a copy of: history/ratings/ for history/dramatizer.db.
+
+    It follows storage.DB_PATH (read at each call), so a test or a run on a scratch database writes its own
+    copy and never the real one. (Until 17 Nov it sat beside LOG_PATH, which a test forgot to redirect, and the
+    real file was overwritten with a test's 4 rows; the database itself was not touched.)
+    """
+    return Path(storage.DB_PATH).parent / "ratings" / "who_rated_what.csv"
 
 
 def save_scores(run_dir, scores, submitted_by=None, account=None, artifacts=None):

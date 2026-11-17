@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))    # run as a file 
 
 from backend import storage  # noqa: E402
 from backend.api import accounts  # noqa: E402
+from backend.genome import ratings  # noqa: E402
 
 FAST = 1000     # hashing rounds in tests; the real number is accounts.ROUNDS
 
@@ -590,7 +591,7 @@ class Api(Temporary):
         self.assertEqual((log[-1]["previous"], log[-1]["score"], log[-1]["account"], log[-1]["pile"]), (4.0, 3.5, "julius", 1))
 
         import csv
-        with open(self.dir / "who_rated_what.csv", encoding="utf-8-sig") as f:
+        with open(ratings.who_path(), encoding="utf-8-sig") as f:
             rows = list(csv.DictReader(f))
         self.assertEqual([(r["rater"], r["account"], r["clip"], r["score"]) for r in rows],
                          [("Julius", "julius", "baseline", "2.0"), ("Julius", "julius", "genome_01", "3.5")])
@@ -675,7 +676,7 @@ class Api(Temporary):
 
         self.client.post(url, headers=auth, json={"scores": {"Julius": {"genome_03": 4}}, "artifacts": {"Julius": {"genome_03": True}}})
         import csv
-        with open(self.dir / "who_rated_what.csv", encoding="utf-8-sig") as f:
+        with open(ratings.who_path(), encoding="utf-8-sig") as f:
             rows = {r["clip"]: r["artifact"] for r in csv.DictReader(f)}
         self.assertEqual(rows, {"baseline": "no", "genome_01": "no", "genome_03": "yes"})
         page = self.client.get("/api/v1/genome/listening?batch=test-batch&pile=1", headers=auth).get_json()

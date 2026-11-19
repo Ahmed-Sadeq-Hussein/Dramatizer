@@ -1,75 +1,131 @@
-# backend/mcp_server/dramatizer_mcp.py
-"""dramatizer_mcp.py | An MCP server that lets an assistant ask the knowledge graph questions.
+"""dramatizer_mcp.py | MCP server: read-only tools for one logged-in person, over the Dramatizer API.
 
-Read-only: the tools never generate audio. The only write is the graph file
-itself, rebuilt when a new generation has been added since it was saved.
+Start (stdio, one client). Set these first:
+    DRAMATIZER_URL, DRAMATIZER_FINGERPRINT, and either DRAMATIZER_KEY or DRAMATIZER_USER with DRAMATIZER_PASSWORD
+    python backend/mcp_server/dramatizer_mcp.py
 
-Start it with:  python backend/mcp_server/dramatizer_mcp.py
+Every tool is a read-only call through read_calls.py, made with this person's own token.
+The API decides what they may see. No tool writes, starts a search or speaks a line.
 """
-import json
 import os
+import sys
+import json
 from pathlib import Path
+from typing import Optional
 
-import networkx as nx
 from mcp.server.fastmcp import FastMCP
 
-import build_graph
-
-PROJECT = Path(__file__).resolve().parents[2]
-
-
-def _output_setting():
-    """OUTPUT_DIR from the environment or .env, else the default in backend/model.py."""
-    if os.environ.get("OUTPUT_DIR"):
-        return os.environ["OUTPUT_DIR"].strip()
-    env = PROJECT / ".env"
-    for line in (env.read_text(encoding="utf-8").splitlines() if env.exists() else []):
-        if line.strip().startswith("OUTPUT_DIR="):
-            return line.split("=", 1)[1].strip()
-    return "D:/Dramatizer 2 renders"
-
-GRAPH_PATH = PROJECT / "history" / "graph.json"
-OUTPUT_DIR = PROJECT / _output_setting()
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import read_calls as rc  # noqa: E402
 
 mcp = FastMCP("dramatizer")
+_session = None
 
 
-def is_stale():
-    """True if the graph is missing or older than the newest generated record."""
-    if not GRAPH_PATH.exists():
-        return True
-    newest = max((p.stat().st_mtime for p in OUTPUT_DIR.glob("*/*.json")), default=0)
-    return newest > GRAPH_PATH.stat().st_mtime
+def session():
+    if _session is None:
+        raise RuntimeError("Not logged in: the server could not log in when it started.")
+    return _session
 
 
-def load_graph():
-    """The graph, rebuilt first if it is out of date."""
-    if is_stale():
-        build_graph.save(build_graph.build(OUTPUT_DIR, PROJECT), GRAPH_PATH)
-    data = json.loads(GRAPH_PATH.read_text(encoding="utf-8"))
-    return nx.node_link_graph(data, edges="links")
+def _start():
+    global _session
+    api = rc.connect()
+    _session = rc.log_in(api, key=os.environ.get("DRAMATIZER_KEY"), user=os.environ.get("DRAMATIZER_USER"))
 
 
 @mcp.tool()
-def list_voices() -> list[str]:
-    """List the reference voices that have generated audio."""
-    g = load_graph()
-    return sorted(d["name"] for _, d in g.nodes(data=True) if d.get("kind") == "voice")
+def datasets() -> dict:
+    """Use for how many voices and datasets the project has, and how they are split. No arguments."""
+    return rc.datasets(session())
 
 
 @mcp.tool()
-def generations(voice: str) -> list[dict]:
-    """List the audio generated for one reference voice: the file and the text it says.
+def voices(dataset: Optional[str] = None, query: Optional[str] = None, page: int = 1) -> dict:
+    """Use to list the validation voices of one dataset (VCTK, CREMA-D or LibriTTS-R), 50 a page. query matches a speaker or words in the line. Test voices are locked and never listed."""
+    return rc.voices(session(), dataset=dataset, query=query, page=page)
 
-    voice: the name from list_voices, for example "p225_003_mic1".
-    """
-    g = load_graph()
-    return [
-        {"file": d["file"], "text": d["text"], "created": d.get("created")}
-        for _, d in g.nodes(data=True)
-        if d.get("kind") == "output" and d.get("voice") == voice
-    ]
+
+@mcp.tool()
+def list_searches(batch: Optional[str] = None, pile: Optional[int] = None) -> dict:
+    """Use to find genome searches and their run_id, newest first. Filter by batch and pile to see one listening pile. Call this before search_details."""
+    return rc.list_searches(session(), batch=batch, pile=pile)
+
+
+@mcp.tool()
+def search_details(run_id: str) -> dict:
+    """Use for one genome search, by run_id from list_searches: its genomes, verdicts, ratings and ranking."""
+    return rc.search_details(session(), run_id)
+
+
+@mcp.tool()
+def named_genomes() -> dict:
+    """Use when asked which genomes people have picked and named."""
+    return rc.named_genomes(session())
+
+
+@mcp.tool()
+def renders(query: Optional[str] = None, mine: bool = False, page: int = 1) -> dict:
+    """Use for lines people have spoken or rendered, newest first. query searches voice, text, genome or maker. mine=True shows only this person's."""
+    return rc.renders(session(), query=query, mine=mine, page=page)
+
+
+@mcp.tool()
+def query_scores(listener: Optional[str] = None, voice: Optional[str] = None, dataset: Optional[str] = None,
+                 gene_type: Optional[str] = None, genes: Optional[int] = None, genome: Optional[int] = None,
+                 clip: Optional[str] = None, pile: Optional[int] = None, verdict: Optional[str] = None,
+                 group_by: Optional[str] = None, sort: Optional[str] = None, order: Optional[str] = None,
+                 limit: Optional[int] = None) -> dict:
+    """Use for who rated what: genome scores filtered by listener, voice, dataset, gene_type, genes (how many), genome (its number), clip (genome, plain or all; genome is the default), pile or verdict. Use group_by (listener, voice, dataset, gene_type, genes, verdict, genome or pile) with sort mean, count or beat_plain for averages and counts. For the six research questions use evidence_question instead."""
+    return rc.query_scores(session(), listener=listener, voice=voice, dataset=dataset, gene_type=gene_type,
+                           genes=genes, genome=genome, clip=clip, pile=pile, verdict=verdict,
+                           group_by=group_by, sort=sort, order=order, limit=limit)
+
+
+@mcp.tool()
+def evidence_question(number: int) -> dict:
+     """Use only for the research question about how often a genome beats the plain line by number of active features (question 5), and for the other five research questions by their number. For beating the plain line by dataset, voice or gene type use query_scores with sort beat_plain. Needs a researcher, admin or API key."""
+     return rc.evidence_question(session(), number)
+
+@mcp.tool()
+def search_evidence(words: str, limit: int = 5) -> dict:
+    """Use to see which evidence records match some words (at most 20). Returns record IDs and text, not an answer."""
+    return rc.search_evidence(session(), words, limit=limit)
+
+
+@mcp.tool()
+def answer_evidence(question: str) -> dict:
+    """Use for questions about the evidence that the other tools do not fit. Returns an answer with its record IDs, or says that nothing in the evidence answers it. If it says so, do not guess."""
+    return rc.answer_evidence(session(), question)
+
+
+@mcp.tool()
+def results(name: Optional[str] = None) -> dict:
+    """Use for baseline results (WER, similarity, PESQ, STOI, SI-SDR) and Milestone 2 results. Call without name to see every result set, then answer from the list."""
+    return rc.results(session(), name=name)
+
+
+@mcp.tool()
+def about() -> dict:
+    """Use for what the Dramatizer is, how to use the website, and who made it."""
+    return rc.about(session())
+
+@mcp.resource("dramatizer://about")
+def about_text() -> str:
+    """What the Dramatizer is, how to use it and who made it, as text an assistant can read as context."""
+    return json.dumps(rc.about(session()), ensure_ascii=False, indent=2)
+
+@mcp.tool()
+def overview() -> dict:
+    """Use for how many genome searches exist, how many are rated, and when the newest was made."""
+    return rc.overview(session())
 
 
 if __name__ == "__main__":
+    try:
+        _start()
+    except (rc.CallError, SystemExit) as error:
+        print(f"Could not log in: {error}", file=sys.stderr)
+        sys.exit(1)
     mcp.run()

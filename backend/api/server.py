@@ -78,6 +78,9 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
     GET  /evidence/questions/<1-6>/chart          that chart (JPEG)
     GET  /evidence/search?q=&kind=&k=             the evidence records best matching a question (BM25)
     GET  /evidence/answer?q=                      an answer citing its record IDs, or "no evidence" (rag/answer.py)
+                                                  both with provenance {snapshot_id, ratings_up_to, data_revision,
+                                                  scope}: the data state the reply was made from (blind accounts:
+                                                  their own); search hits carry each record's revision
     GET  /about                                   what the Dramatizer is, how to use it, its contributors
     GET  /assistant                               whether the chatbot's language model is ready
     POST /assistant/ask  {question, history?}     "Ask the Dramatizer": the chatbot (Gemma 4, with your own
@@ -103,18 +106,18 @@ import threading
 import time
 import traceback
 import uuid
-from collections import Counter
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from ipaddress import ip_address
 from pathlib import Path
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import urlsplit
 
 from flask import Flask, abort, g, jsonify, request, send_file, send_from_directory
 from werkzeug.exceptions import HTTPException
 from werkzeug.serving import WSGIRequestHandler
 
 from backend import model, safe_files
+from backend import evidence_views as views
 from backend.api import accounts, keys
 
 API = "/api/v1"
@@ -148,12 +151,7 @@ app.json.sort_keys = False
 # Errors as JSON, keys, the access log
 # --------------------------------------------------------------------------- #
 
-class Refused(Exception):
-    """A request that cannot be done, with the reason shown to the person."""
-
-    def __init__(self, message, status=400):
-        super().__init__(message)
-        self.status = status
+from backend.evidence_views import Refused  # noqa: E402  (a request that cannot be done, with the reason)
 
 
 @app.errorhandler(Refused)
@@ -637,8 +635,11 @@ def may_see(run):
     """
     A listener (an account that may not search) sees only the runs of the listening
     piles it may rate: no other searches, no other listener's pile. Researchers,
-    admins and API keys see every run.
+    admins and API keys see every run. A run with "only" (the Report evaluation, report_eval.py) is seen
+    by those accounts alone, admins included, so a pile stays with its two listeners.
     """
+    if run.get("only"):
+        return g.account is not None and g.account.username in run["only"]
     if g.account is None or g.account.can("search"):
         return True
     return bool(run.get("batch") and run.get("pile")) and g.account.may_rate_pile(run["batch"], run["pile"])
@@ -708,7 +709,8 @@ def listening():
     from backend.genome import ratings, search
 
     every = [(f, r) for f, r in search.list_runs() if r.get("batch") and r.get("pile")
-             and (g.account is None or g.account.may_rate_pile(r["batch"], r["pile"]))]
+             and (g.account is None or g.account.may_rate_pile(r["batch"], r["pile"]))
+             and (not r.get("only") or may_see(r))]
     piles = {}
     for _, run in every:
         piles.setdefault(run["batch"], set()).add(run["pile"])
@@ -1178,8 +1180,7 @@ def connection():
 
 _evidence = {"key": None, "records": None, "index": None, "genomes": None}
 _evidence_lock = threading.Lock()
-GROUPS = ("listener", "voice", "dataset", "gene_type", "genes", "verdict", "genome", "pile")
-SORTS = ("score", "above_plain", "rated_on", "mean", "mean_above_plain", "count", "beat_plain")
+GROUPS, SORTS = views.GROUPS, views.SORTS
 
 
 def evidence():
@@ -1214,66 +1215,44 @@ def evidence_snapshot():
         return _snapshot["snapshot"]
 
 
+def _ratings_stamp():
+    from backend.genome import ratings
+
+    who = ratings.who_path()
+    return who.stat().st_mtime if who.is_file() else None
+
+
+def evidence_with_provenance():
+    """(records, index, genomes, provenance): the corpus and the snapshot made from one state of the ratings,
+    so the provenance names the data an answer was made from. Retried if the scores change in between.
+
+    provenance: snapshot_id and ratings_up_to as GET /evidence/questions gives them, and data_revision: the
+    newest revision of the evidence records the caller may see (scores, rankings, sanity checks), which moves
+    when any of them changes. A caller who rates blind sees only their own scores, so they get no snapshot_id
+    (it is made from everyone's), and ratings_up_to and data_revision come from their own records."""
+    for _ in range(3):
+        stamp = _ratings_stamp()
+        records, index, genomes = evidence()
+        snap = evidence_snapshot() if sees_others() else None
+        if _ratings_stamp() == stamp:
+            break
+    return records, index, genomes, views.provenance(records, snap, viewer())
+
+
+def viewer():
+    """None for a caller who may see every listener's scores, else the one listener whose scores they see."""
+    return None if sees_others() else g.user
+
+
+def may_read_record(record):
+    """Whether this caller may read an evidence record: rankings and others' scores need sees_others."""
+    return views.may_read(record, viewer())
+
+
 def score_rows():
     """Every score this caller may see, one row per listener per clip."""
     records, _, genomes = evidence()
-    rows = []
-    for r in records:
-        if r["kind"] != "clip":
-            continue
-        f = r["fields"]
-        if not sees_others() and f["listener"] != g.user:
-            continue
-        described, markup = genomes.get(f["run"], {}).get(f["genome"], ([], None)) if f["genome"] else ([], None)
-        rows.append({"listener": f["listener"], "voice": f["voice"], "dataset": f["dataset"], "pile": f["pile"],
-                     "search": f["run"], "clip": f["clip"], "genome": f["genome"], "score": f["score"],
-                     "above_plain": f["above_plain"], "genes": f["features"], "gene_types": f["gene_types"],
-                     "genes_described": described, "spoken_as": markup, "verdict": f["verdict"],
-                     "artifact_heard": f["artifact"], "rated_on": r["revision"]})
-    return rows
-
-
-def _matches(row, args):
-    def has(name, value):
-        return value.lower() in str(row[name]).lower()
-    kind = args.get("clip", "genome")
-    if kind == "genome" and row["genome"] is None or kind == "plain" and row["genome"] is not None:
-        return False
-    for name in ("listener", "voice", "dataset", "verdict"):
-        if args.get(name) and not has(name, args[name]):
-            return False
-    if args.get("gene_type") and not any(args["gene_type"].lower() == t.lower() for t in row["gene_types"]):
-        return False
-    if args.get("genes") not in (None, "") and str(row["genes"]) != str(args["genes"]):
-        return False
-    if args.get("genome") not in (None, "") and str(row["genome"]) != str(args["genome"]):
-        return False
-    if args.get("pile") not in (None, "") and str(row["pile"]) != str(args["pile"]):
-        return False
-    if args.get("search") and args["search"] != row["search"]:
-        return False
-    if args.get("from") and row["rated_on"] < args["from"] or args.get("to") and row["rated_on"] > args["to"] + "~":
-        return False
-    return True
-
-
-def _group(rows, by):
-    groups = {}
-    for row in rows:
-        keys = row["gene_types"] if by == "gene_type" else [f"{row['voice']} genome {row['genome']}" if by == "genome"
-                                                           else row[by]]
-        for k in keys or ["(none)"]:
-            groups.setdefault(str(k), []).append(row)
-    out = []
-    for k, members in groups.items():
-        scores = [m["score"] for m in members]
-        above = [m["above_plain"] for m in members if m["above_plain"] is not None]
-        out.append({by: k, "count": len(members), "mean": round(sum(scores) / len(scores), 3),
-                    "low": min(scores), "high": max(scores),
-                    "mean_above_plain": round(sum(above) / len(above), 3) if above else None,
-                    "beat_plain": round(sum(a > 0 for a in above) / len(above), 3) if above else None,
-                    "listeners": sorted({m["listener"] for m in members})})
-    return out
+    return views.score_rows(records, genomes, viewer())
 
 
 @app.get(f"{API}/evidence/scores")
@@ -1286,30 +1265,9 @@ def evidence_scores():
     clip=genome|plain|all. group_by: listener|voice|dataset|gene_type|genes|verdict|genome|pile.
     sort: score|above_plain|rated_on (rows), mean|mean_above_plain|count|beat_plain (groups). order, limit.
     """
-    args = {k: v.strip()[:80] for k, v in request.args.items()}
-    by = args.get("group_by") or None
-    if by and by not in GROUPS:
-        raise Refused(f"group_by is one of: {', '.join(GROUPS)}.")
-    sort = args.get("sort") or ("mean" if by else "score")
-    if sort not in SORTS:
-        raise Refused(f"sort is one of: {', '.join(SORTS)}.")
-    try:
-        limit = max(1, min(200, int(args.get("limit") or 20)))
-    except ValueError:
-        raise Refused("limit is a whole number.")
-    rows = [r for r in score_rows() if _matches(r, args)]
-    items = _group(rows, by) if by else rows
-    if by and sort in ("score", "above_plain", "rated_on"):
-        sort = "mean" if sort == "score" else "mean_above_plain" if sort == "above_plain" else "count"
-    if not by and sort not in ("score", "above_plain", "rated_on"):
-        sort = "score"
-    present = [i for i in items if i.get(sort) is not None]
-    present.sort(key=lambda i: i[sort], reverse=args.get("order", "desc") != "asc")
-    shown = present[:limit] + ([] if len(present) >= limit else [i for i in items if i.get(sort) is None][:limit - len(present)])
-    filters = {k: v for k, v in args.items() if k not in ("limit", "order", "sort", "group_by") and v}
+    out = views.scores(score_rows(), dict(request.args))
     note = None if sees_others() else "Only your own scores: this account rates blind, so it does not see other listeners'."
-    return jsonify(filters=filters, group_by=by, sort=sort, total=len(items), rows_matched=len(rows),
-                   listeners=sorted({r["listener"] for r in rows}), **{"groups" if by else "rows": shown}, note=note)
+    return jsonify(**out, note=note)
 
 
 _charts = {"key": None, "summary": None}
@@ -1350,21 +1308,8 @@ def evidence_question(number):
             except ValueError as error:
                 raise Refused(str(error))
         summary = _charts["summary"]
-    chart = next(c for c in summary["charts"] if c["number"] == str(number))
-    snap = evidence_snapshot()
-    out = {"number": number, "question": chart["question"], "range": summary["range"],
-           "genome_scores": summary["genome_scores"], "sanity_checks": summary["sanity_checks"],
-           "sanity_source": summary.get("sanity_source"),
-           "provenance": {k: snap["provenance"][k] for k in ("snapshot_id", "ratings_up_to", "code_commit", "rule")},
-           "listeners_per_genome": snap["coverage"]["listeners_per_genome"], "caveats": snap["caveats"]}
-    if number == 1:                                  # a winner only where the snapshot's rule allows one
-        out["voice_status"] = dict(Counter(v["status"] for v in snap["voices"]))
-        out["winner_rule"] = snap["provenance"]["winner_rule"]
-    if "skipped" in chart:
-        return jsonify(**out, skipped=chart["skipped"])
-    query = "?" + urlencode({k: v for k, v in (("from", start), ("to", end)) if v}) if start or end else ""
-    return jsonify(**out, answer=chart["claim"], keep_in_mind=chart["note"],
-                   chart=f"{API}/evidence/questions/{number}/chart{query}")
+    url = f"{API}/evidence/questions/{number}/chart{views.range_query(start, end)}"
+    return jsonify(views.question(number, summary, evidence_snapshot(), chart_url=url))
 
 
 @app.get(f"{API}/evidence/questions/<int:number>/chart")
@@ -1384,33 +1329,12 @@ def evidence_chart(number):
 @needs_key
 def evidence_search():
     """The evidence records best matching a question (BM25): scores, searches' rankings, sanity checks."""
-    q = " ".join(request.args.get("q", "").split())[:300]
-    if not q:
+    args = request.args
+    if not " ".join(args.get("q", "").split()):
         raise Refused("Ask something: ?q=words")
-    kind = request.args.get("kind") or None
-    if kind not in (None, "clip", "run", "sanity"):
-        raise Refused("kind is clip, run or sanity.")
-    try:
-        k = max(1, min(20, int(request.args.get("k") or 6)))
-    except ValueError:
-        raise Refused("k is a whole number.")
-    from backend.rag import baseline
-
-    records, index, _ = evidence()
-    query = list(dict.fromkeys(baseline.words(q)))
-    scored = []
-    for i, r in enumerate(records):                    # by position: a clip's ID is shared by its listeners
-        if kind not in (None, r["kind"]):
-            continue
-        if not sees_others() and (r["kind"] == "run" or r["kind"] == "clip" and r["fields"]["listener"] != g.user):
-            continue                                   # rankings and others' scores need sees_others
-        score = index.score(query, i)
-        if score > 0:
-            scored.append((score, i))
-    scored.sort(key=lambda x: (-x[0], records[x[1]]["id"], x[1]))
-    return jsonify(question=q, hits=[{"rank": n, "id": records[i]["id"], "kind": records[i]["kind"],
-                                      "title": records[i]["title"], "text": records[i]["text"], "score": round(sc, 3)}
-                                     for n, (sc, i) in enumerate(scored[:k], start=1)])
+    records, index, _, provenance = evidence_with_provenance()
+    return jsonify(**views.search(records, index, args.get("q"), args.get("kind"), args.get("k"), viewer()),
+                   provenance=provenance)
 
 
 @app.get(f"{API}/evidence/answer")
@@ -1418,15 +1342,10 @@ def evidence_search():
 def evidence_answer():
     """An answer from the evidence that cites its records, or says that nothing answers it (backend/rag/answer.py).
     Made only from the records this caller may see."""
-    q = " ".join(request.args.get("q", "").split())[:300]
-    if not q:
+    if not " ".join(request.args.get("q", "").split()):
         raise Refused("Ask something: ?q=words")
-    from backend.rag import answer
-
-    records, index, _ = evidence()
-    a = answer.answer(q, records, index, listener=None if sees_others() else g.user)
-    a.pop("cited_ids", None)
-    return jsonify(a)
+    records, index, _, provenance = evidence_with_provenance()
+    return jsonify(**views.answer(records, index, request.args.get("q"), viewer()), provenance=provenance)
 
 
 # --- Ask the Dramatizer: About, and questions answered by the chatbot or the records ---------------------
@@ -1555,6 +1474,11 @@ def summaries(kind):
 @app.get(f"{API}/results")
 @needs_key
 def results():
+    return jsonify(results_data())
+
+
+def results_data():
+    """The baselines' and Milestone 2's summaries (also published by publish_results.py)."""
     out = {"baselines": [], "milestone2": []}
     for folder in summaries("baseline"):
         record_path = folder.parent / "record.json"
@@ -1568,7 +1492,7 @@ def results():
                                  "summary": json.loads(folder.read_text(encoding="utf-8"))})
     for folder in summaries("milestone2"):
         out["milestone2"].append({"name": folder.parent.name, "summary": json.loads(folder.read_text(encoding="utf-8"))})
-    return jsonify(out)
+    return out
 
 
 # --------------------------------------------------------------------------- #

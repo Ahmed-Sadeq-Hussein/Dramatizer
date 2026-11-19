@@ -68,3 +68,21 @@ Budget given on 14 Nov 2026: 3 hours of compute.
 8. Combined speed method (natural, then a small stretch for the rest)  TODO (only if wanted)
    How:  add SPEED_METHOD=combined in tts_formatter.synthesize; A/B render as in item 4.
    Why:  natural pacing reaches the asked speed only partly on some voices (p286: 0.95 for 0.85).
+
+9. The Report evaluation: the paper's blind listening test               DONE (18 Nov)
+   How:  python main_backend.py report-eval      (prepare once, render, publish, assign; resumable)
+         Design in plan.json: D:/Dramatizer 2 renders/report_evaluation/report-evaluation/
+   What: 12 locked test voices (4 per dataset, 2 below and 2 above its median pitch) x 4 new sentences
+         (short, 2 medium, long) = 48 items, each rendered plain, with a random genome (no checks) and
+         with a guarded genome (8 gene types chosen from the pilot, same gene count 1-3, must pass the
+         sanity and audio checks, up to 4 tries). About 150-190 renders, estimated 40-60 minutes.
+   Why:  the paper's main result. The test voices were unlocked on 18 Nov for this one evaluation.
+         Listeners: Ash, Julius, Min, Rama; 6 piles (one per pair of listeners), 72 clips each, blind,
+         conditions sealed in key.json until every score is in.
+   Budget: beyond the 3 hours set on 14 Nov; agreed on 18 Nov.
+   Result: 48 of 48 items, 166 renders, 27.9 min of rendering in the last session (started 15:02,
+         finished 15:29). The guarded genome passed on the first try in 36 items and within 4 tries in 45.
+         In 3 items it failed the guard all 4 times (VCTK p288 s1 and s3, VCTK p285 s1); the last try
+         was kept and is flagged guard_failed in key.json. Analyse with and without these 3 items.
+         Published as 48 sealed, blind runs (144 clips); piles assigned: ash 1,4,5; julius 1,2,3;
+         min 2,4,6; rama 3,5,6.

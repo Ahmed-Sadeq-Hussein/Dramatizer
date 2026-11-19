@@ -231,3 +231,38 @@ The cloned audio of real people stays within the group.
 | `The host does not accept this key` | Ask the host for a new key, then run `connect --forget` and connect again. |
 | `The host cannot be reached` | The host's API or the playit tunnel is not running. |
 | `You already have 3 jobs waiting` | Wait for one of them to finish. |
+
+## The results online, with this PC off (team only)
+
+The results without audio (evidence snapshot, scores, evidence records, charts, baseline and Milestone 2
+summaries, about 3 MB) can be read by the team while this PC is off. They are a read-only copy, as new as
+the last publish; `manifest.json` and the page say which data each copy holds (`snapshot_id`,
+`ratings_up_to`, `data_revision`). Rating, rendering and the chatbot still need this PC.
+
+**Build the copy** (any time; it changes nothing online):
+
+    python main_backend.py publish-results --zip
+
+It writes `D:/Dramatizer 2 renders/results_site/` and `results_site.zip`. It refuses to build when the copy
+would hold a sealed run (the Report evaluation until its key is opened), the condition key, a test account,
+an email, a credential or a local path, and never copies audio. Open `results_site/index.html` to look first.
+
+**Host it (once), in this order so the real data is never public:**
+
+1. Cloudflare dashboard > Workers & Pages > Create > Pages > Upload assets. Name the project
+   `dramatizer-results` and upload the placeholder folder `D:/Dramatizer 2 renders/results_placeholder`
+   (one page that says "Not published yet"). It gets the address `https://dramatizer-results.pages.dev`.
+2. Zero Trust > Access > Applications > Add an application > Self-hosted:
+   - Domains: `dramatizer-results.pages.dev` and `*.dramatizer-results.pages.dev` (the second covers
+     every deployment's own preview address).
+   - Policy: Allow, Include > Emails: the team's addresses. Login method: One-time PIN (a code by email).
+   - Free for up to 50 users.
+3. Open the address in a private window: it must ask for an email before showing anything. Only then go on.
+4. In the project, Create deployment and upload `results_site.zip`.
+
+**Publish a new copy** after a rating session: run the build again and upload the new zip as a new
+deployment (step 4). With Node.js installed, `publish-results --deploy` uploads it with `wrangler` instead
+(the first time it asks you to log in to Cloudflare in the browser).
+
+**Who gets in:** researchers and admins. The copy holds every listener's scores, so a listener who should
+rate blind is not given access while they still have piles to rate.

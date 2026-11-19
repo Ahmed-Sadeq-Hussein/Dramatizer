@@ -143,3 +143,7 @@ desktop.ini
 # Private work, never committed: the genome policy (imitation learning) and its Ash-only page.
 # The server and page load it only if this folder is there (backend/api/server.py, "private extensions").
 /private/
+
+# The paper and its drafts (outline, Word copies for Google Drive): kept out of git while unpublished
+paper/
+*.docx

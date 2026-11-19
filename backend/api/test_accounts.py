@@ -369,14 +369,15 @@ class Api(Temporary):
                                                                     key=lambda x: (x == "Made by hand", str(x))))
 
     # --- evidence: the scores, the six questions and the search, for the chatbot ---------------------
-    def evidence_records(self):
+    def evidence_records(self, rama_rated="2030-01-01 10:00:00"):
         def clip(listener, voice, genome, score, above, types):
             fields = {"voice": voice, "dataset": voice.split("/")[0], "run": "r1",
                       "clip": f"genome_{genome:02d}" if genome else "baseline", "genome": genome, "listener": listener,
                       "pile": 1, "score": score, "above_plain": above, "features": len(types), "gene_types": types,
                       "verdict": "fine" if genome else "baseline", "artifact": None, "changes": 0,
                       "first_given": "2030-01-01 10:00:00"}
-            return {"id": f"clip:r1/{fields['clip']}", "kind": "clip", "revision": "2030-01-01 10:00:00",
+            return {"id": f"clip:r1/{fields['clip']}", "kind": "clip",
+                    "revision": rama_rated if listener == "Rama" else "2030-01-01 10:00:00",
                     "title": f"{voice} genome {genome}, scored {score} by {listener}",
                     "text": f"{listener} scored {voice} genome {genome} {score}, gene types {' '.join(types)}",
                     "fields": fields}
@@ -402,6 +403,12 @@ class Api(Temporary):
             self.assertIn("1 of 2 rated genomes", said["answer"])            # Julius's own two scores only
             self.assertNotIn("Rama", said["answer"])
             self.assertNotIn("cited_ids", said)
+            own = {"snapshot_id": None, "ratings_up_to": "2030-01-01 10:00:00", "data_revision": "2030-01-01 10:00:00",
+                   "scope": "your own scores"}
+            self.assertEqual(said["provenance"], own)                       # no hash of everyone's scores
+            found = self.client.get("/api/v1/evidence/search?q=sigh", headers=auth).get_json()
+            self.assertEqual(found["provenance"], own)
+            self.assertTrue(all(h["revision"] == "2030-01-01 10:00:00" for h in found["hits"]))
             self.assertEqual(self.client.get("/api/v1/evidence/answer", headers=auth).status_code, 400)
             self.assertEqual(self.client.get("/api/v1/evidence/scores?group_by=nope", headers=auth).status_code, 400)
 
@@ -535,6 +542,20 @@ class Api(Temporary):
                              [("sigh", 4.5, 2, 1.0), ("speed", 1.0, 2, 0.0)])
             self.assertEqual(get("group_by=listener&sort=mean&order=asc")["groups"][0]["listener"], "Rama")
             self.assertEqual(get("voice=p250&genome=2")["total"], 2)
+
+    def test_evidence_answer_and_search_name_the_snapshot_they_were_made_from(self):
+        auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+        snap = {"provenance": {"snapshot_id": "abc123", "ratings_up_to": "2030-01-02 09:00:00", "code_commit": "x"}}
+        newer = lambda: self.evidence_records(rama_rated="2030-01-03 08:00:00")    # Rama rated after the snapshot
+        with mock.patch.object(self.server, "evidence", newer), \
+                mock.patch.object(self.server, "evidence_snapshot", lambda: snap), \
+                mock.patch.object(self.server, "sees_others", lambda: True):
+            for route in ("answer?q=Which genomes scored better than the plain line?", "search?q=sigh"):
+                with self.subTest(route):
+                    got = self.client.get("/api/v1/evidence/" + route, headers=auth).get_json()
+                    self.assertEqual(got["provenance"], {"snapshot_id": "abc123", "ratings_up_to": "2030-01-02 09:00:00",
+                                                         "data_revision": "2030-01-03 08:00:00",
+                                                         "scope": "every listener"})
 
     def test_listener_rates_only_as_themself_and_cannot_search(self):
         auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}

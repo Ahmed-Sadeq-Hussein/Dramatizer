@@ -140,7 +140,7 @@ def main(argv=None):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     total = failed = 0
     for folder, run in S.list_runs():
-        if args.run and run["id"] != args.run:
+        if (args.run and run["id"] != args.run) or (not args.run and run.get("sealed")):
             continue
         if not args.run and not (folder / "ratings.json").is_file():
             continue

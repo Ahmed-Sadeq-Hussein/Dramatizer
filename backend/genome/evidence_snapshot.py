@@ -144,7 +144,8 @@ def _voice_verdict(voice, rows, plain_mos):
 
 def build(runs=None):
     """The snapshot of every run that has ratings (runs: [(folder, run)], default search.list_runs())."""
-    runs = sorted(runs if runs is not None else S.list_runs(), key=lambda item: item[1]["id"])
+    runs = sorted(((f, r) for f, r in (runs if runs is not None else S.list_runs()) if not r.get("sealed")),
+                  key=lambda item: item[1]["id"])        # sealed: the Report evaluation, analysed on its own
     genomes, voices, plains, run_ids = [], defaultdict(list), {}, set()
     test_scores = 0
     # Second-listener runs (second_listen.py) hold the same audio as an original run: their scores are added to

@@ -75,6 +75,8 @@ COMMANDS = {
                            "backend.genome.artifact_check"),
         "second-listen": ("Piles that give each voice's top safe genomes a second listener (copies audio, no renders); "
                           "--dry-run", "backend.genome.second_listen"),
+        "report-eval": ("The paper's blind listening test on the test voices: --prepare | (render, publish, assign) | "
+                        "--status | --publish-only (renders)", "backend.genome.report_eval"),
         "explore": ("Far-apart genomes (up to 10) for the voice-map voices, in 3 piles for MOS listeners (renders)",
                     "backend.genome.explore"),
     },
@@ -86,6 +88,8 @@ COMMANDS = {
         "api-key": ("Who may use the API: api-key add NAME | list | remove NAME", "backend.api.keys"),
         "storage": ("The database of accounts, sessions and ratings: storage migrate (once) | check | backup",
                     "backend.storage"),
+        "publish-results": ("The results without audio as static files for team-only hosting (Cloudflare Pages + "
+                            "Access): checked for sealed runs and accounts; --zip, --deploy", "backend.publish_results"),
         "account": ("Login accounts: account add USERNAME --name NAME [--role listener|researcher|admin] | list | reset | disable | remove",
                     "backend.api.accounts"),
     },
@@ -117,7 +121,7 @@ COMMANDS = {
 # package each needs beyond requirements.txt (None: nothing more). The MCP server
 # has its own environment (see requirements.txt), so its test is skipped where
 # "mcp" is not installed.
-TESTS = [("backend/evaluation/test_checks.py", None), ("backend/metrics/test_calibrate_words.py", None), ("backend/speech/test_pacing.py", None), ("backend/evaluation/test_sanity_all_genes.py", None), ("backend/voice_data/test_voice_map.py", None), ("backend/voice_data/test_voice_similarity.py", None), ("backend/genome/test_explore.py", None), ("backend/genome/test_editor.py", None), ("backend/genome/test_guidance_and_report.py", None), ("backend/genome/test_evidence_charts.py", None), ("backend/genome/test_evidence_snapshot.py", None), ("backend/api/test_accounts.py", None), ("backend/api/test_assistant.py", None), ("API calls/test_chatbot.py", None), ("backend/rag/test_rag.py", None), ("backend/test_storage.py", None), ("backend/mcp_server/test_api_calls.py", None), ("backend/mcp_server/test_graph.py", "mcp")]
+TESTS = [("backend/evaluation/test_checks.py", None), ("backend/metrics/test_calibrate_words.py", None), ("backend/speech/test_pacing.py", None), ("backend/evaluation/test_sanity_all_genes.py", None), ("backend/voice_data/test_voice_map.py", None), ("backend/voice_data/test_voice_similarity.py", None), ("backend/genome/test_explore.py", None), ("backend/genome/test_editor.py", None), ("backend/genome/test_guidance_and_report.py", None), ("backend/genome/test_evidence_charts.py", None), ("backend/genome/test_evidence_snapshot.py", None), ("backend/genome/test_report_eval.py", None), ("backend/api/test_accounts.py", None), ("backend/api/test_assistant.py", None), ("API calls/test_chatbot.py", None), ("API calls/test_remote_results.py", None), ("backend/rag/test_rag.py", None), ("backend/test_storage.py", None), ("backend/test_publish_results.py", None), ("backend/mcp_server/test_api_calls.py", None), ("backend/mcp_server/test_graph.py", "mcp")]
 
 
 def all_commands():

@@ -1,72 +1,84 @@
 # Access remote server
 
-The Dramatizer's results (no audio) are hosted online, so the team can read them while the host's PC is
-off. This document explains how to read them, in a browser or from code, and how the host sends updated data.
+The Dramatizer's results (no audio) are hosted online in a private Hugging Face dataset, so the team can read
+them while the host's PC is off. This document explains how to read them, in a browser or from code, and how
+the host sends updated data.
 
-- **Address:** `https://dramatizer-results.pages.dev`
-- **Who:** team members only (researchers and admins). The site asks for a login before it shows anything.
+- **Address:** <https://huggingface.co/datasets/Dramatizer/Results_Data>
+- **In code:** `hf://datasets/Dramatizer/Results_Data` (the default of `remote_results.py`)
+- **Who:** team members only (researchers and admins), as members of the `Dramatizer` organisation on
+  Hugging Face. The dataset is **private**: anyone else gets "not found".
 - **What it holds:**
+  - every listener's scores, and every score as it was given or changed;
+  - every run and genome (genes, markup, verdict, the sanity check), and who was given which pile;
   - the evidence snapshot (coverage, winners only with enough evidence, artifact checks, caveats);
-  - every listener's scores;
   - the evidence records that answers and search are made from;
   - the six questions' charts;
   - the baseline and Milestone 2 summaries.
 - **What it does not hold:**
   - audio;
   - the sealed Report evaluation, until its key is opened;
-  - accounts, emails, passwords, API keys, and test accounts' scores.
+  - login names, emails, passwords, API keys, and test accounts' scores.
 - **How new:** as new as the host's last publish. Every copy is stamped with the data it holds (see
   [Which data am I reading?](#which-data-am-i-reading)).
 
 | You want to | Use |
 |---|---|
+| Get access (once) | [Getting access](#0-getting-access-once) |
 | Look at the results | [The browser](#1-in-a-browser) |
 | Ask questions from Python, a script or a chatbot, as with the API | [Python](#2-from-python-the-same-as-an-api-request) |
 | Read the files from any other language | [Plain HTTP](#3-from-any-language-plain-http) |
 | Put new results online (the host) | [Sending updated data](#4-sending-updated-data-the-host) |
-| Use a private Hugging Face dataset instead of the Cloudflare site | [Hugging Face](#5-the-alternative-a-private-hugging-face-dataset) |
 
 ---
 
+## 0. Getting access (once)
+
+1. **Make a Hugging Face account** at <https://huggingface.co/join>, if you have none.
+2. **Ask the host to invite you** to the `Dramatizer` organisation, and accept the invitation (from the
+   email, or from huggingface.co).
+3. **For code only, make your own read token:** <https://huggingface.co/settings/tokens> > Create new token >
+   **Read**. Copy it. Keep it private, like a password, and never put it in a file that is committed.
+
 ## 1. In a browser
 
-1. Open `https://dramatizer-results.pages.dev`.
-2. Type your email address. It must be one the host added.
-3. Cloudflare emails you a one-time code. Type it in.
-4. You see the results page: the stamps, the snapshot's summary, the six charts with their answers, and
-   links to every file.
+1. Log in at huggingface.co.
+2. Open <https://huggingface.co/datasets/Dramatizer/Results_Data>.
+3. Open the **Files and versions** tab. Click a file to read it; the charts (`charts/q1_…jpg` … `q6_…jpg`)
+   show as images. The **History** button lists every publish, each named after its `snapshot_id` and stamps.
 
-The login lasts 24 hours on that browser. If your email is refused, ask the host to add it.
+`scores.csv` is the one to open for all the scores. A file's **download** button saves it, for example to open
+`scores.csv` in Excel.
 
 ## 2. From Python, the same as an API request
 
 `API calls/remote_results.py` asks the same questions as `API calls/API_REQUEST.py`. It uses the same
-function names and gives the same answers, but it reads the hosted copy instead of a running API.
-- **Same answers, checked:** on the same data, all nine routes give identical answers from the copy and
-  from the live API, because both use the same code (`backend/evidence_views.py`).
+function names and gives the same answers, but it reads the Hugging Face copy instead of a running API.
+- **Same answers, checked:** on the same data, the routes give identical answers from the copy and from the
+  live API, because both use the same code (`backend/evidence_views.py`).
 - **Every file is checked:** each file is compared with the copy's manifest, so a half-uploaded copy is caught.
 
 ### Once
 
 1. **Get the code:** clone the repository (`https://github.com/Ahmed-Sadeq-Hussein/Dramatizer`) or pull the latest version.
-2. **Install the two packages it needs** in any Python 3.10+ environment:
+2. **Install the packages it needs** in any Python 3.10+ environment:
 
    ```bash
-   pip install numpy python-dotenv
+   pip install numpy python-dotenv huggingface_hub
    ```
 
-3. **Ask the host for a service token,** a Client ID and a Client Secret. Keep them private, like a
-   password. They let a script in without the email code.
-4. **Set them as environment variables.** In PowerShell, to keep them for new terminals:
+3. **Log in with your read token**, once per PC. Paste the token when it asks (it is not shown) and answer
+   `n` to the git credential question:
+
+   ```bash
+   hf auth login
+   ```
+
+   Or, instead of logging in, set the token as an environment variable and open a new terminal:
 
    ```powershell
-   setx DRAMATIZER_RESULTS_URL "https://dramatizer-results.pages.dev"
-   setx DRAMATIZER_ACCESS_ID "<the Client ID>"
-   setx DRAMATIZER_ACCESS_SECRET "<the Client Secret>"
+   setx DRAMATIZER_HF_TOKEN "<your read token>"
    ```
-
-   Open a new terminal afterwards. On macOS or Linux, use `export NAME="value"` in your shell profile.
-   Never put the token in a file that is committed.
 
 ### Asking questions
 
@@ -77,7 +89,7 @@ import sys
 sys.path.insert(0, "API calls")
 from remote_results import connect
 
-results = connect()                                      # reads the address and token from the environment
+results = connect()                                      # Dramatizer/Results_Data, with your saved login
 results.evidence_status()                                # the snapshot: coverage, per voice a winner or why not
 results.evidence_status(voice="VCTK/p250")               # one voice in full
 results.query_scores(group_by="gene_type", sort="mean")  # scores filtered, sorted or grouped
@@ -106,6 +118,15 @@ python "API calls/remote_results.py" query_scores "{\"group_by\": \"listener\"}"
 python "API calls/remote_results.py" manifest
 ```
 
+**The files themselves** (for example every score, which the questions above do not cover, see below):
+
+```python
+import csv, io
+rows = list(csv.DictReader(io.StringIO(results.api.read("scores.csv").decode("utf-8"))))
+history = results.api.read("rating_history.csv")
+runs = results.api.read_json("runs.json")
+```
+
 ### What it answers, and what needs the live API
 
 | Answered from the hosted copy | Needs the live API (the host's PC) |
@@ -115,25 +136,29 @@ python "API calls/remote_results.py" manifest
 A question that needs the live API returns an error that says so; it never returns a wrong answer.
 Answers show every listener's scores, as an admin sees them.
 
-### Reading a local copy
+`query_scores`, search and answer read the evidence records, which cover the mos-diverse-v1 batch, exactly
+as the live API does. **For every score of every batch, read `scores.csv`.**
 
-The host can give you the folder or the zip instead. Unzip it and point the client at the folder:
+### Reading one exact copy, or a local copy
 
-```python
-results = connect("C:/path/to/results_site")
-```
+- **One publish**, for example the one a reported number came from: add its commit id,
+  `connect("hf://datasets/Dramatizer/Results_Data@<commit id>")`. The History button lists them.
+- **A folder** the host gave you: `connect("C:/path/to/results_site")`.
 
 ## 3. From any language: plain HTTP
 
-Every file is a plain GET with the service token in two headers:
+Every file is a plain GET with your read token in one header:
 
 ```bash
-curl -H "CF-Access-Client-Id: $DRAMATIZER_ACCESS_ID" -H "CF-Access-Client-Secret: $DRAMATIZER_ACCESS_SECRET" https://dramatizer-results.pages.dev/manifest.json
+curl -L -H "Authorization: Bearer $DRAMATIZER_HF_TOKEN" https://huggingface.co/datasets/Dramatizer/Results_Data/resolve/main/manifest.json
 ```
+
+Replace `main` with a commit id to read one exact publish. Without a valid token the answer is 401 or 404.
 
 | File | What it is |
 |---|---|
 | `manifest.json` | The stamps, and every file with its size and sha256 |
+| `index.html` | A summary page (stamps, snapshot, charts), to download and open |
 | `snapshot.json` | The full evidence snapshot |
 | `scores.csv` | Every listener's current score of every clip, with the artifact answer, dates, number of changes, verdict and markup. **All** scores (every batch); the request tools above read only the evidence records (mos-diverse-v1), as the live API does |
 | `rating_history.csv` | Every score as it was given or changed, oldest first, with the score before it |
@@ -144,13 +169,10 @@ curl -H "CF-Access-Client-Id: $DRAMATIZER_ACCESS_ID" -H "CF-Access-Client-Secret
 | `charts/charts.json`, `charts/q1_…jpg` … `q6_…jpg` | The six questions: claims, notes and charts |
 | `results.json` | The baseline and Milestone 2 summaries |
 
-If you get a web page (HTML) instead of data, the token was not accepted. See
-[Troubleshooting](#troubleshooting).
-
 ## Which data am I reading?
 
-Every copy is stamped. The stamps are in `manifest.json`, at the top of the web page, and in every answer's
-`provenance`:
+Every copy is stamped. The stamps are in `manifest.json`, in each publish's commit message, and in every
+answer's `provenance`:
 
 | Stamp | Meaning |
 |---|---|
@@ -168,138 +190,54 @@ API gives the same stamps, so you can compare an answer from the copy with one f
 ## 4. Sending updated data (the host)
 
 Only the host publishes, because the scores, runs and renders live on the host's PC. Team members rate on
-the website as before; their scores reach the hosted copy at the host's next publish.
+the website as before; their scores reach the online copy at the host's next publish.
 
 ### Each time (after a rating session, or whenever the results change)
-
-1. **Build the copy.** This changes nothing online:
-
-   ```bash
-   python main_backend.py publish-results --zip
-   ```
-
-   It writes `D:/Dramatizer 2 renders/results_site/` and `results_site.zip`, and prints the stamps.
-   It **refuses to build** if the copy would hold a sealed run, the condition key, a test account, an
-   email, a credential or a local path. It never copies audio.
-2. **Look at it** (optional): open `results_site/index.html`, or ask it questions locally:
-
-   ```bash
-   python "API calls/remote_results.py" evidence_status
-   ```
-
-   with `DRAMATIZER_RESULTS_URL` set to the folder.
-3. **Upload it**, in one of two ways:
-   - **Dashboard:** Cloudflare > Workers & Pages > `dramatizer-results` > Create deployment > upload
-     `results_site.zip`.
-   - **One command** (needs Node.js; the first time it opens a Cloudflare login in the browser):
-
-     ```bash
-     python main_backend.py publish-results --deploy
-     ```
-
-4. **Check it arrived:** `python "API calls/remote_results.py" manifest` should show the new `snapshot_id`
-   and `made`.
-
-Cloudflare keeps every earlier deployment. If a publish is wrong, open the project's Deployments list and
-choose **Rollback** on the previous one.
-
-### Once: setting up the site and the login
-
-Follow "The results online, with this PC off" in `SHARING.md`. In short:
-1. Create the Pages project with the placeholder page.
-2. Put Cloudflare Access in front of it, with the team's emails.
-3. Check in a private window that it asks for a login.
-4. Upload the real copy.
-
-Then make the service token that scripts use:
-
-1. Zero Trust > Access > Service Auth > Service Tokens > **Create Service Token**. Name it, for example,
-   `Dramatizer`, and choose a duration of 1 year.
-2. Copy the **Client ID** and **Client Secret** at once. The secret is shown only this one time.
-3. Zero Trust > Access > Applications > `dramatizer-results` > Policies > **Add a policy**:
-   - Action: **Service Auth**.
-   - Include: **Service Token**, `Dramatizer`.
-4. Give the ID and secret to team members privately, not in a shared document or a commit.
-5. To cut off access, revoke the token (or remove an email from the policy) in the same place.
-
-### Who gets access
-
-- **Researchers and admins:** yes. The copy holds every listener's scores.
-- **A listener who still has piles to rate blind:** no, not until they have finished. Otherwise they could
-  see other listeners' scores.
-- **To check who has access:** Zero Trust > Access > Applications > `dramatizer-results` > Policies.
-
----
-
-## 5. The alternative: a private Hugging Face dataset
-
-The same copy can live in a **private dataset** on Hugging Face instead of, or as well as, the Cloudflare
-site. It is free, and every publish is a commit, so earlier copies can always be read again. There is no
-web page with a login: each team member reads with their own Hugging Face account and token.
-
-### The host, once
-
-1. **Make an account** at `https://huggingface.co/join`, if you have none.
-2. **Make an organisation** for the team, so that access is managed in one place: `https://huggingface.co/organizations/new`,
-   here `Dramatizer`. Free organisations can hold private datasets.
-3. **Invite the team:** the organisation's Settings > Members > Invite. Give team members the **read**
-   role; only the host needs **write**. Invite researchers and admins only, as with the Cloudflare site.
-4. **Create the dataset:** `https://huggingface.co/new-dataset`:
-   - Owner: the organisation.
-   - Name: `Results_Data` (so the dataset is `Dramatizer/Results_Data`).
-   - Visibility: **Private**.
-
-   The upload refuses a public dataset, but make it private from the start.
-5. **Make a write token for yourself:** Settings > Access Tokens > Create new token >
-   **Fine-grained**, with write access to `Dramatizer/Results_Data` only. Then log in with it
-   in the project's environment:
-
-   ```bash
-   E:/envs/dramatizer/Scripts/hf.exe auth login
-   ```
-
-   Paste the token when it asks. It is saved on this PC; never commit or share it.
-
-### The host, each time
 
 ```bash
 python main_backend.py publish-results --hf Dramatizer/Results_Data
 ```
 
 This does four things:
-- builds and checks the copy, as before;
+- builds the copy in `D:/Dramatizer 2 renders/results_site/` and checks it. It **refuses to publish** if the
+  copy would hold a sealed run, the condition key, a test account, an email, a credential or a local path.
+  It never copies audio;
 - checks that the dataset is private;
 - uploads it as one commit, named after its `snapshot_id` and stamps;
 - removes the previous copy's files that are no longer in it.
 
-It prints the commit's address and its short id. Readers can pin that id to read exactly this copy.
+It prints the commit's address and its short id. **Check it arrived:**
+`python "API calls/remote_results.py" manifest` should show the new `snapshot_id` and `made`.
 
-### Team members, once
+To look at a copy before it goes online, build it without uploading (`python main_backend.py publish-results`)
+and open `results_site/index.html`.
 
-1. **Accept the organisation's invitation,** from the email or from huggingface.co.
-2. **Make your own read token:** Settings > Access Tokens > Create new token > **Read**.
-3. **Set it, and the dataset's address,** then open a new terminal:
+Every publish is kept in the dataset's history. If one is wrong, publish again after fixing the cause; readers
+who need the earlier copy can pin its commit id.
 
-   ```powershell
-   setx DRAMATIZER_RESULTS_URL "hf://datasets/Dramatizer/Results_Data"
-   setx DRAMATIZER_HF_TOKEN "<your read token>"
+### Once: the organisation, the dataset and the login (done)
+
+1. **The organisation** `Dramatizer` at huggingface.co holds the dataset, so access is managed in one place.
+2. **The dataset** `Dramatizer/Results_Data` is **private**. The upload refuses a public one.
+3. **The host's write token:** <https://huggingface.co/settings/tokens> > Create new token >
+   **Fine-grained**, with write access to `Dramatizer/Results_Data` only. Log in with it in the project's
+   environment, and answer `n` to the git credential question:
+
+   ```bash
+   E:/envs/dramatizer/Scripts/hf.exe auth login
    ```
 
-Everything in [section 2](#2-from-python-the-same-as-an-api-request) then works unchanged:
-`connect()`, the same questions, and the same answers. Reading needs no extra package.
-
-**To read one exact copy,** for example the one a reported number came from, add its commit id:
-`hf://datasets/Dramatizer/Results_Data@<commit id>`. The dataset's "Files and versions" tab
-lists every publish with its stamps.
-
-**From any language:** the files are at
-`https://huggingface.co/datasets/Dramatizer/Results_Data/resolve/main/<file>`, with the header
-`Authorization: Bearer <your read token>`.
+   It is saved on this PC; never commit or share it.
 
 ### Who gets access
 
-- **To give access:** invite the person to the organisation with the read role.
+- **Researchers and admins:** yes. The copy holds every listener's scores.
+- **A listener who still has piles to rate blind:** no, not until they have finished. Otherwise they could
+  see other listeners' scores.
+- **To give access:** the organisation's Settings > Members > Invite, with the **read** role. Only the host
+  needs **write**.
 - **To take it away:** remove them from the organisation. Their token then stops working for the dataset.
+- **To check who has access:** the organisation's Settings > Members.
 - **Tokens:** each person's token is their own, so nobody shares a secret.
 
 ---
@@ -308,13 +246,11 @@ lists every publish with its stamps.
 
 | What you see | What to do |
 |---|---|
-| `Could not reach https://dramatizer-results.pages.dev` | The address is wrong, the site is not set up yet, or you are offline. |
-| `The site asked for a login` or `answered with a web page instead of data` | Set `DRAMATIZER_ACCESS_ID` and `DRAMATIZER_ACCESS_SECRET`, and open a new terminal. |
-| `The site refused the service token (401/403)` | The token was revoked or expired, or is not in the policy. Ask the host. |
+| `Hugging Face would not give … (HTTP 401/403/404)` | You are not logged in (`hf auth login`) and `DRAMATIZER_HF_TOKEN` is not set, the token was deleted, or you are not (yet) in the organisation. A private dataset says "not found" to anyone without access. |
+| The dataset page says 404 in the browser | Log in at huggingface.co with the account that is in the organisation. |
+| `Could not reach https://huggingface.co/…` | You are offline, or Hugging Face is down. |
 | `… does not match the manifest` | The host is uploading right now, or an upload broke. Wait a minute and try again. |
 | `… is answered by the live API only` | That question needs the host's PC; use `API_REQUEST.py` while the API runs. |
-| `Hugging Face would not give … (HTTP 401/403/404)` | The dataset name is wrong, `DRAMATIZER_HF_TOKEN` is not set, or you are not (yet) in the organisation. A private dataset says "not found" to anyone without access. |
 | `Not uploaded: … is PUBLIC` (host) | Make the dataset private: its Settings > Change visibility. Then publish again. |
-| `No dataset … that this token can see` (host) | Create the dataset first, and log in with a write token (`hf auth login`). |
-| The email code never arrives | Check your spam folder. Your email may not be in the policy: ask the host. |
+| `No dataset … that this token can see` (host) | Log in with a write token for `Dramatizer/Results_Data` (`hf auth login`). |
 | `publish-results` says `Not published, the bundle holds what it must not` | It lists each file and what it found. Fix the cause; the draft is in `results_site.new` to look at. Never publish around the check. |

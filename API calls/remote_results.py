@@ -1,8 +1,9 @@
 """remote_results.py | The same questions as API_REQUEST.py, answered from the hosted copy of the results, so
 nobody's PC has to run the API.
 
-The host publishes the results (no audio) with `python main_backend.py publish-results` to a team-only site
-behind Cloudflare Access ("Access remote server.md"). This file downloads that copy once and answers the
+The host publishes the results (no audio) with `python main_backend.py publish-results --hf Dramatizer/Results_Data`
+to a private Hugging Face dataset, https://huggingface.co/datasets/Dramatizer/Results_Data ("Access remote
+server.md"). This file downloads that copy once and answers the
 evidence questions from it with the same code the API uses (backend/evidence_views.py), so an answer here is
 the same as the API's for the same data. Every answer names its data: snapshot_id, ratings_up_to and
 data_revision.
@@ -18,14 +19,12 @@ From the command line, as API_REQUEST.py:
     python remote_results.py query_scores '{"group_by": "listener"}'
     python remote_results.py manifest                     # which data the hosted copy holds
 
-Where and who (environment variables):
-    DRAMATIZER_RESULTS_URL        https://dramatizer-results.pages.dev, or a local folder of the copy
-    DRAMATIZER_ACCESS_ID          a Cloudflare Access service token's Client ID      (for the hosted site)
-    DRAMATIZER_ACCESS_SECRET      and its Client Secret
-or, for a private Hugging Face dataset:
-    DRAMATIZER_RESULTS_URL        hf://datasets/OWNER/NAME   (add @REVISION to read one published copy)
-    DRAMATIZER_HF_TOKEN           your own Hugging Face read token (HF_TOKEN, or a login saved by
-                                  `hf auth login`, work too)
+Where and who (environment variables, all optional):
+    DRAMATIZER_RESULTS_URL        default hf://datasets/Dramatizer/Results_Data (add @COMMIT to read one
+                                  published copy), or a local folder of the copy
+    DRAMATIZER_HF_TOKEN           your own Hugging Face read token; HF_TOKEN, or a login saved by
+                                  `hf auth login`, work too
+    DRAMATIZER_ACCESS_ID / _SECRET  a Cloudflare Access service token, only for a copy hosted on Cloudflare
 
 Answered from the copy: evidence_status, query_scores, evidence_question, search_evidence, answer_evidence,
 baseline_results, milestone2_results and about_dramatizer. The rest (searches, piles, renders, voices) need
@@ -48,7 +47,7 @@ from API_REQUEST import ApiError, Results  # noqa: E402
 
 from backend import evidence_views as views  # noqa: E402
 
-DEFAULT_URL = "https://dramatizer-results.pages.dev"
+DEFAULT_URL = "hf://datasets/Dramatizer/Results_Data"     # the team's private Hugging Face dataset
 LIVE_ONLY = "This is answered by the live API only; the hosted copy holds the evidence and the measured results."
 
 

@@ -25,8 +25,14 @@ whole day. Each genome is compared with the same listener's score for the plain 
 voice ("above plain"), as stored with the score.
 
 The charts are JPEG files in OUTPUT_DIR/evidence charts/<the range>/, with comments.txt (each
-chart's question, what it shows and what to keep in mind) and summary.json (the same, as data).
-A chart without data in the range is skipped, and the reason is written down instead.
+chart's question, what it shows and what to keep in mind) and summary.json (the same, as data,
+with the exact numbers behind each chart). A question without data of its own in the range gets
+no chart ("No data"), and the reason is written down instead.
+
+The text under each chart is written by Gemma 4: after the charts, this runs
+"API calls/chart_captions.py" in the LLM environment (CHATBOT_PYTHON), which gives Gemma each
+chart's question, dates, numbers and how it is drawn, plus look-up tools, and keeps its text in
+captions.json. --no-captions skips that step.
 """
 import argparse
 import json
@@ -208,7 +214,13 @@ def chart_best_per_voice(plt, data):
                 if alone else "Each genome had at least two listeners."))
     note = ("Right of the line: better than the plain line. A winner per voice, with its rule, is in the evidence "
             f"snapshot (GET /evidence/snapshot). Data: {_span(data)}.")
-    return (fig, claim, note), None
+    numbers = {"voices": len(voices), "voices_with_a_genome_above_plain": better, "voices_with_a_tie_for_first": tied,
+               "genomes": len(above), "genomes_scored_by_one_listener_only": alone,
+               "per_voice": [{"voice": v, "best_above_plain": round(best[v], 2),
+                              "genomes_scored": sum(1 for w, _ in mean if w == v),
+                              "top_genomes": [{"genome": n, "listeners": len(above[(w, n)])}
+                                              for (w, n), x in mean.items() if w == v and x == best[v]]} for v in voices]}
+    return (fig, claim, note, numbers), None
 
 
 def _bars(ax, rows, xlabel, overall):
@@ -229,29 +241,27 @@ def _bars(ax, rows, xlabel, overall):
 def chart_artifacts(plt, data):
     genomes, sanity = data["genomes"], data["sanity"]
     answered = [g for g in genomes if g["artifact"] is not None]
-    if not answered and not sanity:
-        return None, "no artifact answers and no sanity checks in this range"
-    panels = (["listeners"] if answered else []) + (["sanity"] if sanity else [])     # only the panels with data
+    # The question is what listeners hear. The sanity check alone is a measured fault, not an answer, so without
+    # any listener's artifact answer there is no chart (the page shows "No data").
+    if not answered:
+        return None, (f"no listener answered the artifact question in this range ({len(genomes)} genome scores, "
+                      f"{len(sanity)} sanity checks)")
+    panels = ["listeners"] + (["sanity"] if sanity else [])                         # the sanity check only beside answers
     fig, axes = plt.subplots(1, len(panels), figsize=(6.2 * len(panels) + 1, 6.4), squeeze=False)
     fig.subplots_adjust(wspace=0.75)
     ax = dict(zip(panels, axes[0]))
     heard = sum(g["artifact"] for g in answered)
-    if answered:
-        ax["listeners"].set_title("Listeners: artifact heard", loc="left", color=INK, fontsize=10.5)
-        rows = [(t, sum(g["artifact"] for g in items), len(items)) for t, items in per_gene_type(answered).items()]
-        _bars(ax["listeners"], rows, "Share of answered genomes with this gene type", pct(heard, len(answered)))
+    ax["listeners"].set_title("Listeners: artifact heard", loc="left", color=INK, fontsize=10.5)
+    heard_rows = [(t, sum(g["artifact"] for g in items), len(items)) for t, items in per_gene_type(answered).items()]
+    _bars(ax["listeners"], heard_rows, "Share of answered genomes with this gene type", pct(heard, len(answered)))
     failed = sum(x["verdict"] == "failed" for x in sanity)
+    rows = []
     if sanity:
         ax["sanity"].set_title(f"Sanity check: failed ({data['sanity_label']})", loc="left", color=INK, fontsize=10.5)
         rows = [(t, sum(x["verdict"] == "failed" for x in items), len(items)) for t, items in per_gene_type(sanity).items()]
         _bars(ax["sanity"], rows, "Share of checked genomes with this gene type", pct(failed, len(sanity)))
         worst = max(rows, key=lambda r: r[1] / r[2])
-    parts = []
-    if answered:
-        parts.append(f"Listeners heard an artifact in {heard} of {len(answered)} genomes they answered for ({pct(heard, len(answered))}%).")
-    else:
-        parts.append(f"No listener answered the artifact question in this range ({len(genomes)} genome scores), so the "
-                     "chart shows only the sanity check.")
+    parts = [f"Listeners heard an artifact in {heard} of {len(answered)} genomes they answered for ({pct(heard, len(answered))}%)."]
     if not sanity:
         parts.append("No sanity check was made in this range, so the chart shows only what listeners heard.")
     else:
@@ -260,7 +270,14 @@ def chart_artifacts(plt, data):
     note = ("Dashed lines: all genomes. A genome counts once for each of its gene types. Grey bars: fewer than "
             f"{FEW} genomes. A failed sanity check is a measured fault, not what a listener heard. "
             f"Data: {_span(data)}; {len(sanity)} sanity checks.")
-    return (fig, " ".join(parts), note), None
+    numbers = {"genomes_answered": len(answered), "artifact_heard": heard, "artifact_heard_pct": pct(heard, len(answered)),
+               "listeners_by_gene_type": [{"gene_type": t, "artifact_heard": h, "answered": n, "pct": pct(h, n)}
+                                          for t, h, n in sorted(heard_rows)],
+               "sanity_check": {"checked": len(sanity), "failed": failed, "failed_pct": pct(failed, len(sanity)),
+                                "source": data["sanity_label"], "measured_not_heard": True,
+                                "by_gene_type": [{"gene_type": t, "failed": f, "checked": n, "pct": pct(f, n)}
+                                                 for t, f, n in sorted(rows)]} if sanity else None}
+    return (fig, " ".join(parts), note, numbers), None
 
 
 def chart_bad_mos(plt, data):
@@ -292,7 +309,12 @@ def chart_bad_mos(plt, data):
     note = ("Marked ✕: below average for every listener who heard it. Left of the line: below that listener's average. "
             f"Comparing each listener with their own average removes their scale (average genome score: {scales}). "
             f"Whole configurations can't be judged: each was scored once. Data: {_span(data)}.")
-    return (fig, claim, note), None
+    numbers = {"listener_average_genome_score": {n: round(average[n], 2) for n in names},
+               "gene_types": [{"gene_type": t, "below_every_listener": t in all_below,
+                               "score_minus_listener_average": {n: round(gap[(t, n)], 2) for n in names if (t, n) in gap}}
+                              for t in types],
+               "below_every_listener": all_below}
+    return (fig, claim, note, numbers), None
 
 
 def chart_consistently_good(plt, data):
@@ -322,7 +344,13 @@ def chart_consistently_good(plt, data):
             f"all genomes together, and at least {MIN_GENOMES} genomes. "
             f"Dashed line: all genomes ({overall}% better than their plain line). Whole configurations can't be judged: "
             f"each was scored once, so this is by gene type. Data: {_span(data)}.")
-    return (fig, claim, note), None
+    numbers = {"all_genomes_better_than_plain_pct": overall,
+               "rule": f"consistent = above every listener's average, better than plain more often than all genomes, "
+                       f"and at least {MIN_GENOMES} genomes",
+               "gene_types": [{k: r[k] for k in ("gene_type", "genomes", "better", "better_pct", "listeners",
+                                                 "below_average", "consistent")} for r in reversed(rows)],
+               "consistent": good}
+    return (fig, claim, note, numbers), None
 
 
 def chart_feature_count(plt, data):
@@ -350,7 +378,10 @@ def chart_feature_count(plt, data):
     note = (f"Grey bars: fewer than {FEW} genomes, too few to trust. "
             + (f"Bars with enough genomes: {', '.join(map(str, trusted))} features. " if trusted else "")
             + f"Nothing above {max(ns)} features was scored in this range. Data: {_span(data)}.")
-    return (fig, claim, note), None
+    numbers = {"too_few_to_trust_below": FEW,
+               "by_features": [{"features": k, "better_than_plain": share[k][0], "genomes": share[k][1],
+                                "pct": pct(*share[k]), "enough_genomes": share[k][1] >= FEW} for k in ns]}
+    return (fig, claim, note, numbers), None
 
 
 def chart_exclude(plt, data):
@@ -426,7 +457,15 @@ def chart_exclude(plt, data):
             + (f", {failed_all}% failed the sanity check" if failed_all is not None else "") + "). Sanity failure is shown, "
             "not used in the rule. A lower chance rather than removal, because each clip had one listener. "
             f"Data: {_span(data)}; {len(data['sanity'])} sanity checks.")
-    return (fig, claim, note), None
+    numbers = {"rule": {"lower_chance": f"below the average of every listener who heard it and better than plain in "
+                                        f"under {LOWER_BELOW}% of its genomes",
+                        "keep": f"below no listener's average and better than plain in at least {KEEP_AT_LEAST}%",
+                        "sanity_check": "shown, not used in the rule"},
+               "all_genomes_better_than_plain_pct": overall_better, "all_genomes_sanity_failed_pct": failed_all,
+               "gene_types": [{k: r[k] for k in ("gene_type", "genomes", "better_pct", "listeners", "below_average",
+                                                 "sanity_checked", "sanity_failed_pct", "suggestion")} for r in order],
+               "lower_chance": down, "keep": keep}
+    return (fig, claim, note, numbers), None
 
 
 QUESTIONS = [
@@ -447,11 +486,63 @@ def folder_name(start, end):
     return f"{short(start) if start else 'start'} to {short(end) if end else 'now'}"
 
 
+# ---- the text under each chart: written by Gemma 4 ("API calls/chart_captions.py") -----------------
+# Each drawn chart keeps "numbers" (the exact numbers behind it, given to Gemma) and "numbers_id" (a fingerprint
+# of the question, the dates and those numbers). Gemma's text is kept in captions.json beside the charts, under
+# the chart's number with the numbers_id it was written for: a chart made again from the same numbers keeps its
+# text, and new numbers (a new cycle of scores) need a new text. "claim" stays the rule-based sentence that
+# the API's evidence_question and the chatbot eval use; the Graphs page shows Gemma's caption instead.
+
+CAPTIONS = "captions.json"
+
+
+def numbers_id(question, start, end, numbers):
+    import hashlib
+    blob = json.dumps({"q": question, "from": start, "to": end, "n": numbers}, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:16]
+
+
+def read_captions(folder):
+    try:
+        return json.loads((Path(folder) / CAPTIONS).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def attach_captions(summary, folder):
+    """Put each chart's Gemma caption into the summary when it was written for these exact numbers."""
+    saved = read_captions(folder)
+    for c in summary["charts"]:
+        cap = saved.get(c["number"])
+        c.pop("caption", None)
+        if cap and "numbers_id" in c and cap.get("numbers_id") == c["numbers_id"]:
+            c["caption"] = {k: cap[k] for k in ("text", "model", "made", "tools", "facts", "unverified_numbers") if k in cap}
+    return summary
+
+
+def write_comments(summary, folder):
+    data = summary
+    with open(Path(folder) / "comments.txt", "w", encoding="utf-8") as f:
+        f.write(f"Scores given from {data['range']['from'] or 'the first score'} to {data['range']['to'] or 'now'}: "
+                f"{data['genome_scores']} genome scores, {data['sanity_checks']} sanity checks.\n\n")
+        for c in data["charts"]:
+            f.write(f"{c['number']}. {c['question']}\n")
+            if "skipped" in c:
+                f.write(f"No data: {c['skipped']}.\n\n")
+                continue
+            if c.get("caption"):
+                f.write(f"Gemma ({c['caption'].get('model')}, {c['caption'].get('made')}): {c['caption']['text']}\n")
+            else:
+                f.write("Gemma has not written the text for these numbers yet.\n")
+            f.write(f"Rule-based summary: {c['claim']}\nHow to read it: {c['note']}\n\n")
+
+
 def make_charts(start=None, end=None, out_dir=None, records=None):
     """Draw the six charts for the scores given between start and end (text dates, either may be None).
 
     Returns {"range", "folder", "genome_scores", "sanity_checks", "charts": [{"number", "question", "file",
-    "claim", "note"} or {"number", "question", "skipped"}]}. records: the corpus (default: built from its sources).
+    "claim", "note", "numbers", "numbers_id", "caption"?} or {"number", "question", "skipped"}]}.
+    records: the corpus (default: built from its sources).
     """
     start, end = parse_when(start), parse_when(end, end=True)
     if start and end and start > end:
@@ -468,21 +559,20 @@ def make_charts(start=None, end=None, out_dir=None, records=None):
         made, why = draw(plt, data)
         if made is None:
             charts.append({"number": number, "question": question, "skipped": why})
+            (folder / name).unlink(missing_ok=True)              # no stale chart from an earlier run left beside "No data"
             continue
-        fig, claim, note = made
+        fig, claim, note, numbers = made
         path = folder / name
         fig.savefig(path, dpi=200, format="jpeg", pil_kwargs={"quality": 92}, bbox_inches="tight", pad_inches=0.25)
         plt.close(fig)
-        charts.append({"number": number, "question": question, "file": str(path), "claim": claim, "note": note})
+        charts.append({"number": number, "question": question, "file": str(path), "claim": claim, "note": note,
+                       "numbers": numbers, "numbers_id": numbers_id(question, start, end, numbers)})
     summary = {"made": datetime.now().strftime(FORMATS[0]), "range": {"from": start, "to": end}, "folder": str(folder),
                "genome_scores": len(data["genomes"]), "sanity_checks": len(data["sanity"]),
+               "listeners": len({g["listener"] for g in data["genomes"]}),
                "sanity_source": data["sanity_label"], "charts": charts}
-    with open(folder / "comments.txt", "w", encoding="utf-8") as f:
-        f.write(f"Scores given from {start or 'the first score'} to {end or 'now'}: {len(data['genomes'])} genome scores, "
-                f"{len(data['sanity'])} sanity checks.\n\n")
-        for c in charts:
-            f.write(f"{c['number']}. {c['question']}\n")
-            f.write(f"Skipped: {c['skipped']}.\n\n" if "skipped" in c else f"{c['claim']}\n{c['note']}\n\n")
+    attach_captions(summary, folder)
+    write_comments(summary, folder)
     safe_files.write_json(folder / "summary.json", summary)
     return summary
 
@@ -492,6 +582,8 @@ def main(argv=None):
     parser.add_argument("--from", dest="start", metavar="WHEN", help="first date (YYYY-MM-DD or 'YYYY-MM-DD HH:MM')")
     parser.add_argument("--to", dest="end", metavar="WHEN", help="last date; a date alone takes the whole day")
     parser.add_argument("--out", help=f"folder for the charts (default: {CHARTS_DIR}/<the range>)")
+    parser.add_argument("--no-captions", action="store_true",
+                        help="do not have Gemma 4 write the text under each chart (it runs after the charts by default)")
     args = parser.parse_args(argv)
     try:
         summary = make_charts(args.start, args.end, args.out)
@@ -501,8 +593,29 @@ def main(argv=None):
     print(f"From {r['from'] or 'the first score'} to {r['to'] or 'now'}: {summary['genome_scores']} genome scores, "
           f"{summary['sanity_checks']} sanity checks")
     for c in summary["charts"]:
-        print(f"  {c['number']}. {c['question']}\n     " + (f"skipped: {c['skipped']}" if "skipped" in c else c["file"]))
+        print(f"  {c['number']}. {c['question']}\n     " + (f"no data: {c['skipped']}" if "skipped" in c else c["file"]))
     print(f"Comments: {Path(summary['folder']) / 'comments.txt'}")
+    if not args.no_captions:
+        write_captions_with_gemma(summary["folder"])
+
+
+def write_captions_with_gemma(folder):
+    """Run "API calls/chart_captions.py" in the LLM environment (CHATBOT_PYTHON) so Gemma 4 writes each chart's text."""
+    import subprocess
+    try:
+        python = model.setting("CHATBOT_PYTHON")
+    except KeyError:
+        python = ""
+    script = model.PROJECT_DIR / "API calls" / "chart_captions.py"
+    if not python:
+        print("Gemma did not write the chart texts: set CHATBOT_PYTHON in .env (the LLM environment), then run\n"
+              f'  <CHATBOT_PYTHON> "{script}" --folder "{folder}"')
+        return
+    print("Gemma 4 is writing the text under each chart (loading the model takes about two minutes)...")
+    done = subprocess.run([python, str(script), "--folder", str(folder)], cwd=str(script.parent))
+    if done.returncode:
+        print(f"Gemma could not write the chart texts (exit {done.returncode}). Run it again with:\n"
+              f'  {python} "{script}" --folder "{folder}"')
 
 
 if __name__ == "__main__":

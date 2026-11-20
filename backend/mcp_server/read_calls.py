@@ -3,7 +3,7 @@
 Builded: plain Python first, with its own checks and tests, before any MCP
 or model. Each function makes one GET to the API with the person's own token and returns what the API
 answers. The API keeps the last word on who may see what, so nothing here decides permissions.
-Later these move into api_calls.py, replacing its stubs.
+These replace the stubs once planned in api_calls.py (removed), as ROADMAP 7.1 asked.
 """
 import os
 import re
@@ -88,8 +88,18 @@ def renders(session, query=None, mine=False, page=1):
     return _get(session, "renders", q=query, mine="1" if mine else None, page=_whole(page, 1, 10**6, "page"))
 
 
+GROUP_SORTS = ("mean", "mean_above_plain", "count", "beat_plain")      # sorts of groups, not of single rows
+
+
 def query_scores(session, **filters):
-    """Listeners' scores, filtered, sorted or grouped. A listener gets only their own; the API decides."""
+    """Listeners' scores, filtered, sorted or grouped. A listener gets only their own; the API decides.
+    A group sort (mean, count, beat_plain...) without group_by is refused here: the API would quietly sort the rows
+    by score instead, and a "how often" or "on average" question would get single scores and no summary."""
+    sort = filters.get("sort")
+    if sort in GROUP_SORTS and not filters.get("group_by"):
+        raise CallError(f"sort {sort!r} sorts groups: add group_by (listener, voice, dataset, gene_type, genes, "
+                        f"verdict, genome or pile). For one dataset, voice or gene type, filter by it and group_by "
+                        f"that same field, e.g. dataset='VCTK', group_by='dataset', sort='{sort}'.")
     return _get(session, "evidence/scores", **filters)
 
 

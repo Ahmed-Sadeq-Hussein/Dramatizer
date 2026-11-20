@@ -103,6 +103,33 @@ class Drawing(unittest.TestCase):
             summary = ec.make_charts("2030-01-01", "2030-01-02", out_dir=folder, records=corpus())
             self.assertTrue(all("skipped" in c for c in summary["charts"]))
 
+    def test_no_artifact_answers_means_no_artifact_chart(self):
+        """Sanity checks alone are not listeners' answers: question 2 is skipped (the page shows "No data")."""
+        records = [r for r in corpus() if not (r["kind"] == "clip" and r["fields"]["artifact"] is not None)]
+        with tempfile.TemporaryDirectory() as folder:
+            summary = ec.make_charts(out_dir=folder, records=records)
+            q2 = next(c for c in summary["charts"] if c["number"] == "2")
+            self.assertIn("skipped", q2)
+            self.assertIn("no listener answered the artifact question", q2["skipped"])
+            self.assertIn("file", next(c for c in summary["charts"] if c["number"] == "1"))   # the others still draw
+
+    def test_each_chart_keeps_its_numbers_and_a_caption_only_fits_those_numbers(self):
+        with tempfile.TemporaryDirectory() as folder:
+            summary = ec.make_charts(out_dir=folder, records=corpus())
+            q5 = next(c for c in summary["charts"] if c["number"] == "5")
+            self.assertEqual([(b["features"], b["genomes"]) for b in q5["numbers"]["by_features"]], [(1, 24), (2, 12)])
+            self.assertTrue(all("numbers" in c and c["numbers_id"] for c in summary["charts"]))
+            (Path(folder) / ec.CAPTIONS).write_text(json.dumps({
+                "5": {"numbers_id": q5["numbers_id"], "text": "Gemma's reading.", "model": "gemma-4-E4B-it", "made": "x"},
+                "1": {"numbers_id": "from-an-older-cycle", "text": "Stale.", "model": "m", "made": "x"}}), encoding="utf-8")
+            again = ec.make_charts(out_dir=folder, records=corpus())          # same numbers: the caption is kept
+            by = {c["number"]: c for c in again["charts"]}
+            self.assertEqual(by["5"]["caption"]["text"], "Gemma's reading.")
+            self.assertNotIn("caption", by["1"])                              # written for other numbers: not shown
+            self.assertIn("Gemma (gemma-4-E4B-it", (Path(folder) / "comments.txt").read_text(encoding="utf-8"))
+            fewer = ec.make_charts(out_dir=folder, records=[r for r in corpus() if r["fields"].get("listener") != "Ash"])
+            self.assertNotIn("caption", next(c for c in fewer["charts"] if c["number"] == "5"))   # new numbers: new text
+
     def test_a_backwards_range_is_refused(self):
         with self.assertRaises(ValueError):
             ec.make_charts("2026-11-12", "2026-11-11", out_dir=tempfile.gettempdir(), records=corpus())

@@ -276,3 +276,27 @@ label.check { display: flex; align-items: center; gap: 6px; align-self: center; 
 .own-score { gap: 2px; align-items: center; }
 .own-score .star { font-size: 1.25em; padding: 2px 6px; color: var(--muted, #888); }
 .own-score .star.on { color: #e0a800; }
+
+/* The voice's original recording at the top of each voice on the Rate page: heard first, not scored */
+.reference { margin: 12px 0; padding: 10px 12px; border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+  border-radius: 6px; background: var(--surface); display: grid; gap: 6px; }
+.reference p { margin: 0; }
+.reference audio { width: 100%; max-width: 520px; }
+.reference-note { color: var(--accent); font-weight: 600; }
+.reference-note.heard { color: var(--fine); }
+.reference.missing { border-left-color: var(--rule); }
+.artifact + .artifact { margin-top: 4px; }
+
+/* Graphs: the six questions' charts */
+.graphs-stamp { margin: 8px 0 16px; }
+.graphs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+.graph { margin: 0; padding: 12px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface);
+  display: grid; gap: 8px; align-content: start; min-width: 0; }
+.graph img { width: 100%; height: auto; border-radius: 4px; background: #fff; display: block; }
+.graph p { margin: 0; }
+.graph .no-data { display: grid; place-items: center; gap: 4px; min-height: 180px; padding: 16px; text-align: center;
+  border: 1px dashed var(--rule); border-radius: 4px; }
+.graph .no-data strong { font-size: 1.15rem; }
+.graph .caption { display: grid; gap: 4px; }
+.graph details summary { cursor: pointer; }
+.graph ul.facts { margin: 4px 0 0; padding-left: 18px; overflow-wrap: anywhere; }

@@ -127,6 +127,10 @@ MIGRATIONS = [
     CREATE TRIGGER rating_log_is_append_only_d BEFORE DELETE ON rating_log
         BEGIN SELECT RAISE(ABORT, 'the rating log is append-only'); END;
     """,
+    # 2: whether the listener heard a different person than the voice's original recording (NULL: not asked)
+    """
+    ALTER TABLE ratings ADD COLUMN different INTEGER CHECK (different IN (0, 1));
+    """,
 ]
 SCHEMA_VERSION = len(MIGRATIONS)
 
@@ -310,11 +314,13 @@ def migrate(path=None, rating_folders=None, legacy=None, rename=True, backup_fol
 
 def _comparable(doc):
     """A ratings document without the fields that only differ in form (int/float, a missing empty dict)."""
-    given = {r: {c: {k: (float(v) if k == "score" else v) for k, v in d.items() if k != "artifact" or v is not None}
+    given = {r: {c: {k: (float(v) if k == "score" else v) for k, v in d.items()
+                     if k not in ("artifact", "different") or v is not None}
                  for c, d in clips.items()} for r, clips in doc.get("given", {}).items()}
     return {"raters": doc["raters"], "picked": doc["picked"], "updated": doc["updated"],
             "scores": {r: {c: float(s) for c, s in clips.items()} for r, clips in doc["scores"].items()},
-            "artifacts": {r: dict(c) for r, c in doc.get("artifacts", {}).items() if c}, "given": given}
+            "artifacts": {r: dict(c) for r, c in doc.get("artifacts", {}).items() if c},
+            "different": {r: dict(c) for r, c in doc.get("different", {}).items() if c}, "given": given}
 
 
 def _rating_folders():

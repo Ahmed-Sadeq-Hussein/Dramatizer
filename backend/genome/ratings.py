@@ -45,8 +45,11 @@ Where it is stored (all under .gitignore: listener ratings are personal data):
 """
 import argparse
 import csv
+import hashlib
+import hmac
 import json
 import re
+import secrets
 from datetime import datetime
 from pathlib import Path
 
@@ -86,14 +89,18 @@ def _from_db(db, run):
     doc = {"schema_version": SCHEMA_VERSION, "run": run, "scale": [LOWEST, HIGHEST],
            "raters": json.loads(head["raters"]), "scores": {}, "picked": json.loads(head["picked"]),
            "updated": head["updated"], "given": {}, "artifacts": {}}
+    doc["different"] = {}
     for r in db.execute("SELECT * FROM ratings WHERE run = ? ORDER BY rowid", (run,)):
         artifact = None if r["artifact"] is None else bool(r["artifact"])
+        different = None if r["different"] is None else bool(r["different"])
         doc["scores"].setdefault(r["rater"], {})[r["clip"]] = r["score"]
         doc["given"].setdefault(r["rater"], {})[r["clip"]] = {
             "first_given": r["first_given"], "changes": r["changes"], "score": r["score"], "time": r["time"],
-            "account": r["account"], "submitted_by": r["submitted_by"], "artifact": artifact}
+            "account": r["account"], "submitted_by": r["submitted_by"], "artifact": artifact, "different": different}
         if artifact is not None:
             doc["artifacts"].setdefault(r["rater"], {})[r["clip"]] = artifact
+        if different is not None:
+            doc["different"].setdefault(r["rater"], {})[r["clip"]] = different
     return doc
 
 
@@ -105,17 +112,20 @@ def _store(db, run_dir, ratings):
                "picked = excluded.picked, updated = excluded.updated",
                (run, str(run_dir), json.dumps(ratings.get("raters", []), ensure_ascii=False),
                 json.dumps(ratings.get("picked", []), ensure_ascii=False), ratings.get("updated")))
-    given, said = ratings.get("given", {}), ratings.get("artifacts", {})
+    given, said, other = ratings.get("given", {}), ratings.get("artifacts", {}), ratings.get("different", {})
     for rater, clips in ratings.get("scores", {}).items():
         for clip, score in clips.items():
             d = given.get(rater, {}).get(clip, {})
             artifact = said.get(rater, {}).get(clip, d.get("artifact"))
-            db.execute("INSERT INTO ratings (run, rater, clip, score, artifact, first_given, time, changes, account, "
-                       "submitted_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (run, rater, clip) DO UPDATE SET "
-                       "score = excluded.score, artifact = excluded.artifact, first_given = excluded.first_given, "
+            different = other.get(rater, {}).get(clip, d.get("different"))
+            db.execute("INSERT INTO ratings (run, rater, clip, score, artifact, different, first_given, time, changes, "
+                       "account, submitted_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (run, rater, clip) "
+                       "DO UPDATE SET score = excluded.score, artifact = excluded.artifact, "
+                       "different = excluded.different, first_given = excluded.first_given, "
                        "time = excluded.time, changes = excluded.changes, account = excluded.account, "
                        "submitted_by = excluded.submitted_by",
-                       (run, rater, clip, score, None if artifact is None else int(artifact), d.get("first_given"),
+                       (run, rater, clip, score, None if artifact is None else int(artifact),
+                        None if different is None else int(different), d.get("first_given"),
                         d.get("time"), d.get("changes", 0), d.get("account"), d.get("submitted_by")))
 
 
@@ -137,6 +147,67 @@ def _copy_to_folder(run_dir, ratings):
 def clip_key(number):
     """The key of a genome's clip: 1 -> "genome_01"."""
     return f"genome_{int(number):02d}"
+
+
+# ---------------------------------------------------------------- blind clips --
+# The Rate page names every clip of a pile by a token, never "baseline" or "genome_NN", and shows them in a
+# shuffled order, so a listener cannot tell the plain line from the genomes: they are all scored the same way.
+# A token is an HMAC of the run and clip under a secret kept in the database, so it cannot be worked back.
+TOKEN = re.compile(r"^[0-9a-f]{12}$")
+_secrets = {}
+
+
+def _blind_secret():
+    key = str(storage.DB_PATH)
+    if key not in _secrets:
+        with storage.connect() as db:
+            secret = storage.get_meta(db, "blind_clip_secret")
+        if not secret:
+            with storage.connect(write=True) as db:
+                secret = storage.get_meta(db, "blind_clip_secret")
+                if not secret:
+                    secret = secrets.token_hex(32)
+                    storage.set_meta(db, "blind_clip_secret", secret)
+        _secrets[key] = secret.encode()
+    return _secrets[key]
+
+
+def _mac(text):
+    return hmac.new(_blind_secret(), text.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def clip_token(run_id, clip):
+    """The blind name of a clip ("baseline" or "genome_NN") of a run: 12 hex characters."""
+    return _mac(f"clip/{run_id}/{clip}")[:12]
+
+
+def rendered_clips(run):
+    """The clips of a run that have audio: "baseline" (if rendered) and "genome_NN"."""
+    out = ["baseline"] if run["baseline"].get("audio") else []
+    return out + [clip_key(g["number"]) for g in run["genomes"] if g.get("audio")]
+
+
+def real_clip(run, name):
+    """ "baseline", "genome_NN", or a blind token of this run -> the clip's real key."""
+    name = str(name)
+    if CLIP.match(name):
+        return name
+    if TOKEN.match(name):
+        for clip in rendered_clips(run):
+            if clip_token(run["id"], clip) == name:
+                return clip
+    raise ValueError(f"No rendered clip {name!r} in this run.")
+
+
+def blind_order(run_id, rater, clips):
+    """The clips in the order one listener hears them: shuffled, the same each time they open the pile."""
+    return sorted(clips, key=lambda clip: _mac(f"order/{rater}/{run_id}/{clip}"))
+
+
+def reference_path(run):
+    """The voice's original recording that the run was cloned from, if it is on this PC."""
+    path = run.get("reference_audio")
+    return Path(path) if path and Path(path).is_file() else None
 
 
 def clean_rater(name):
@@ -220,13 +291,16 @@ def who_path():
     return Path(storage.DB_PATH).parent / "ratings" / "who_rated_what.csv"
 
 
-def save_scores(run_dir, scores, submitted_by=None, account=None, artifacts=None):
+def save_scores(run_dir, scores, submitted_by=None, account=None, artifacts=None, different=None):
     """
     Save the scores of one or more listeners: {rater: {clip: score}}, clip being
     "baseline" or "genome_NN". A score given again replaces the earlier one.
     artifacts: {rater: {clip: True/False}}, whether that listener heard an
     artifact in the clip; it may come with a score or later, for a clip the
-    listener has already scored. A new or changed score or answer is also
+    listener has already scored. different: {rater: {clip: True/False}}, whether
+    the clip sounded like a different person than the voice's original recording
+    (the reference the Rate page plays first); kept like an artifact answer.
+    Clips may also be named by their blind token (clip_token). A new or changed score or answer is also
     appended to the review log (sending the same again adds nothing). At most
     MAX_RATERS listeners per run.
     submitted_by: who sent them (the API key's owner or the account's name);
@@ -238,21 +312,22 @@ def save_scores(run_dir, scores, submitted_by=None, account=None, artifacts=None
     rendered |= {clip_key(g["number"]) for g in run["genomes"] if g.get("audio")}
 
     def check_clip(clip):
-        if not CLIP.match(str(clip)) or clip not in rendered:
+        clip = real_clip(run, clip)
+        if clip not in rendered:
             raise ValueError(f"No rendered clip {clip!r} in this run.")
+        return clip
 
-    cleaned, heard = {}, {}
+    cleaned, heard, other = {}, {}, {}
     for rater, clips in scores.items():
         rater = clean_rater(rater)
         for clip, value in clips.items():
-            check_clip(clip)
-            cleaned.setdefault(rater, {})[clip] = clean_score(value)
-    for rater, clips in (artifacts or {}).items():
-        rater = clean_rater(rater)
-        for clip, value in clips.items():
-            check_clip(clip)
-            heard.setdefault(rater, {})[clip] = clean_artifact(value)
-    if not cleaned and not heard:
+            cleaned.setdefault(rater, {})[check_clip(clip)] = clean_score(value)
+    for answers, into in ((artifacts, heard), (different, other)):
+        for rater, clips in (answers or {}).items():
+            rater = clean_rater(rater)
+            for clip, value in clips.items():
+                into.setdefault(rater, {})[check_clip(clip)] = clean_artifact(value)
+    if not cleaned and not heard and not other:
         return load(run_dir)
 
     with storage.connect(write=True) as db:            # one writer at a time, also across processes
@@ -264,30 +339,38 @@ def save_scores(run_dir, scores, submitted_by=None, account=None, artifacts=None
         if len(raters) > MAX_RATERS:
             raise ValueError(f"At most {MAX_RATERS} listeners can rate one run; it already has "
                              f"{', '.join(ratings['raters'])}.")
-        for rater, clips in heard.items():
+        for rater, clips in list(heard.items()) + list(other.items()):
             for clip in clips:
                 if clip not in cleaned.get(rater, {}) and clip not in ratings["scores"].get(rater, {}):
-                    raise ValueError(f"Score {clip} first: an artifact answer is kept with a score.")
+                    raise ValueError(f"Score {clip} first: an answer is kept with a score.")
         ratings["raters"] = raters
         time = _now()
         log = []
         genomes = {clip_key(g["number"]): g for g in run["genomes"]}
         given = ratings.setdefault("given", {})
         answers = ratings.setdefault("artifacts", {})
-        for rater in dict.fromkeys(list(cleaned) + list(heard)):
+        persons = ratings.setdefault("different", {})
+        for rater in dict.fromkeys(list(cleaned) + list(heard) + list(other)):
             before = ratings["scores"].setdefault(rater, {})
             said = answers.setdefault(rater, {})
-            for clip in dict.fromkeys(list(cleaned.get(rater, {})) + list(heard.get(rater, {}))):
-                previous, previous_artifact = before.get(clip), said.get(clip)
+            told = persons.setdefault(rater, {})
+            for clip in dict.fromkeys(list(cleaned.get(rater, {})) + list(heard.get(rater, {}))
+                                      + list(other.get(rater, {}))):
+                previous, previous_artifact, previous_different = before.get(clip), said.get(clip), told.get(clip)
                 score = cleaned.get(rater, {}).get(clip, previous)
                 artifact = heard.get(rater, {}).get(clip, previous_artifact)
-                if previous == score and previous_artifact == artifact and clip in given.get(rater, {}):
+                differs = other.get(rater, {}).get(clip, previous_different)
+                if (previous == score and previous_artifact == artifact and previous_different == differs
+                        and clip in given.get(rater, {})):
                     continue                       # the page sent it again: nothing changed
                 before[clip] = score
                 if artifact is not None:
                     said[clip] = artifact
+                if differs is not None:
+                    told[clip] = differs
                 detail = given.setdefault(rater, {}).get(clip) or {"first_given": time, "changes": -1}
-                detail.update(score=score, artifact=artifact, time=time, account=account or detail.get("account"),
+                detail.update(score=score, artifact=artifact, different=differs, time=time,
+                              account=account or detail.get("account"),
                               submitted_by=submitted_by, changes=detail["changes"] + 1)
                 given[rater][clip] = detail
                 genome = genomes.get(clip)
@@ -296,6 +379,7 @@ def save_scores(run_dir, scores, submitted_by=None, account=None, artifacts=None
                             "rater": rater, "account": account, "clip": clip,
                             "genome": genome["number"] if genome else None, "score": score, "previous": previous,
                             "artifact": artifact, "previous_artifact": previous_artifact,
+                            "different": differs, "previous_different": previous_different,
                             "markup": genome["markup"] if genome else run["text"],
                             "speed": genome["speed"] if genome else 1.0,
                             "genes": genome["genes"] if genome else [],
@@ -317,6 +401,11 @@ def save_scores(run_dir, scores, submitted_by=None, account=None, artifacts=None
 def artifact_of(ratings, rater, clip):
     """What `rater` said about an artifact in `clip`: True, False, or None (not asked or not answered)."""
     return ratings.get("artifacts", {}).get(rater, {}).get(clip)
+
+
+def different_of(ratings, rater, clip):
+    """Whether `rater` heard a different person than the original recording in `clip`: True, False or None."""
+    return ratings.get("different", {}).get(rater, {}).get(clip)
 
 
 def mos(ratings, clip):
@@ -369,19 +458,26 @@ def ranked(run_dir, run=None, ratings=None):
 # Picking and naming a genome
 # --------------------------------------------------------------------------- #
 
-def collection(runs, rater=None, others=True):
+def collection(runs, rater=None, others=True, blind=False):
     """
     Every rendered clip of several runs (a listening pile, say), for one listener's
     rating page and ranking. `runs` is [(run folder, run dict)].
 
     Returns {"runs": [...], "clips": [...]}. Each run has its id, voice, pile,
-    line, how many clips it has and how many `rater` scored. Each clip has its
-    run, "baseline" or the genome's number, what the genome does, its verdict,
-    `rater`'s score ("mine", or None) and artifact answer ("mine_artifact": True,
-    False or None), the MOS over every listener, and both
-    against the same run's baseline, because a score means most next to the
-    plain render of the same voice and line. others=False (a listener rating
-    blind): no MOS and no other listener's name, only `rater`'s own scores.
+    line, how many clips it has and how many `rater` scored, and whether its
+    original recording can be played ("reference"). Each clip has its run,
+    "baseline" or the genome's number, what the genome does, its verdict,
+    `rater`'s score ("mine", or None), artifact answer ("mine_artifact": True,
+    False or None) and different-person answer ("mine_different"), the MOS over
+    every listener, and both against the same run's baseline, because a score
+    means most next to the plain render of the same voice and line. others=False
+    (a listener rating blind): no MOS and no other listener's name, only `rater`'s
+    own scores.
+
+    blind=True (the Rate page): the plain line is mixed in with the genomes. Every
+    clip is named by its token (clip_token), comes in the listener's own shuffled
+    order with a letter ("A", "B", ...), and says nothing about what it is: no
+    genome number, genes, markup, verdict, MOS or difference from the plain line.
     """
     out_runs, clips = [], []
     for folder, run in runs:
@@ -390,31 +486,52 @@ def collection(runs, rater=None, others=True):
         own_on = ratings.get("given", {}).get(rater, {}) if rater else {}
         if not others:
             ratings = {**ratings, "raters": [rater] if own else [], "scores": {rater: own} if own else {},
-                       "artifacts": {rater: ratings.get("artifacts", {}).get(rater, {})}}
+                       "artifacts": {rater: ratings.get("artifacts", {}).get(rater, {})},
+                       "different": {rater: ratings.get("different", {}).get(rater, {})}}
         base_mos, base_mine = mos(ratings, "baseline"), own.get("baseline")
-        rendered = [("baseline", None)] if run["baseline"].get("audio") else []
-        rendered += [(clip_key(g["number"]), g) for g in run["genomes"] if g.get("audio")]
-        for key, genome in rendered:
-            score, mine = mos(ratings, key), own.get(key)
+        genomes = {clip_key(g["number"]): g for g in run["genomes"]}
+        keys = rendered_clips(run)
+        if blind:
+            keys = blind_order(run["id"], rater, keys)
+        for position, key in enumerate(keys):
+            genome = genomes.get(key)
+            mine = own.get(key)
+            common = {
+                "run": run["id"], "voice": run["voice"], "pile": run.get("pile"), "mine": mine,
+                "mine_artifact": artifact_of(ratings, rater, key) if rater else None,
+                "mine_different": different_of(ratings, rater, key) if rater else None,
+                "mine_on": (own_on.get(key) or {}).get("time") or (ratings.get("updated") if mine is not None else None),
+            }
+            if blind:
+                token = clip_token(run["id"], key)
+                clips.append({**common, "clip": token, "audio": f"{token}.wav", "label": _letter(position)})
+                continue
+            score = mos(ratings, key)
             clips.append({
-                "run": run["id"], "voice": run["voice"], "pile": run.get("pile"), "clip": key,
-                "audio": f"{key}.wav", "genome": genome["number"] if genome else None,
+                **common, "clip": key, "audio": f"{key}.wav", "genome": genome["number"] if genome else None,
                 "described": genome["described"] if genome else ["the line with no genes"],
                 "markup": genome["markup"] if genome else run["text"],
                 "speed": genome["speed"] if genome else 1.0,
                 "verdict": genome["verdict"] if genome else "baseline",
-                "mine": mine,
-                "mine_artifact": artifact_of(ratings, rater, key) if rater else None,
-                "mine_on": (own_on.get(key) or {}).get("time") or (ratings.get("updated") if mine is not None else None),
                 "mine_above_baseline": round(mine - base_mine, 2)
                 if genome and mine is not None and base_mine is not None else None,
                 "mos": score,
                 "mos_above_baseline": round(score["mos"] - base_mos["mos"], 2) if genome and score and base_mos else None,
             })
         out_runs.append({"id": run["id"], "voice": run["voice"], "pile": run.get("pile"), "batch": run.get("batch"),
-                         "text": run["text"], "clips": len(rendered), "mine": sum(1 for k, _ in rendered if k in own),
-                         "raters": ratings["raters"]})
-    return {"runs": out_runs, "clips": clips}
+                         "text": run["text"], "clips": len(keys), "mine": sum(1 for k in keys if k in own),
+                         "reference": reference_path(run) is not None, "raters": ratings["raters"]})
+    return {"runs": out_runs, "clips": clips, "blind_mix": blind}
+
+
+def _letter(position):
+    """0 -> "A", 25 -> "Z", 26 -> "AA"."""
+    out = ""
+    position += 1
+    while position:
+        position, rest = divmod(position - 1, 26)
+        out = chr(65 + rest) + out
+    return out
 
 
 def load_named():
@@ -493,7 +610,7 @@ def read_log():
 
 
 CURRENT_FIELDS = ["rater", "account", "batch", "pile", "voice", "run", "clip", "genome", "score", "artifact",
-                  "above_plain_line", "rated_on", "first_given", "changes", "verdict", "markup", "text"]
+                  "different_person", "above_plain_line", "rated_on", "first_given", "changes", "verdict", "markup", "text"]
 
 
 def current_scores(runs_dir=None):
@@ -520,6 +637,7 @@ def current_scores(runs_dir=None):
                     "voice": run["voice"], "run": run["id"], "clip": clip,
                     "genome": genome["number"] if genome else None, "score": score,
                     "artifact": yes_no(artifact_of(ratings, rater, clip)),
+                    "different_person": yes_no(different_of(ratings, rater, clip)),
                     "above_plain_line": round(score - plain, 2) if genome and plain is not None else None,
                     "rated_on": info.get("time") or ratings.get("updated"), "first_given": info.get("first_given"),
                     "changes": info.get("changes", 0),

@@ -205,8 +205,10 @@ If someone is locked out after wrong passwords, it lifts after 15 minutes, or
   certificate, so nobody in between can read or change the traffic.
 - **The API can only do a fixed list of things.** It cannot run commands or read
   files, and it picks voices by id.
-- **Only validation voices are offered.** The final test speakers and personal
-  custom voices never are.
+- **Only validation voices are offered to everyone.** The final test speakers never are.
+  A personal custom voice (CUSTOM_VOICES) is offered only to its owner's account (the
+  username is the voice's name) and to admins, its renders are hidden from everyone else,
+  and it is never used for genome searches.
 - **One GPU job at a time, in a queue,** with at most 3 waiting per person.
 - **Guessing is slow.** Each wrong login waits a second. An account locks for 15 minutes
   after 5 wrong passwords. Once there are more than 30 wrong logins on the server in

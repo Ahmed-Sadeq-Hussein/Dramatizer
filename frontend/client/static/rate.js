@@ -1,14 +1,27 @@
 // rate.js | The Rate page: one listener scores one listening pile, then checks their ranking.
 // Uses app.js's helpers (call, el, $, toast, state, fmt). Scores are saved as soon as a slider is set,
-// each with the listener's answer to "did you hear an artifact?" (the box under the slider).
+// each with two answers: "did you hear an artifact?" and "did it sound like a different person than the
+// original recording?" (the boxes under the slider).
+//
+// The pile is blind: the plain line is mixed in with the genomes, every clip is named by a token from the
+// host, and each listener hears a voice's clips in their own shuffled order as Clip A, B, C... Nothing on the
+// page says which clip is the plain line. Each voice opens with its original recording, to listen to first.
 "use strict";
 
 const Rate = (() => {
   const r = { piles: null, key: "", data: null, run: 0, view: "rate", pending: {}, timers: {}, player: new Audio(), playing: null };
   const STEPS = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
   const audioUrl = (run, clip) => `${API}/genome/searches/${encodeURIComponent(run)}/audio/${clip}.wav`;
+  const referenceUrl = (run) => `${API}/genome/searches/${encodeURIComponent(run)}/reference.wav`;
   const store = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
   const recall = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  // The two yes/no answers kept with a score: the field the host returns, and the box's text
+  const ANSWERS = {
+    artifact: { mine: "mine_artifact", draft: "draft_artifact", stored: "stored_artifacts", send: "artifacts",
+                label: "I heard an artifact", hint: " (a glitch, click, noise, cut-off or garbled word)", tag: "artifact" },
+    different: { mine: "mine_different", draft: "draft_different", stored: "stored_different", send: "different",
+                 label: "Sounds like a different person", hint: " than the original recording", tag: "different person" },
+  };
 
   // ------------------------------------------------------------ the pile --
   async function open() {
@@ -35,7 +48,7 @@ const Rate = (() => {
     store("rate-pile", r.key);
     const none = !r.key;
     $("rp-empty").hidden = !none;
-    $("rp-empty").textContent = "Choose the pile the host gave you. Each pile has 8 voices, each with the plain line and up to 10 versions.";
+    $("rp-empty").textContent = "Choose the pile the host gave you. Each voice has its original recording and a set of clips to score.";
     $("rp-rate").hidden = none || r.view !== "rate";
     $("rp-rank").hidden = none || r.view !== "rank";
     $("rp-progress").hidden = none;
@@ -44,10 +57,6 @@ const Rate = (() => {
     try {
       r.data = await call("/genome/listening?" + new URLSearchParams({ batch, pile }));
     } catch (error) { toast(error.message, true); return; }
-    // Listeners rate blind: no MOS (it would show the others' scores), only their own
-    const mosOption = $("rk-by").querySelector('option[value="mos"]');
-    mosOption.hidden = mosOption.disabled = !r.data.sees_others;
-    if (!r.data.sees_others && $("rk-by").value === "mos") $("rk-by").value = "mine";
     const savedRun = Number(recall(`rate-run:${r.key}`));
     const firstOpen = r.data.runs.findIndex((x) => x.mine < x.clips);
     r.run = Number.isInteger(savedRun) && savedRun >= 0 && savedRun < r.data.runs.length ? savedRun : Math.max(0, firstOpen);
@@ -80,6 +89,23 @@ const Rate = (() => {
   // ------------------------------------------------------- rating a run --
   function clipsOf(runId) { return r.data.clips.filter((c) => c.run === runId); }
 
+  // The voice's original recording: the listener hears it first, to judge whether each clip is the same person
+  const heardKey = (runId) => `rate-heard:${r.data.rater}:${runId}`;
+  function referenceCard(run) {
+    if (!run.reference)
+      return el("div", { class: "reference missing" }, el("strong", {}, "Original recording"),
+        el("p", { class: "muted small" }, "The host does not have this voice's original recording. Score the clips as usual and leave the person box empty."));
+    const heard = recall(heardKey(run.id)) === "1";
+    const note = el("span", { class: "small reference-note" + (heard ? " heard" : "") },
+      heard ? "✓ Listened" : "Listen to this first");
+    const player = el("audio", { controls: true, preload: "none", src: referenceUrl(run.id), onplay: pauseOthers,
+                                 onended: () => { store(heardKey(run.id), "1"); note.textContent = "✓ Listened"; note.classList.add("heard"); } });
+    return el("div", { class: "reference" },
+      el("div", { class: "item-head" }, el("strong", {}, "Original recording"), note),
+      el("p", { class: "muted small" }, "The real person this voice was cloned from, saying another line. It is not scored: use it to judge whether each clip sounds like the same person."),
+      player);
+  }
+
   function renderRun() {
     const runs = r.data.runs;
     $("rp-voices").replaceChildren(...runs.map((x, i) =>
@@ -88,23 +114,17 @@ const Rate = (() => {
         el("span", {}, x.voice), el("small", {}, `${x.mine}/${x.clips}`))));
     const run = runs[r.run];
     const clips = clipsOf(run.id);
-    let n = 0;
     $("rp-run").replaceChildren(
       el("h2", {}, run.voice), el("p", { class: "line" }, run.text),
+      referenceCard(run),
       el("div", { class: "run-status" }, el("span", { id: "rp-run-count" }),
         el("button", { type: "button", class: "quiet small", id: "rp-next-todo", onclick: nextUnrated }, "Next unrated ›")),
-      el("ol", { class: "clips rate-clips" }, clips.map((c) => {
-        const base = c.genome === null;
-        const title = base ? "Plain line (no genome)" : `Version ${++n}`;
-        return el("li", { class: `clip rate-clip ${stateOf(c)}` + (base ? " baseline" : ""), id: `rc-${run.id}-${c.clip}` },
-          el("div", { class: "item-head" }, el("strong", {}, title),
+      el("ol", { class: "clips rate-clips" }, clips.map((c) =>
+        el("li", { class: `clip rate-clip ${stateOf(c)}`, id: `rc-${run.id}-${c.clip}` },
+          el("div", { class: "item-head" }, el("strong", {}, `Clip ${c.label}`),
             el("span", { class: "rated-badge small", "aria-live": "polite" }, BADGES[stateOf(c)](c))),
-          base ? el("p", { class: "muted small" }, "Score it too: the versions are compared with it.") :
-            el("details", { class: "what" }, el("summary", {}, "What this version changes"),
-              el("p", {}, c.described.join(" · ")), el("p", { class: "markup" }, c.markup + (c.speed !== 1 ? ` · speed ${c.speed}` : ""))),
           el("audio", { controls: true, preload: "none", src: audioUrl(run.id, c.clip), onplay: pauseOthers }),
-          scoreSlider(c), artifactBox(c));
-      })));
+          scoreSlider(c), answerBox(c, "artifact"), run.reference ? answerBox(c, "different") : null))));
     $("rp-prev").disabled = r.run === 0;
     $("rp-next").textContent = r.run === runs.length - 1 ? "See my ranking ›" : "Next voice ›";
     runCount(run.id);
@@ -152,10 +172,9 @@ const Rate = (() => {
       for (const c of r.data.clips) {
         const h = host.get(`${c.run}/${c.clip}`);
         if (!h || r.pending[c.run]?.[c.clip]) continue;
-        if (h.mine !== c.mine || (h.mine_artifact ?? null) !== (c.mine_artifact ?? null)) differ++;
-        c.draft_artifact = h.mine_artifact === true;
-        Object.assign(c, { mine: h.mine, mine_artifact: h.mine_artifact, mine_on: h.mine_on, mine_above_baseline: h.mine_above_baseline,
-                           mos: h.mos, mos_above_baseline: h.mos_above_baseline });
+        if (h.mine !== c.mine || Object.values(ANSWERS).some((a) => (h[a.mine] ?? null) !== (c[a.mine] ?? null))) differ++;
+        for (const a of Object.values(ANSWERS)) c[a.draft] = h[a.mine] === true;
+        Object.assign(c, { mine: h.mine, mine_artifact: h.mine_artifact, mine_different: h.mine_different, mine_on: h.mine_on });
       }
       r.data.runs.forEach((run) => recount(run.id));
       render();
@@ -186,7 +205,7 @@ const Rate = (() => {
     const id = `s-${c.run}-${c.clip}`;
     const out = el("output", { for: id, class: "score-value" }, c.mine === null ? "not scored" : c.mine.toFixed(1));
     const range = el("input", { type: "range", id, min: 0, max: 5, step: 0.5, value: c.mine === null ? 2.5 : c.mine,
-                                "aria-label": "Score from 0 to 5",
+                                "aria-label": `Score of clip ${c.label} from 0 to 5`,
                                 "aria-valuetext": c.mine === null ? "not scored" : `${c.mine} of 5` });
     const box = el("div", { class: "score" + (c.mine === null ? " unset" : "") },
       el("span", { class: "end small" }, "0 bad"), range, el("span", { class: "end small" }, "5 excellent"), out,
@@ -205,38 +224,45 @@ const Rate = (() => {
     return box;
   }
 
-  // "I heard an artifact": ticked = yes, left empty = no. It is saved with the score, so
+  // A yes/no answer kept with the score: ticked = yes, left empty = no. It is saved with the score, so
   // every score given from now on has an answer; ticking it on a scored clip saves it at once.
-  function artifactBox(c) {
-    const id = `a-${c.run}-${c.clip}`;
-    if (c.draft_artifact === undefined) c.draft_artifact = c.mine_artifact === true;
+  function answerBox(c, kind) {
+    const a = ANSWERS[kind];
+    const id = `${kind[0]}-${c.run}-${c.clip}`;
+    if (c[a.draft] === undefined) c[a.draft] = c[a.mine] === true;
     const box = el("input", { type: "checkbox", id, class: "artifact-check" });
-    box.checked = c.draft_artifact;
-    const note = el("span", { class: "artifact-note muted small" }, artifactNote(c));
+    box.checked = c[a.draft];
+    const note = el("span", { class: `answer-note muted small` }, answerNote(c, kind));
     box.addEventListener("change", () => {
-      c.draft_artifact = box.checked;
+      c[a.draft] = box.checked;
       const waiting = r.pending[c.run]?.[c.clip];
       const value = waiting ? waiting.value : c.mine;
       if (value !== null && value !== undefined) queueSave(c, value);
-      note.textContent = artifactNote(c);
+      note.textContent = answerNote(c, kind);
     });
-    return el("div", { class: "artifact" + (c.draft_artifact ? " heard" : "") },
-      box, el("label", { for: id }, "I heard an artifact"),
-      el("span", { class: "muted small" }, " (a glitch, click, noise, cut-off or garbled word)"), note);
+    return el("div", { class: `artifact answer-${kind}` + (c[a.draft] ? " heard" : ""), "data-kind": kind },
+      box, el("label", { for: id }, a.label), el("span", { class: "muted small" }, a.hint), note);
   }
 
-  function artifactNote(c) {
+  function answerNote(c, kind) {
+    const mine = c[ANSWERS[kind].mine];
     if (c.mine === null && !r.pending[c.run]?.[c.clip]) return " · saved with the score";
-    if (c.mine_artifact === null || c.mine_artifact === undefined) return c.mine !== null ? " · not answered yet: tick it, or set the score again for no" : "";
+    if (mine === null || mine === undefined) return c.mine !== null ? " · not answered yet: tick it, or set the score again for no" : "";
     return "";
   }
 
   function queueSave(c, value) {
-    const artifact = !!c.draft_artifact;
-    const box = card(c)?.querySelector(".artifact");
-    if (box) box.classList.toggle("heard", artifact);
-    if (c.mine === value && c.mine_artifact === artifact && !r.pending[c.run]?.[c.clip]) return;
-    (r.pending[c.run] = r.pending[c.run] || {})[c.clip] = { value, artifact, c };
+    const answers = {};
+    for (const [kind, a] of Object.entries(ANSWERS)) {
+      answers[kind] = !!c[a.draft];
+      const box = card(c)?.querySelector(`.answer-${kind}`);
+      if (box) box.classList.toggle("heard", answers[kind]);
+    }
+    const reference = r.data.runs.find((x) => x.id === c.run)?.reference;
+    if (!reference) delete answers.different;           // not asked without the original to compare with
+    const same = Object.entries(answers).every(([kind, v]) => c[ANSWERS[kind].mine] === v);
+    if (c.mine === value && same && !r.pending[c.run]?.[c.clip]) return;
+    (r.pending[c.run] = r.pending[c.run] || {})[c.clip] = { value, answers, c };
     rememberUnsent();
     mark(c, "saving");
     clearTimeout(r.timers[c.run]);
@@ -249,7 +275,7 @@ const Rate = (() => {
   function rememberUnsent() {
     const out = {};
     for (const [run, items] of Object.entries(r.pending))
-      for (const [clip, x] of Object.entries(items)) (out[run] = out[run] || {})[clip] = { value: x.value, artifact: x.artifact };
+      for (const [clip, x] of Object.entries(items)) (out[run] = out[run] || {})[clip] = { value: x.value, answers: x.answers };
     store(unsentKey(), JSON.stringify(out));
   }
 
@@ -262,8 +288,9 @@ const Rate = (() => {
   // Whether a clip is rated, as the host last confirmed it: one badge and one colour per card.
   //   rated   ✓ the host has the score (with its date)      todo    ○ nobody scored it yet
   //   saving  the score is on its way                       failed  ! not saved yet, being sent again
+  const tags = (c) => Object.values(ANSWERS).filter((a) => c[a.mine]).map((a) => ` · ${a.tag}`).join("");
   const BADGES = {
-    rated: (c) => `✓ Rated ${c.mine.toFixed(1)}` + (c.mine_artifact ? " · artifact" : "") + (c.mine_on ? ` · ${when(c.mine_on)}` : ""),
+    rated: (c) => `✓ Rated ${c.mine.toFixed(1)}` + tags(c) + (c.mine_on ? ` · ${when(c.mine_on)}` : ""),
     todo: () => "○ Not rated yet",
     saving: () => "Saving…",
     failed: () => "! Not saved yet: trying again…",
@@ -283,20 +310,26 @@ const Rate = (() => {
     delete r.pending[runId];
     if (!items || !Object.keys(items).length) return;
     const rater = r.data.rater;
-    const scores = { [rater]: Object.fromEntries(Object.entries(items).map(([k, x]) => [k, x.value])) };
-    const artifacts = { [rater]: Object.fromEntries(Object.entries(items).filter(([, x]) => typeof x.artifact === "boolean").map(([k, x]) => [k, x.artifact])) };
+    const body = { scores: { [rater]: Object.fromEntries(Object.entries(items).map(([k, x]) => [k, x.value])) } };
+    for (const [kind, a] of Object.entries(ANSWERS))
+      body[a.send] = { [rater]: Object.fromEntries(Object.entries(items)
+        .filter(([, x]) => typeof x.answers?.[kind] === "boolean").map(([k, x]) => [k, x.answers[kind]])) };
     try {
-      const reply = await call(`/genome/searches/${encodeURIComponent(runId)}/ratings`, { body: { scores, artifacts }, keepalive });
+      const reply = await call(`/genome/searches/${encodeURIComponent(runId)}/ratings`, { body, keepalive });
       const stored = (reply.stored || {})[rater] || {};
-      const heard = (reply.stored_artifacts || {})[rater] || {};
       const dates = (reply.rated_on || {})[rater] || {};
       for (const [clip, x] of Object.entries(items)) {
         if (stored[clip] !== x.value) throw new Error("the host did not keep every score");
-        if (typeof x.artifact === "boolean" && heard[clip] !== x.artifact) throw new Error("the host did not keep every artifact answer");
+        for (const [kind, a] of Object.entries(ANSWERS)) {
+          if (typeof x.answers?.[kind] !== "boolean") continue;
+          if (((reply[a.stored] || {})[rater] || {})[clip] !== x.answers[kind]) throw new Error("the host did not keep every answer");
+          x.c[a.mine] = x.answers[kind];
+        }
         x.c.mine = x.value;
-        if (typeof x.artifact === "boolean") x.c.mine_artifact = x.artifact;
-        const note = card(x.c)?.querySelector(".artifact-note");
-        if (note) note.textContent = artifactNote(x.c);
+        for (const kind of Object.keys(ANSWERS)) {
+          const note = card(x.c)?.querySelector(`.answer-${kind} .answer-note`);
+          if (note) note.textContent = answerNote(x.c, kind);
+        }
         x.c.mine_on = dates[clip] || x.c.mine_on;
         if (!r.pending[runId]?.[clip]) mark(x.c, "rated");
       }
@@ -318,31 +351,28 @@ const Rate = (() => {
 
   function flushAll(keepalive = false) { Object.keys(r.pending).forEach((run) => flush(run, keepalive)); }
 
-  // Scores left over from last time (the tab closed before the host answered): send them now
+  // Scores left over from last time (the tab closed before the host answered): send them now.
+  // Clips are named by the host's blind tokens; scores kept under an older page's names are dropped.
   function resendUnsent() {
     let left = {};
     try { left = JSON.parse(recall(unsentKey()) || "{}"); } catch (e) {}
     let n = 0;
     for (const [run, clips] of Object.entries(left)) for (const [clip, saved] of Object.entries(clips)) {
       const c = r.data.clips.find((x) => x.run === run && x.clip === clip);
-      if (!c) continue;
-      // Older pages kept only the score; newer ones the score and the artifact answer
-      const { value, artifact } = typeof saved === "number" ? { value: saved, artifact: null } : saved;
-      if (typeof value !== "number") continue;
-      if (typeof artifact === "boolean") c.draft_artifact = artifact;
-      (r.pending[run] = r.pending[run] || {})[clip] = { value, artifact, c };
+      if (!c || !saved || typeof saved.value !== "number") continue;
+      const answers = saved.answers || (typeof saved.artifact === "boolean" ? { artifact: saved.artifact } : {});
+      for (const [kind, v] of Object.entries(answers)) if (ANSWERS[kind] && typeof v === "boolean") c[ANSWERS[kind].draft] = v;
+      (r.pending[run] = r.pending[run] || {})[clip] = { value: saved.value, answers, c };
       n++;
     }
     if (n) { toast(`Sending ${n} score(s) that were not saved last time…`); flushAll(); }
+    else rememberUnsent();
   }
 
   function recount(runId) {
     const run = r.data.runs.find((x) => x.id === runId);
     const clips = clipsOf(runId);
     run.mine = clips.filter((c) => c.mine !== null).length;
-    const base = clips.find((c) => c.genome === null);
-    for (const c of clips) c.mine_above_baseline = c.genome !== null && c.mine !== null && base && base.mine !== null
-      ? Math.round((c.mine - base.mine) * 100) / 100 : null;
     progress();
     const step = $("rp-voices").children[r.data.runs.indexOf(run)];
     if (step) {
@@ -353,73 +383,42 @@ const Rate = (() => {
   }
 
   // ------------------------------------------------------------ ranking --
-  function valueOf(c, by) {
-    if (by === "mos") return c.mos ? c.mos.mos : null;
-    return c[by];
-  }
-
+  // Your own scores, best first, by the same blind clip letters as on the Rate view
   function renderRank() {
-    const by = $("rk-by").value, voice = $("rk-voice").value, withBase = $("rk-base").checked;
-    const diff = by === "mine_above_baseline";
-    let clips = r.data.clips.filter((c) => (!voice || c.run === voice) && (withBase || c.genome !== null) && !(diff && c.genome === null));
-    const scored = clips.filter((c) => valueOf(c, by) !== null).sort((a, b) => valueOf(b, by) - valueOf(a, by));
-    const unscored = clips.filter((c) => valueOf(c, by) === null);
-    const baseOf = Object.fromEntries(r.data.clips.filter((c) => c.genome === null).map((c) => [c.run, c]));
-    const numberOf = {};
-    for (const run of r.data.runs) clipsOf(run.id).filter((c) => c.genome !== null).forEach((c, i) => (numberOf[`${run.id}/${c.clip}`] = i + 1));
-
-    $("rk-head").textContent = scored.length
-      ? (by === "mos" ? "Mean over every listener who scored the clip. " : `Your scores, ${r.data.rater}. `) +
-        (diff ? "Bars go right when you liked a version more than the plain line of the same voice, left when less."
-              : "The thin mark on each bar is the plain line of the same voice. Equal scores share a place.")
+    const voice = $("rk-voice").value;
+    const clips = r.data.clips.filter((c) => !voice || c.run === voice);
+    const scored = clips.filter((c) => c.mine !== null).sort((a, b) => b.mine - a.mine);
+    const unscored = clips.filter((c) => c.mine === null);
+    $("rk-head").textContent = scored.length ? `Your scores, ${r.data.rater}. Equal scores share a place.`
       : "Nothing scored yet: score some clips under Rate first.";
-
     let rank = 0, last = null;
     const rows = scored.map((c, i) => {
-      const v = valueOf(c, by);
-      if (v !== last) { rank = i + 1; last = v; }
-      return rankRow(c, v, rank, by, diff, baseOf[c.run], numberOf);
+      if (c.mine !== last) { rank = i + 1; last = c.mine; }
+      return rankRow(c, rank);
     });
     if (unscored.length) rows.push(el("li", { class: "rank-gap muted small" }, `Not scored yet (${unscored.length})`),
-      ...unscored.map((c) => rankRow(c, null, null, by, diff, baseOf[c.run], numberOf)));
+      ...unscored.map((c) => rankRow(c, null)));
     $("rk-list").replaceChildren(...rows);
   }
 
-  function rankRow(c, v, rank, by, diff, base, numberOf) {
-    const label = c.genome === null ? "Plain line" : `Version ${numberOf[`${c.run}/${c.clip}`]}`;
-    const baseValue = base && !diff && c.genome !== null ? valueOf(base, by) : null;
-    let bar;
-    if (v === null) bar = el("div", { class: "bar empty" });
-    else if (diff) {
-      const w = Math.min(50, (Math.abs(v) / 5) * 50);
-      bar = el("div", { class: "bar diverging" }, el("span", { class: "zero" }),
-        el("span", { class: "fill" + (v < 0 ? " neg" : ""), style: v < 0 ? `right:50%;width:${w}%` : `left:50%;width:${w}%` }));
-    } else {
-      bar = el("div", { class: "bar" }, el("span", { class: "fill" + (c.genome === null ? " plain" : ""), style: `width:${(v / 5) * 100}%` }),
-        baseValue !== null ? el("span", { class: "base-mark", style: `left:${(baseValue / 5) * 100}%`, title: `Plain line: ${baseValue.toFixed(1)}` }) : null);
-    }
-    const shown = v === null ? "–" : (diff && v > 0 ? "+" : "") + v.toFixed(diff ? 1 : by === "mos" ? 2 : 1);
-    const tip = [c.voice, label, v === null ? "not scored" : `${shown}`, by === "mos" && c.mos ? `${c.mos.n} listener(s)` : null,
-                 by !== "mos" && c.mine_on ? `scored ${when(c.mine_on)}` : null,
-                 baseValue !== null ? `plain line ${baseValue.toFixed(1)}` : null].filter(Boolean).join(" · ");
+  function rankRow(c, rank) {
+    const label = `Clip ${c.label}`;
+    const v = c.mine;
+    const bar = v === null ? el("div", { class: "bar empty" })
+      : el("div", { class: "bar" }, el("span", { class: "fill", style: `width:${(v / 5) * 100}%` }));
+    const shown = v === null ? "–" : v.toFixed(1);
+    const tip = [c.voice, label, v === null ? "not scored" : shown, c.mine_on ? `scored ${when(c.mine_on)}` : null].filter(Boolean).join(" · ");
     const playing = r.playing === `${c.run}/${c.clip}`;
-    return el("li", { class: "rank-row" + (by !== "mos" && c.mine === null ? " unrated" : ""), title: tip },
+    return el("li", { class: "rank-row" + (v === null ? " unrated" : ""), title: tip },
       el("span", { class: "rank-no" }, rank ? `#${rank}` : ""),
       el("button", { type: "button", class: "play" + (playing ? " on" : ""), "aria-label": `Play ${label} of ${c.voice}`,
                      onclick: (e) => play(c, e.currentTarget) }, playing ? "❚❚" : "▶"),
       el("div", { class: "rank-label" }, el("strong", {}, label), el("span", { class: "muted small" }, ` · ${c.voice}`),
-        artifactMark(c, by),
-        c.genome !== null ? el("div", { class: "muted small ellipsis" }, c.described.join(" · ")) : null,
-        by !== "mos" && c.mine_on ? el("div", { class: "muted small" }, `scored ${when(c.mine_on)}`) : null),
+        ...Object.values(ANSWERS).filter((a) => c[a.mine]).map((a) => el("span", { class: "artifact-tag small" }, ` ${a.tag}`)),
+        c.mine_on ? el("div", { class: "muted small" }, `scored ${when(c.mine_on)}`) : null),
       bar,
       el("span", { class: "rank-value" }, shown),
       el("button", { type: "button", class: "quiet small", onclick: () => rerate(c) }, "Re-score"));
-  }
-
-  function artifactMark(c, by) {
-    if (by === "mos" && c.mos && c.mos.artifact_heard)
-      return el("span", { class: "artifact-tag small" }, ` artifact: ${c.mos.artifact_heard} of ${c.mos.artifact_answers}`);
-    return by !== "mos" && c.mine_artifact ? el("span", { class: "artifact-tag small" }, " artifact") : null;
   }
 
   function stopPlayer() {
@@ -446,12 +445,12 @@ const Rate = (() => {
     r.run = r.data.runs.findIndex((x) => x.id === c.run);
     store(`rate-run:${r.key}`, String(r.run));
     setView("rate");
-    const card = document.getElementById(`rc-${c.run}-${c.clip}`);
-    if (card) {
-      card.scrollIntoView({ block: "center", behavior: "smooth" });
-      card.classList.add("flash");
-      setTimeout(() => card.classList.remove("flash"), 1800);
-      card.querySelector("input[type=range]").focus({ preventScroll: true });
+    const box = document.getElementById(`rc-${c.run}-${c.clip}`);
+    if (box) {
+      box.scrollIntoView({ block: "center", behavior: "smooth" });
+      box.classList.add("flash");
+      setTimeout(() => box.classList.remove("flash"), 1800);
+      box.querySelector("input[type=range]").focus({ preventScroll: true });
     }
   }
 
@@ -461,7 +460,7 @@ const Rate = (() => {
   document.querySelectorAll("[data-rview]").forEach((b) => b.addEventListener("click", () => { flushAll(); setView(b.dataset.rview); }));
   $("rp-prev").addEventListener("click", () => r.run > 0 && goTo(r.run - 1));
   $("rp-next").addEventListener("click", () => (r.run < r.data.runs.length - 1 ? goTo(r.run + 1) : (flushAll(), setView("rank"))));
-  ["rk-by", "rk-voice", "rk-base"].forEach((id) => $(id).addEventListener("change", renderRank));
+  ["rk-by", "rk-voice"].forEach((id) => $(id).addEventListener("change", renderRank));
   // Closing or hiding the tab: send what is waiting at once, in a request the browser finishes even after the tab is gone
   window.addEventListener("pagehide", () => flushAll(true));
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushAll(true); });

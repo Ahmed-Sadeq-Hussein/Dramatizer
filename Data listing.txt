@@ -49,11 +49,13 @@ THE DATASETS
 OUR OWN VOICES
 ==============
 
-Custom voices, shown in the V4 page only. Not downloaded from anywhere, not in this
-repository, and left out of the manifest and the splits.
+Custom voices, shown in the V4 page, and on the website's Generate page only to the voice's
+owner and to admins. Not downloaded from anywhere, not in this repository, and left out of
+the manifest, the splits and the genome searches.
 
 Ahmed    256 KB, one 5.3 s recording    D:/voice data/Voices/ahmed
 Julius    63 KB, one 5.3 s recording    D:/voice data/Voices/julius
+Ash       96 KB, one 8.0 s recording    D:/voice data/Voices/ash   (consent given in the recording, 19 Nov 2026)
 
 
 HELD-OUT LINES

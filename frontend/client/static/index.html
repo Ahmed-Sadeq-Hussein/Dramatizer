@@ -80,6 +80,7 @@
   <button role="tab" data-tab="rate">Rate</button>
   <button role="tab" data-tab="renders">Renders</button>
   <button role="tab" data-tab="results">Results</button>
+  <button role="tab" data-tab="graphs">Graphs</button>
 </nav>
 
 <main>
@@ -137,7 +138,7 @@
 
   <!-- 1. Voices -->
   <section class="tab" id="tab-voices" hidden>
-    <p class="intro for-generate">Step 1: pick the voice to clone, then go on to the line and genome. Only validation speakers are offered; the final test speakers stay locked.</p>
+    <p class="intro for-generate">Step 1: pick the voice to clone, then go on to the line and genome. Only validation speakers are offered; the final test speakers stay locked. Your own recorded voice is under Dataset: Custom voices, seen only by you and the admins.</p>
     <p class="intro for-listen">The voices in the data: play any recording. Only validation speakers are offered.</p>
     <form class="row" id="voice-search">
       <label>Dataset <select id="dataset"></select></label>
@@ -244,8 +245,10 @@
     <p class="muted" id="rp-empty" hidden></p>
 
     <div id="rp-rate">
-      <p class="intro small">Listen to the plain line first, then score every version from 0 (bad) to 5 (excellent) in steps of
-        0.5. Score how good and expressive it sounds as speech. A score is saved as soon as you set it, and you can change it at any time.</p>
+      <p class="intro small">Listen to the voice's original recording first. Then score every clip from 0 (bad) to 5 (excellent)
+        in steps of 0.5, for how good and expressive it sounds as speech, and tick the boxes if you hear an artifact or a
+        different person than the original. The clips come in a mixed order and are all scored the same way. A score is
+        saved as soon as you set it, and you can change it at any time.</p>
       <nav class="voice-steps" id="rp-voices" aria-label="Voices in this pile"></nav>
       <div id="rp-run"></div>
       <div class="run-nav">
@@ -258,11 +261,8 @@
       <div class="row rank-controls">
         <label>Order by <select id="rk-by">
           <option value="mine">My score</option>
-          <option value="mine_above_baseline">My score minus the plain line</option>
-          <option value="mos">Everyone's mean (MOS)</option>
         </select></label>
         <label>Voice <select id="rk-voice"><option value="">All voices</option></select></label>
-        <label class="check"><input type="checkbox" id="rk-base"> Show the plain lines</label>
       </div>
       <p class="muted small" id="rk-head"></p>
       <ol class="ranking" id="rk-list"></ol>
@@ -338,6 +338,12 @@
   <section class="tab" id="tab-results" hidden>
     <p class="intro">The measured baselines (CosyVoice 3, no genome) and the genome search comparison, from the host's PC.</p>
     <div id="results"></div>
+  </section>
+
+  <!-- Graphs: the six questions' charts, as last made -->
+  <section class="tab" id="tab-graphs" hidden>
+    <p class="intro">The six genome questions as charts, from the latest time they were made on the host. Click a chart for full size.</p>
+    <div id="graphs"></div>
   </section>
 </main>
 </div>

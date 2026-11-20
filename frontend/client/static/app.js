@@ -58,7 +58,7 @@ const MODES = {
   rate: { tabs: ["rate"], note: "Choose a pile of clips meant for rating, and score each one." },
   generate: { tabs: ["voices", "studio"], note: "Choose a voice, then optionally a genome, and render a line." },
   listen: { tabs: ["voices", "renders"], note: "Listen to a voice in the data, or to the renders people have made." },
-  research: { tabs: ["genomes", "speak", "results"], note: "Genome searches, their rankings, and the measured results.",
+  research: { tabs: ["genomes", "speak", "results", "graphs"], note: "Genome searches, their rankings, the measured results and the graphs.",
               needs: "search" },
 };
 const MODE_KEY = "dramatizer-mode";
@@ -110,6 +110,7 @@ function showTab(name) {
   document.querySelectorAll(".tab").forEach((s) => (s.hidden = s.id !== "tab-" + name));
   if (name === "genomes" && !state.run) loadSearches();
   if (name === "results") loadResults();
+  if (name === "graphs") loadGraphs();
   if (name === "renders") Renders.open();
   if (name === "rate") Rate.open();
   if (name === "studio") Studio.open();
@@ -245,8 +246,10 @@ $("password-form").addEventListener("submit", async (e) => {
 // -------------------------------------------------------------- 1. voices --
 async function loadDatasets() {
   try {
-    const { datasets } = await call("/datasets");
-    $("dataset").replaceChildren(...datasets.map((d) => el("option", { value: d.name }, `${d.name} (${d.speakers} speakers)`)));
+    const { datasets, custom } = await call("/datasets");
+    // Custom voices: people's own recordings, offered only to the voice's owner and to admins (the API decides)
+    $("dataset").replaceChildren(...datasets.map((d) => el("option", { value: d.name }, `${d.name} (${d.speakers} speakers)`)),
+      ...(custom ? [el("option", { value: "Custom voices" }, `Custom voices (${custom} ${custom === 1 ? "voice" : "voices"}, private)`)] : []));
     loadVoices(1);
   } catch (error) { toast(error.message, true); }
 }
@@ -593,15 +596,50 @@ async function loadResults() {
     for (const m of milestone2) {
       const s = m.summary;
       parts.push(el("h3", {}, `Genome search ${m.name}`),
-        el("p", {}, `${Math.round(100 * s.shares.all.fine)} % of ${s.shares.all.judged} genomes judged fine. ` +
-          `Works as a guard: ${s.verdicts.works_as_a_guard ? "yes" : "no"}. Beats the baseline: decided by blind listening.`),
+        // "fine" here is the automatic sanity check (words, pace, voice similarity), not a listener's verdict
+        el("p", {}, `${Math.round(100 * s.shares.all.fine)} % of ${s.shares.all.judged} genomes passed the automatic sanity check ` +
+          `(words, pace, voice similarity, measured by the machine; no one has listened to them for this). ` +
+          `Works as a guard: ${s.verdicts.works_as_a_guard ? "yes" : "no"}. Beats the baseline: only blind listening can tell.`),
         el("div", { class: "table-wrap" }, el("table", {},
-          el("thead", {}, el("tr", {}, ["Fine genomes minus baseline", "Mean", "95 % interval", "p"].map((h) => el("th", {}, h)))),
+          el("thead", {}, el("tr", {}, ["Passed genomes minus baseline (measured)", "Mean", "95 % interval", "p"].map((h) => el("th", {}, h)))),
           el("tbody", {}, Object.entries(s.fine_minus_baseline).filter(([, d]) => d).map(([metric, d]) => el("tr", {},
             el("td", {}, metric), el("td", {}, fmt(d.mean)), el("td", {}, `${fmt(d.low)} to ${fmt(d.high)}`),
             el("td", {}, d.wilcoxon_p === null ? "–" : Number(d.wilcoxon_p).toPrecision(2))))))));
     }
     box.replaceChildren(...(parts.length ? parts : [el("p", { class: "muted" }, "No results on the host yet.")]));
+  } catch (error) { box.replaceChildren(el("p", { class: "muted" }, error.message)); }
+}
+
+// ---------------------------------------------------------------- graphs --
+// The six questions' charts as the host last made them (evidence-charts, or a question asked through the API)
+async function loadGraphs() {
+  const box = $("graphs");
+  box.replaceChildren(el("p", { class: "muted" }, "Loading…"));
+  try {
+    const g = await call("/evidence/charts/latest");
+    const range = g.range && (g.range.from || g.range.to)
+      ? `scores given from ${g.range.from || "the first score"} to ${g.range.to || "now"}` : "every score so far";
+    const made = new Date(g.made.replace(" ", "T"));
+    const when = isNaN(made) ? g.made : made.toLocaleString([], { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    box.replaceChildren(
+      el("p", { class: "graphs-stamp" }, el("strong", {}, `Made ${when}`),
+        el("span", { class: "muted" }, ` · ${range} · ${g.genome_scores} genome scores, ${g.sanity_checks} sanity checks`)),
+      el("div", { class: "graphs" }, g.charts.map((c) => el("figure", { class: "graph" },
+        el("figcaption", {}, el("strong", {}, `${c.number}. ${c.question}`)),
+        c.url ? el("a", { href: c.url, target: "_blank", rel: "noopener", title: "Open full size" },
+          el("img", { src: c.url, alt: c.question, loading: "lazy" }))
+          : el("div", { class: "no-data" }, el("strong", {}, "No data"), el("p", { class: "muted small" }, `${c.skipped || "nothing to draw"}.`)),
+        // the text under a chart is Gemma 4's reading of its numbers (API calls/chart_captions.py), never ours
+        c.url ? (c.caption
+          ? el("div", { class: "caption" }, el("p", {}, c.caption.text),
+              el("p", { class: "muted small" }, `Written by Gemma 4 (${c.caption.model || "Gemma"}) on ${c.caption.made || "?"}` +
+                (c.caption.unverified_numbers ? ` · numbers not found in the data: ${c.caption.unverified_numbers.join(", ")}` : "")),
+              c.caption.facts && c.caption.facts.length ? el("details", { class: "muted small" }, el("summary", {}, "What Gemma used"),
+                el("ul", { class: "facts" }, c.caption.facts.map((f) => el("li", {}, el("code", {}, f.path), " = ", JSON.stringify(f.value))))) : null)
+          : el("p", { class: "muted small" }, "Gemma 4 has not written the text for these numbers yet. It runs after python main_backend.py evidence-charts on the host."))
+          : null,
+        c.url && c.note ? el("details", { class: "muted small" }, el("summary", {}, "How to read this chart"), el("p", {}, c.note)) : null))),
+      el("p", { class: "muted small" }, "To make them again from the newest scores, run python main_backend.py evidence-charts on the host."));
   } catch (error) { box.replaceChildren(el("p", { class: "muted" }, error.message)); }
 }
 

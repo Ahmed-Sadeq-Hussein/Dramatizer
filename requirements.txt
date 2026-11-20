@@ -78,14 +78,13 @@ mlflow
 setuptools<81
 wheel
 
-# Only for the MCP server in mcp_server/. Install it in its own environment:
-#   conda create -n dramatizer-mcp python=3.10 -y
-#   pip install -r mcp_server/requirements.txt
-# Its two packages are kept here as comments, not as requirements: networkx 3.4.2
-# clashes with the networkx==3.1 above (pip refuses a file that asks for both),
-# and they belong in a backend/mcp_server/requirements.txt, which does not exist yet.
+# Only for the MCP server, its client loop and evaluation (backend/mcp_server/). Install it in its own
+# environment, never this one: mcp upgrades pydantic, starlette and uvicorn past the pins above.
+#   python -m venv E:/envs/dramatizer-mcp
+#   E:/envs/dramatizer-mcp/Scripts/python.exe -m pip install -r backend/mcp_server/requirements.txt
+# and set MCP_PYTHON in .env to that python; python main_backend.py mcp / mcp-ask / mcp-eval then use it.
+# Its one package (the knowledge graph and networkx are gone since pull request #6):
 #   mcp==1.30.0
-#   networkx==3.4.2
 
 # ===========================================================================
 # Setting up the conda environment

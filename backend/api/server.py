@@ -14,7 +14,10 @@ Safe to put behind a tunnel because:
       so a tunnel or network in between cannot read or change the traffic
     - it can only do what is listed below: no commands, no file paths from outside, voices by id
     - the GPU work waits in one queue, one job at a time, at most 3 waiting per person
-    - only validation voices are offered; final test speakers and custom voices never are
+    - only validation voices are offered to everyone; final test speakers never are. A custom voice
+      (CUSTOM_VOICES, someone's own recorded voice) is offered only to its owner's account (the
+      account whose username is the voice's name) and to admins; its renders are listed only to them
+      and to whoever made them, and it is never used for genome searches
     - every call is logged with who made it (history/api/access.log); logins, refused logins,
       logouts, password changes and saved scores also go to history/api/audit.jsonl
     - an account locks after 5 wrong passwords; past 30 refused logins in 10 minutes (someone
@@ -40,8 +43,10 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
     POST /logout                                  end this session
     POST /me/password {current, new}              change your own password (ends your sessions)
     GET  /me                                      who this key or session belongs to, and the queue
-    GET  /datasets                                the datasets and how many validation voices each has
+    GET  /datasets                                the datasets and how many validation voices each has, and
+                                                  "custom": how many custom voices this account may use
     GET  /voices?dataset=&q=&page=                validation clips, 50 a page; q matches speaker or words
+                                                  (dataset=Custom voices: the custom voices this account may use)
     GET  /voices/audio?dataset=&clip_id=          a clip's recording
     POST /speak   {dataset, clip_id, text, seed?} queue a line spoken in that voice -> {job}
     GET  /jobs/<id>                               a job's state, place in the queue and result
@@ -52,8 +57,12 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
     POST /genome/searches/<run>/continue          queue a stopped search again
     GET  /genome/searches/<run>/audio/<clip>      baseline.wav or genome_NN.wav
     POST /genome/searches/<run>/ratings {scores: {listener: {clip: 0-5}},
-                                         artifacts: {listener: {clip: true/false}}}
-                                                  save MOS scores, and whether an artifact was heard
+                                         artifacts: {listener: {clip: true/false}},
+                                         different: {listener: {clip: true/false}}}
+                                                  save MOS scores, whether an artifact was heard, and whether
+                                                  it sounded like a different person than the original
+                                                  (clip: baseline, genome_NN, or the Rate page's blind token)
+    GET  /genome/searches/<run>/reference.wav     the voice's original recording, played first on the Rate page
     POST /genome/searches/<run>/pick    {genome, name}                    pick and name a genome
     POST /genome/searches/<run>/unpick  {genome}                          take the name off
     GET  /genome/named                            the named genomes
@@ -66,7 +75,8 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
                                                   (private_name: also keep the genes as the caller's own private genome)
                                                   queue a line spoken with a genome (no genes: the plain
                                                   line) -> {job}; the audio as for /speak
-    GET  /genome/listening?batch=&pile=           a listening pile: every clip, your score and the MOS
+    GET  /genome/listening?batch=&pile=           a listening pile, blind: every clip (the plain line mixed in) by
+                                                  token, in your own shuffled order, with your own answers
     GET  /results                                 the baselines' and Milestone 2's summaries
     GET  /evidence/scores?listener=&voice=&dataset=&gene_type=&genes=&genome=&verdict=&pile=&clip=&from=&to=
                          &group_by=&sort=&order=&limit=    the listeners' scores, filtered, sorted or grouped
@@ -76,6 +86,8 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
                                                   only with enough evidence, artifact checks, caveats
     GET  /evidence/questions/<1-6>?from=&to=     one of the six genome questions, answered from its chart
     GET  /evidence/questions/<1-6>/chart          that chart (JPEG)
+    GET  /evidence/charts/latest                  the six charts as they were last made (the Graphs tab)
+    GET  /evidence/charts/latest/<file>.jpg       one of them
     GET  /evidence/search?q=&kind=&k=             the evidence records best matching a question (BM25)
     GET  /evidence/answer?q=                      an answer citing its record IDs, or "no evidence" (rag/answer.py)
                                                   both with provenance {snapshot_id, ratings_up_to, data_revision,
@@ -135,7 +147,7 @@ PAGE_SIZE = 50
 MAX_TEXT = 300
 MAX_WAITING = 3          # jobs per person, queued or running
 IDLE_SECONDS = 30
-CLIP_FILE = re.compile(r"^(baseline|genome_\d{2})\.wav$")
+CLIP_FILE = re.compile(r"^(baseline|genome_\d{2}|[0-9a-f]{12})\.wav$")     # a blind token on the Rate page
 JOB_ID = re.compile(r"^[0-9a-f]{32}$")
 PAGE_DIR = model.PROJECT_DIR / "frontend" / "client" / "static"     # the website, served here too (phones)
 COOKIE = "dramatizer_session"
@@ -349,10 +361,40 @@ def library():
         return _library["clips"]
 
 
+CUSTOM = "Custom voices"
+
+
+def custom_voices():
+    """The custom voices (CUSTOM_VOICES in .env, folders in VOICES_DIR) this account may use: its own, or all for
+    an admin. An API key gets none: these are people's own voices, not the project's data."""
+    from backend.voice_data.Voice_Importer import read_custom_voices
+
+    account = getattr(g, "account", None)
+    if account is None:
+        return []
+    folder = model.setting("VOICES_DIR", "")
+    if not folder or not Path(folder).is_dir():
+        return []
+    every = read_custom_voices(folder)
+    if account.role == "admin":
+        return every
+    return [c for c in every if c.speaker.lower() == account.username.lower()]
+
+
+def may_hear_voice(voice):
+    """May this account hear renders in this voice ("dataset/speaker")? Every voice but someone else's custom one."""
+    if not str(voice or "").startswith(CUSTOM + "/"):
+        return True
+    return any(f"{c.dataset}/{c.speaker}" == voice for c in custom_voices())
+
+
 def clip_of(dataset, clip_id):
-    found = library().get(str(dataset), {}).get("by_id", {}).get(str(clip_id))
+    if str(dataset) == CUSTOM:
+        found = next((c for c in custom_voices() if c.clip_id == str(clip_id)), None)
+    else:
+        found = library().get(str(dataset), {}).get("by_id", {}).get(str(clip_id))
     if found is None:
-        raise Refused("No such voice. Only validation voices can be used.", 404)
+        raise Refused("No such voice. Only validation voices, and your own custom voice, can be used.", 404)
     return found
 
 
@@ -537,21 +579,22 @@ def datasets():
                               "speakers": len({c.speaker for c in lib[name]["clips"]})} for name in DATASETS],
                    voice_split={**split, "total": sum(split.values()),
                                 "about": "one clip per voice; validation voices are used for all the work, "
-                                         "test voices stay locked until the final evaluation"})
+                                         "test voices stay locked until the final evaluation"},
+                   custom=len(custom_voices()))
 
 
 @app.get(f"{API}/voices")
 @needs_key
 def voices():
     dataset = request.args.get("dataset", DATASETS[0])
-    if dataset not in DATASETS:
+    if dataset not in DATASETS and dataset != CUSTOM:
         raise Refused("Unknown dataset.", 404)
     words = " ".join(request.args.get("q", "").lower().split())[:100]
     try:
         page = max(1, int(request.args.get("page", 1)))
     except ValueError:
         page = 1
-    clips = library()[dataset]["clips"]
+    clips = custom_voices() if dataset == CUSTOM else library()[dataset]["clips"]
     if words:
         clips = [c for c in clips if words == c.speaker.lower() or words in c.text.lower()]
     start = (page - 1) * PAGE_SIZE
@@ -657,7 +700,8 @@ def own_ratings(rating):
     mine = rating["scores"].get(g.user)
     return {**rating, "raters": [g.user] if mine else [], "scores": {g.user: mine} if mine else {},
             "given": {g.user: rating.get("given", {}).get(g.user, {})},
-            "artifacts": {g.user: rating.get("artifacts", {}).get(g.user, {})}}
+            "artifacts": {g.user: rating.get("artifacts", {}).get(g.user, {})},
+            "different": {g.user: rating.get("different", {}).get(g.user, {})}}
 
 
 def public_run(run):
@@ -726,7 +770,7 @@ def listening():
     others = sees_others() and not any(r.get("blind") for _, r in runs)     # a blind pile (second_listen.py): no one
     return jsonify(piles=piles, rater=g.user, assigned=assigned, batch=batch, pile=int(pile),  # sees others' scores
                    max_raters=ratings.MAX_RATERS, sees_others=others, blind=not others and sees_others(),
-                   **ratings.collection(runs, g.user, others=others))
+                   **ratings.collection(runs, g.user, others=others, blind=True))
 
 
 @app.post(f"{API}/genome/searches")
@@ -738,6 +782,8 @@ def new_search():
     from backend.voice_data.Voice_Importer import get_clip
 
     data = body()
+    if str(data.get("dataset")) == CUSTOM:
+        raise Refused("Genome searches use the project's validation voices only, never a custom voice.")
     clip = clip_of(data.get("dataset"), data.get("clip_id"))
     text = text_of(data)
     try:
@@ -801,13 +847,36 @@ def search_audio(run_id, name):
         raise Refused("No such clip.", 404)
     from backend.genome import search
 
+    from backend.genome import ratings
+
     folder = run_dir_of(run_id)
-    if not may_see(search.load_run(folder)):
+    run = search.load_run(folder)
+    if not may_see(run):
         raise Refused("No such clip.", 404)
-    path = folder / name
+    try:
+        clip = ratings.real_clip(run, name[:-len(".wav")])     # a blind token names the clip without saying which
+    except ValueError:
+        raise Refused("No such clip.", 404) from None
+    path = folder / f"{clip}.wav"
     if not path.is_file():
         raise Refused("That clip is not made yet.", 404)
-    return send_file(path, mimetype="audio/wav")
+    return send_file(path, mimetype="audio/wav", download_name=name)
+
+
+@app.get(f"{API}/genome/searches/<run_id>/reference.wav")
+@needs_key
+def search_reference(run_id):
+    """The voice's original recording the run was cloned from: the Rate page plays it first, so the listener can
+    tell whether each clip sounds like the same person."""
+    from backend.genome import ratings, search
+
+    run = search.load_run(run_dir_of(run_id))
+    if not may_see(run):
+        raise Refused("No such recording.", 404)
+    path = ratings.reference_path(run)
+    if path is None:
+        raise Refused("The original recording of this voice is not on the host.", 404)
+    return send_file(path, mimetype="audio/wav", download_name="original.wav")
 
 
 def not_while_searching(run_id):
@@ -824,13 +893,15 @@ def rate(run_id):
     folder = run_dir_of(run_id)
     not_while_searching(run_id)
     data = body()
-    scores, artifacts = data.get("scores") or {}, data.get("artifacts") or {}
-    if not isinstance(scores, dict) or not isinstance(artifacts, dict) or not (scores or artifacts):
+    scores, artifacts, different = data.get("scores") or {}, data.get("artifacts") or {}, data.get("different") or {}
+    if (not all(isinstance(x, dict) for x in (scores, artifacts, different))
+            or not (scores or artifacts or different)):
         raise Refused('Send {"scores": {"listener name": {"genome_01": 4, ...}}, '
-                      '"artifacts": {"listener name": {"genome_01": true, ...}}}.')
-    if not all(isinstance(clips, dict) for clips in list(scores.values()) + list(artifacts.values())):
-        raise Refused("Each listener's scores and artifact answers must be an object of clip: value.")
-    if "rate_for_others" not in g.permissions and not set(scores) | set(artifacts) <= {g.user}:
+                      '"artifacts": {"listener name": {"genome_01": true, ...}}, '
+                      '"different": {"listener name": {"genome_01": false, ...}}}.')
+    if not all(isinstance(clips, dict) for part in (scores, artifacts, different) for clips in part.values()):
+        raise Refused("Each listener's scores and answers must be an object of clip: value.")
+    if "rate_for_others" not in g.permissions and not set(scores) | set(artifacts) | set(different) <= {g.user}:
         raise Refused(f"You can only save your own scores, as {g.user}.", 403)
     run = search.load_run(folder)
     if not may_see(run):
@@ -839,20 +910,27 @@ def rate(run_id):
         raise Refused("This run is in another listener's pile.", 403)
     try:
         ratings.save_scores(folder, scores, submitted_by=g.user,
-                            account=g.account.username if g.account else None, artifacts=artifacts)
+                            account=g.account.username if g.account else None, artifacts=artifacts,
+                            different=different)
     except (TypeError, ValueError) as error:
         raise Refused(str(error))
     stored = ratings.load(folder)        # read back from the disk, so the page shows only what was really kept
-    sent = set(scores) | set(artifacts)
+    sent = set(scores) | set(artifacts) | set(different)
     audit("rated", run=run_id, clips=sum(len(c) for c in scores.values()),
-          artifacts=sum(len(c) for c in artifacts.values()))
+          artifacts=sum(len(c) for c in artifacts.values()), different=sum(len(c) for c in different.values()))
     shown = own_ratings(stored)
-    return jsonify(saved=sum(len(c) for c in scores.values()), raters=shown["raters"],
-                   stored={rater: stored["scores"].get(rater, {}) for rater in sent},
-                   stored_artifacts={rater: stored.get("artifacts", {}).get(rater, {}) for rater in sent},
-                   rated_on={rater: {clip: d.get("time") for clip, d in stored.get("given", {}).get(rater, {}).items()}
-                             for rater in sent},
-                   ranking=ratings.ranked(folder, ratings=shown))
+    # Sent by blind token (the Rate page): answer in tokens too, and without the ranking, which would name the clips
+    blind = any(ratings.TOKEN.match(str(clip)) for part in (scores, artifacts, different)
+                for clips in part.values() for clip in clips)
+    name = (lambda clip: ratings.clip_token(run_id, clip)) if blind else (lambda clip: clip)
+    each = lambda part: {rater: {name(c): v for c, v in stored.get(part, {}).get(rater, {}).items()} for rater in sent}
+    out = dict(saved=sum(len(c) for c in scores.values()), raters=shown["raters"],
+               stored=each("scores"), stored_artifacts=each("artifacts"), stored_different=each("different"),
+               rated_on={rater: {name(clip): d.get("time") for clip, d in stored.get("given", {}).get(rater, {}).items()}
+                         for rater in sent})
+    if not blind:
+        out["ranking"] = ratings.ranked(folder, ratings=shown)
+    return jsonify(out)
 
 
 @app.post(f"{API}/genome/searches/<run_id>/pick")
@@ -1085,7 +1163,7 @@ def renders():
         page = max(1, int(request.args.get("page", 1)))
     except ValueError:
         page = 1
-    found = render_notes()
+    found = [r for r in render_notes() if r["by"] == g.user or may_hear_voice(r["voice"])]
     scores = read_json(RENDER_RATINGS, {})
     for r in found:
         r["mine"] = r["by"] == g.user
@@ -1128,6 +1206,9 @@ def render_audio(render_id):
     path = GENOME_RENDERS / f"{render_id}.wav"
     if not RENDER_ID.match(render_id) or not path.is_file():
         raise Refused("No such render.", 404)
+    note = read_json(path.with_suffix(".json"), {})
+    if note.get("by") != g.user and not may_hear_voice(note.get("voice")):
+        raise Refused("No such render.", 404)                 # someone else's custom voice: not even its existence
     return send_file(path, mimetype="audio/wav", conditional=True)
 
 
@@ -1323,6 +1404,61 @@ def evidence_chart(number):
     if "file" not in chart:
         raise Refused("No chart for this range: " + chart.get("skipped", "no data") + ".", 404)
     return send_file(chart["file"], mimetype="image/jpeg")
+
+
+def latest_charts():
+    """(folder, summary) of the chart set made most recently (evidence-charts, or a question asked here), or None."""
+    from backend.genome import evidence_charts
+
+    best = None
+    for path in Path(evidence_charts.CHARTS_DIR).glob("*/summary.json"):
+        try:
+            summary = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if summary.get("made") and (best is None or summary["made"] > best[1]["made"]):
+            best = (path.parent, summary)
+    return best
+
+
+@app.get(f"{API}/evidence/charts/latest")
+@needs_key
+def evidence_charts_latest():
+    """The six questions' charts as they were last made: when, for which dates, and each chart's claim and note."""
+    if not sees_others():
+        raise Refused("The charts are made from every listener's scores, which this account may not see.", 403)
+    found = latest_charts()
+    if found is None:
+        raise Refused("No charts have been made yet: run `python main_backend.py evidence-charts` on the host.", 404)
+    from backend.genome import evidence_charts
+
+    folder, summary = found
+    evidence_charts.attach_captions(summary, folder)    # Gemma's text, when it was written for these numbers
+    charts = []
+    for c in summary.get("charts", []):
+        shown = {k: c[k] for k in ("number", "question", "claim", "note", "skipped", "caption") if k in c}
+        if c.get("file") and (folder / Path(c["file"]).name).is_file():
+            shown["url"] = f"{API}/evidence/charts/latest/{Path(c['file']).name}"
+        charts.append(shown)
+    return jsonify(made=summary["made"], range=summary.get("range"), dates=folder.name,
+                   genome_scores=summary.get("genome_scores"), sanity_checks=summary.get("sanity_checks"),
+                   charts=charts)
+
+
+@app.get(f"{API}/evidence/charts/latest/<name>")
+@needs_key
+def evidence_charts_latest_file(name):
+    """One JPEG of the latest chart set (only the files its summary names)."""
+    if not sees_others():
+        raise Refused("The charts are made from every listener's scores, which this account may not see.", 403)
+    found = latest_charts()
+    if found is None:
+        raise Refused("No charts have been made yet.", 404)
+    folder, summary = found
+    names = {Path(c["file"]).name for c in summary.get("charts", []) if c.get("file")}
+    if name not in names or not (folder / name).is_file():
+        raise Refused("No such chart.", 404)
+    return send_file(folder / name, mimetype="image/jpeg")
 
 
 @app.get(f"{API}/evidence/search")

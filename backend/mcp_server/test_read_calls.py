@@ -49,6 +49,17 @@ class Calls(unittest.TestCase):
         rc.query_scores(s, listener=None, voice="")
         self.assertEqual(s.api.asked[-1][1], "/evidence/scores")
 
+    def test_a_group_sort_without_group_by_is_refused_before_the_api(self):
+        """Eval question s15: sort beat_plain without group_by made the API sort single rows by score."""
+        s = session()
+        with self.assertRaises(CallError) as refused:
+            rc.query_scores(s, dataset="VCTK", sort="beat_plain")
+        self.assertIn("group_by", str(refused.exception))
+        self.assertEqual(s.api.asked, [])                                  # never reached the API
+        rc.query_scores(s, dataset="VCTK", group_by="dataset", sort="beat_plain")
+        rc.query_scores(s, dataset="VCTK", sort="score")                   # a row sort needs no group_by
+        self.assertEqual(len(s.api.asked), 2)
+
     def test_research_questions_are_1_to_6_and_bad_ones_never_reach_the_api(self):
         s = session()
         rc.evidence_question(s, 5)

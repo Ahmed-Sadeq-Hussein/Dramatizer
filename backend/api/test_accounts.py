@@ -331,6 +331,49 @@ class Api(Temporary):
             self.assertEqual(self.client.get("/api/v1/renders/..%2Fsecret/audio", headers=auth).status_code, 404)
             self.assertEqual(self.client.get("/api/v1/renders").status_code, 401)
 
+    def test_a_custom_voice_is_offered_only_to_its_owner_and_admins(self):
+        import os
+        voices = self.dir / "voices"
+        for name in ("julius", "ahmed"):
+            (voices / name).mkdir(parents=True)
+            (voices / name / "reference.wav").write_bytes(b"RIFF....WAVE")
+            (voices / name / "reference.txt").write_text(f"I am {name}.", encoding="utf-8")
+        folder = self.dir / "custom_renders"
+        folder.mkdir()
+        for stem, voice, by in (("Custom voices_Ahmed_plain_1", "Custom voices/Ahmed", "Ash"),
+                                ("Custom voices_Julius_plain_1", "Custom voices/Julius", "Ash")):
+            (folder / f"{stem}.wav").write_bytes(b"RIFF....WAVE")
+            (folder / f"{stem}.json").write_text(json.dumps({"voice": voice, "text": "Hi.", "by": by,
+                                                            "made": "2030-01-01 10:00:00"}), encoding="utf-8")
+        _, admin_password = accounts.new_account("rama", "Rama", role="admin")
+        env = {"VOICES_DIR": str(voices), "CUSTOM_VOICES": "julius,ahmed"}
+        with mock.patch.dict(os.environ, env), mock.patch.object(self.server, "GENOME_RENDERS", folder):
+            auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}       # julius, a listener
+            listed = self.client.get("/api/v1/voices?dataset=Custom%20voices", headers=auth).get_json()
+            self.assertEqual([c["speaker"] for c in listed["clips"]], ["Julius"])           # his own voice only
+            own = self.client.get("/api/v1/voices/audio?dataset=Custom%20voices&clip_id=Julius", headers=auth)
+            self.assertEqual(own.status_code, 200)
+            own.close()
+            other = self.client.get("/api/v1/voices/audio?dataset=Custom%20voices&clip_id=Ahmed", headers=auth)
+            self.assertEqual(other.status_code, 404)                                       # not even that it exists
+            search = self.client.post("/api/v1/genome/searches", headers=auth,
+                                      json={"dataset": "Custom voices", "clip_id": "Julius", "text": "Hello there."})
+            self.assertIn(search.status_code, (400, 403))                                  # never a genome search
+            heard = [r["voice"] for r in self.client.get("/api/v1/renders", headers=auth).get_json()["renders"]]
+            self.assertEqual(heard, ["Custom voices/Julius"])                               # Ahmed's render is hidden
+            hidden = self.client.get("/api/v1/renders/Custom voices_Ahmed_plain_1/audio", headers=auth)
+            self.assertEqual(hidden.status_code, 404)
+
+            admin = {"Authorization": "Bearer " + self.client.post("/api/v1/login", json={
+                "username": "rama", "password": admin_password}).get_json()["token"]}
+            every = self.client.get("/api/v1/voices?dataset=Custom%20voices", headers=admin).get_json()
+            self.assertEqual(sorted(c["speaker"] for c in every["clips"]), ["Ahmed", "Julius"])
+            self.assertEqual(len(self.client.get("/api/v1/renders", headers=admin).get_json()["renders"]), 2)
+            refused = self.client.post("/api/v1/genome/searches", headers=admin,
+                                       json={"dataset": "Custom voices", "clip_id": "Julius", "text": "Hello there."})
+            self.assertEqual(refused.status_code, 400)                                     # not even for an admin
+            self.assertIn("custom voice", refused.get_json()["error"])
+
     def test_rate_only_your_own_renders_kept_apart(self):
         folder = self.dir / "renders2"
         folder.mkdir()
@@ -578,8 +621,8 @@ class Api(Temporary):
         self.assertEqual([r["id"] for r in data["runs"]], ["r1", "r2"])
         self.assertEqual([r["mine"] for r in data["runs"]], [3, 0])
         self.assertEqual(len(data["clips"]), 8)
-        first = next(c for c in data["clips"] if c["run"] == "r1" and c["genome"] == 1)
-        self.assertEqual((first["mine"], first["mine_above_baseline"]), (4.0, 1.5))
+        first = next(c for c in data["clips"] if c["clip"] == self.ratings.clip_token("r1", "genome_01"))
+        self.assertEqual(first["mine"], 4.0)
         self.assertEqual(self.client.get("/api/v1/genome/listening?batch=test-batch&pile=9", headers=auth).status_code, 404)
 
     def test_assigned_listener_sees_and_rates_only_their_pile(self):
@@ -622,7 +665,7 @@ class Api(Temporary):
         self.assertEqual(who["Julius"]["piles"], {"test-batch pile 1": [2, 8]})
 
         page = self.client.get("/api/v1/genome/listening?batch=test-batch&pile=1", headers=auth).get_json()
-        clip = next(c for c in page["clips"] if c["run"] == "r1" and c["genome"] == 1)
+        clip = next(c for c in page["clips"] if c["clip"] == self.ratings.clip_token("r1", "genome_01"))
         self.assertEqual(clip["mine_on"], given["genome_01"]["time"])
 
     def test_audit_log_and_no_secrets_in_it(self):
@@ -666,7 +709,7 @@ class Api(Temporary):
         page = get("/genome/listening?batch=test-batch&pile=1").get_json()
         self.assertFalse(page["sees_others"])
         self.assertNotIn("Ash", json.dumps(page))
-        self.assertTrue(all(c["mos"] is None for c in page["clips"]))
+        self.assertTrue(all("mos" not in c for c in page["clips"]))
         reply = self.client.post("/api/v1/genome/searches/r1/ratings", headers=auth,
                                  json={"scores": {"Julius": {"genome_01": 2}}}).get_json()
         self.assertEqual(reply["raters"], ["Julius"])
@@ -702,7 +745,110 @@ class Api(Temporary):
         self.assertEqual(rows, {"baseline": "no", "genome_01": "no", "genome_03": "yes"})
         page = self.client.get("/api/v1/genome/listening?batch=test-batch&pile=1", headers=auth).get_json()
         mine = {c["clip"]: c["mine_artifact"] for c in page["clips"] if c["run"] == "r1"}
-        self.assertEqual(mine, {"baseline": False, "genome_01": False, "genome_02": None, "genome_03": True})
+        token = lambda clip: self.ratings.clip_token("r1", clip)
+        self.assertEqual(mine, {token("baseline"): False, token("genome_01"): False, token("genome_02"): None,
+                                token("genome_03"): True})
+
+    def test_the_pile_is_blind_with_the_plain_line_mixed_in(self):
+        auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+        page = self.client.get("/api/v1/genome/listening?batch=test-batch&pile=1", headers=auth).get_json()
+        text = json.dumps(page["clips"])
+        for word in ("baseline", "genome_", "markup", "described", "verdict", "mos", "gene "):
+            self.assertNotIn(word, text)                        # nothing says which clip is the plain line
+        r1 = [c for c in page["clips"] if c["run"] == "r1"]
+        self.assertEqual([c["label"] for c in r1], ["A", "B", "C", "D"])
+        self.assertEqual({c["clip"] for c in r1},
+                         {self.ratings.clip_token("r1", k) for k in ("baseline", "genome_01", "genome_02", "genome_03")})
+        again = self.client.get("/api/v1/genome/listening?batch=test-batch&pile=1", headers=auth).get_json()
+        self.assertEqual([c["clip"] for c in again["clips"]], [c["clip"] for c in page["clips"]])   # the same order
+        clips = [f"genome_{n:02d}" for n in range(1, 11)] + ["baseline"]
+        self.assertNotEqual(self.ratings.blind_order("r1", "Julius", clips), self.ratings.blind_order("r1", "Rama", clips))
+        self.assertNotEqual(self.ratings.blind_order("r1", "Julius", clips), clips)
+
+    def test_a_clip_is_rated_and_played_by_its_blind_token(self):
+        auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+        (self.dir / "runs" / "r1" / "baseline.wav").write_bytes(b"RIFF....WAVE")
+        plain = self.ratings.clip_token("r1", "baseline")
+        url = "/api/v1/genome/searches/r1/ratings"
+        reply = self.client.post(url, headers=auth, json={"scores": {"Julius": {plain: 3}},
+                                                          "artifacts": {"Julius": {plain: False}}})
+        self.assertEqual(reply.status_code, 200, reply.get_json())
+        got = reply.get_json()
+        self.assertEqual((got["stored"], got["stored_artifacts"]), ({"Julius": {plain: 3.0}}, {"Julius": {plain: False}}))
+        self.assertNotIn("ranking", got)
+        self.assertNotIn("baseline", json.dumps(got))
+        self.assertEqual(self.ratings.load(self.dir / "runs" / "r1")["scores"]["Julius"], {"baseline": 3.0})
+        audio = self.client.get(f"/api/v1/genome/searches/r1/audio/{plain}.wav", headers=auth)
+        self.assertEqual((audio.status_code, audio.data), (200, b"RIFF....WAVE"))
+        self.assertNotIn("baseline", audio.headers.get("Content-Disposition", ""))
+        self.assertEqual(self.client.get("/api/v1/genome/searches/r1/audio/0123456789ab.wav", headers=auth).status_code, 404)
+        self.assertEqual(self.client.post(url, headers=auth, json={"scores": {"Julius": {"0123456789ab": 3}}}).status_code, 400)
+        r2 = self.ratings.clip_token("r2", "baseline")                 # another run's token is not this run's clip
+        self.assertEqual(self.client.post(url, headers=auth, json={"scores": {"Julius": {r2: 3}}}).status_code, 400)
+
+    def test_different_person_answer_is_kept_with_the_score(self):
+        auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+        url = "/api/v1/genome/searches/r1/ratings"
+        g1 = self.ratings.clip_token("r1", "genome_01")
+        self.assertEqual(self.client.post(url, headers=auth, json={"different": {"Julius": {g1: True}}}).status_code, 400)
+        reply = self.client.post(url, headers=auth, json={"scores": {"Julius": {g1: 2}}, "different": {"Julius": {g1: True}}})
+        self.assertEqual(reply.get_json()["stored_different"], {"Julius": {g1: True}})
+        self.client.post(url, headers=auth, json={"different": {"Julius": {g1: False}}})
+        log = self.ratings.read_log()
+        self.assertEqual((log[-1]["clip"], log[-1]["different"], log[-1]["previous_different"]), ("genome_01", False, True))
+        self.assertEqual(self.ratings.load(self.dir / "runs" / "r1")["given"]["Julius"]["genome_01"]["different"], False)
+        import csv
+        with open(ratings.who_path(), encoding="utf-8-sig") as f:
+            self.assertEqual([r["different_person"] for r in csv.DictReader(f)], ["no"])
+        page = self.client.get("/api/v1/genome/listening?batch=test-batch&pile=1", headers=auth).get_json()
+        self.assertEqual(next(c for c in page["clips"] if c["clip"] == g1)["mine_different"], False)
+        self.assertEqual(self.client.post(url, headers=auth, json={"different": {"Julius": {g1: "maybe"}}}).status_code, 400)
+
+    def test_the_original_recording_is_played_when_it_is_on_the_host(self):
+        auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+        url = "/api/v1/genome/searches/r1/reference.wav"
+        self.assertEqual(self.client.get(url, headers=auth).status_code, 404)
+        original = self.dir / "voices" / "p250_001.wav"
+        original.parent.mkdir()
+        original.write_bytes(b"RIFF-original")
+        run_file = self.dir / "runs" / "r1" / "run.json"
+        run = json.loads(run_file.read_text(encoding="utf-8"))
+        run_file.write_text(json.dumps({**run, "reference_audio": str(original)}), encoding="utf-8")
+        got = self.client.get(url, headers=auth)
+        self.assertEqual((got.status_code, got.data), (200, b"RIFF-original"))
+        page = self.client.get("/api/v1/genome/listening?batch=test-batch&pile=1", headers=auth).get_json()
+        self.assertEqual([r["reference"] for r in page["runs"]], [True, False])
+        self.assertNotIn(str(original), json.dumps(page))
+        self.assertEqual(self.client.get("/api/v1/genome/searches/r1/reference.wav").status_code, 401)
+
+    def test_graphs_show_the_charts_made_last(self):
+        from backend.genome import evidence_charts
+
+        charts = self.dir / "evidence charts"
+        for name, made in (("all dates", "2030-01-02 10:00:00"), ("2030-01-01_00-00 to now", "2030-01-03 09:00:00")):
+            (charts / name).mkdir(parents=True)
+            (charts / name / "q1_best.jpg").write_bytes(b"JPEG " + name.encode())
+            (charts / name / "summary.json").write_text(json.dumps({
+                "made": made, "range": {"from": None, "to": None}, "genome_scores": 5, "sanity_checks": 2,
+                "charts": [{"number": "1", "question": "Best?", "file": str(charts / name / "q1_best.jpg"),
+                            "claim": "c", "note": "n"}, {"number": "2", "question": "Artifacts?", "skipped": "no data"}]}),
+                encoding="utf-8")
+        auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+        get = lambda path: self.client.get("/api/v1/evidence/charts/latest" + path, headers=auth)
+        with mock.patch.object(evidence_charts, "CHARTS_DIR", charts):
+            self.assertEqual(get("").status_code, 403)                     # a listener rates blind
+            with mock.patch.object(self.server, "sees_others", lambda: True):
+                got = get("").get_json()
+                self.assertEqual((got["made"], got["dates"]), ("2030-01-03 09:00:00", "2030-01-01_00-00 to now"))
+                self.assertEqual(got["charts"][0]["url"], "/api/v1/evidence/charts/latest/q1_best.jpg")
+                self.assertEqual(got["charts"][1], {"number": "2", "question": "Artifacts?", "skipped": "no data"})
+                self.assertNotIn(str(self.dir), json.dumps(got))
+                self.assertEqual(get("/q1_best.jpg").data, b"JPEG 2030-01-01_00-00 to now")
+                self.assertEqual(get("/summary.json").status_code, 404)
+            empty = self.dir / "no charts"
+            with mock.patch.object(evidence_charts, "CHARTS_DIR", empty), \
+                    mock.patch.object(self.server, "sees_others", lambda: True):
+                self.assertEqual(get("").status_code, 404)
 
     def test_old_scores_have_no_artifact_answer_and_others_stay_hidden(self):
         accounts.assign("julius", "test-batch", 1)

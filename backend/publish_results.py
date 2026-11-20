@@ -126,7 +126,8 @@ def runs_data(runs, rated, sealed):
 
 
 HISTORY_FIELDS = ["time", "run", "batch", "pile", "voice", "rater", "submitted_by", "clip", "genome", "score",
-                  "previous", "artifact", "previous_artifact", "speed", "verdict", "genes", "markup", "text"]
+                  "previous", "artifact", "previous_artifact", "different", "previous_different", "speed", "verdict",
+                  "genes", "markup", "text"]
 
 
 def _is_test(name):

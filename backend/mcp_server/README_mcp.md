@@ -54,12 +54,14 @@ Only one resource is exposed (`dramatizer://about`). All data comes through the 
 
 ## Running it
 
+The `mcp` package lives in its own environment, because it would upgrade packages the main environment pins: `python -m venv E:/envs/dramatizer-mcp`, then `E:/envs/dramatizer-mcp/Scripts/python.exe -m pip install -r backend/mcp_server/requirements.txt`, and set `MCP_PYTHON` in `.env` to that python. From the main environment, `python main_backend.py mcp`, `mcp-ask` and `mcp-eval` then start the server, the client loop and the evaluation in it (the commands below work too, run with that python).
+
 Prerequisites: the backend must be running, Ollama must serve the model `gemma4-8k` (a variant of `gemma4:e4b` with `num_ctx 8192`), and the environment variables `DRAMATIZER_URL`, `DRAMATIZER_FINGERPRINT` and either `DRAMATIZER_KEY` or `DRAMATIZER_USER` plus `DRAMATIZER_PASSWORD` must be set in the same terminal.
 
 Set the variables in Git Bash, from the repository root (replace the placeholders with your own values, and do not commit them):
 
 ```bash
-export DRAMATIZER_URL="https://jensen-training.tun.ply.gg:65327"
+export DRAMATIZER_URL="<address the host gave you, e.g. https://name.gl.at.ply.gg:12345>"
 export DRAMATIZER_FINGERPRINT="<fingerprint>"
 export DRAMATIZER_USER="<username>"
 export DRAMATIZER_PASSWORD="<password>"
@@ -88,11 +90,18 @@ The evaluation uses the 25 questions in `chatbot_questions.json`. The truth come
 | Run | Tools | Answers |
 |---|---|---|
 | Old chatbot (direct API calls) | 24/25 | 25/25 |
-| MCP loop, latest full run | 25/25 | 24/25 |
+| MCP loop, first full run (Ollama `gemma4-8k`, CPU) | 25/25 | 24/25 |
+| MCP loop, full run 19 Nov, before the two fixes below (Gemma 4 E4B, 4-bit, GPU) | 25/25 | 23/25 |
+| **MCP loop, full run 19 Nov, after them (Gemma 4 E4B, 4-bit, GPU)** | **25/25** | **25/25** |
 
-In the latest full run, the genome question about sigh (`s12`) failed because of a wrong parameter (`genes` instead of `gene_type`). The instructions were changed afterwards, and the question passed when run on its own. A new full run is still needed to confirm this.
+In the first full run, the genome question about sigh (`s12`) failed because of a wrong parameter (`genes` instead of `gene_type`). The instructions were changed, and `s12` passed in both full runs on 19 Nov.
 
-Evidence questions 1 to 6 passed both tool and answer checks in every run.
+The 19 Nov runs used the same model family (`gemma-4-E4B-it`, 4-bit, on the host's GPU, behind a local OpenAI-compatible stand-in for Ollama), about 15-19 s a question. The first of them failed two answers, and both were fixed before the last run:
+
+- **`q2` (artifacts): the scoring, not the model.** Chart 2 now shows "No data" until listeners answer the artifact question, and the model said exactly that, but the scorer could only check a chart's numbers. `chatbot_eval.judge` now counts an answer right when the chart has no data and the answer says so (and wrong when it names results anyway).
+- **`s15` (how often VCTK beats the plain line): the model.** It asked for `sort: beat_plain` without `group_by`, and the API quietly sorted single rows by score instead. `read_calls.query_scores` now refuses a group sort without `group_by`, with a message saying what to add; in the last run the model read it and asked again with `group_by: dataset` (two calls, right answer: 26 %).
+
+Reports: `history/mcp_evals/mcp_eval_gemma-4-E4B-it_20261119_232734.json` (before) and `..._234839.json` (after).
 
 ## Changes made during the work
 
@@ -162,7 +171,7 @@ The test fails only if the model names one genome as the one to use. The model d
 
 ## Known limitations
 
-- **Data revision is missing from `answer_evidence` and `search_evidence`.** `evidence_question` returns `snapshot_id` and `ratings_up_to`, but the other two tools do not. This needs a backend change, which the host is responsible for.
+- **Data revision on `answer_evidence` and `search_evidence`: fixed in the backend.** The API now adds provenance (`snapshot_id`, `ratings_up_to`, `data_revision`) to `/evidence/answer` and `/evidence/search` as well, and `read_calls.py` passes the API's answer through unchanged, so both tools return it once the host runs the updated API. (A listener who rates blind gets no `snapshot_id`, because the snapshot is made from everyone's scores.)
 - **Answers are slow** (about one to two minutes per question), because the model runs on CPU.
 - **Tool results are cut** at 6 000 characters in the prompt.
 - **There are no write tools.** Approval before writes and idempotency keys become relevant only if write tools are added.

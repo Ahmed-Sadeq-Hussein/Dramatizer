@@ -120,6 +120,12 @@ class Scoring(unittest.TestCase):
         claim = {"truth": {"claim": "answer"}}
         self.assertEqual(chatbot_eval.judge(claim, "13 of 24 voices; 16 above", {"answer": "13 of 24 voices, 16 of 24 above"}), [])
         self.assertTrue(chatbot_eval.judge(claim, "most voices", {"answer": "13 of 24 voices, 16 of 24 above"}))
+        # A chart with no data ("No data"): the right answer says so, one naming results anyway is wrong
+        empty = {"skipped": "no listener answered the artifact question in this range"}
+        self.assertEqual(chatbot_eval.judge(claim, "No listener has answered the artifact question yet.", empty), [])
+        self.assertEqual(chatbot_eval.judge(claim, "There is no data for this yet.", empty), [])
+        self.assertTrue(chatbot_eval.judge(claim, "Genome 3 of p250 produces artifacts.", empty))
+        self.assertTrue(chatbot_eval.judge(claim, "anything", {}))                     # no claim and no reason: wrong
         self.assertEqual(chatbot_eval.values_at({"g": [{"l": "A"}, {"l": "B"}]}, "g.*.l"), ["A", "B"])
 
 

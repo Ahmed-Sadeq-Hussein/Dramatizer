@@ -19,7 +19,7 @@ The back end lives in backend/:
     backend/genome/           genomes (delivery edits) and the search for good ones
     backend/emphasis/         word emphasis chosen by a small LLM, and its tests
     backend/evaluation/       checks of the manifest and the split, and run tracking
-    backend/mcp_server/       the knowledge graph of the generated clips, for an assistant
+    backend/mcp_server/       the read-only MCP server, its client loop and evaluation (milestone 3)
     backend/rag/              the evidence corpus and its retrievers (course milestone 2)
     backend/data/             the committed data: manifests, the split, the emphasis test set
 
@@ -108,8 +108,12 @@ COMMANDS = {
         "eval-manifest": ("List every clip once, in a fixed order (history/eval)", "backend/evaluation/make_manifest.py"),
         "track": ("Record an evaluation run with MLflow", "backend/evaluation/track.py"),
         "import-mos": ("Log paired baseline and genome listening ratings to MLflow", "backend/evaluation/import_mos.py"),
-        "graph": ("Build the knowledge graph of the generated clips", "backend/mcp_server/build_graph.py"),
-        "mcp": ("Start the MCP server for the knowledge graph", "backend/mcp_server/dramatizer_mcp.py"),
+        "mcp": ("Start the read-only MCP server (13 tools; logs in with DRAMATIZER_URL, DRAMATIZER_FINGERPRINT and "
+                "DRAMATIZER_KEY or DRAMATIZER_USER + DRAMATIZER_PASSWORD)", "backend/mcp_server/dramatizer_mcp.py"),
+        "mcp-ask": ("Ask one question through the MCP client loop: --ask \"...\" --server URL --model NAME [--steps]",
+                    "backend/mcp_server/client_loop.py"),
+        "mcp-eval": ("Evaluate the MCP loop on the chatbot's 25 questions: --server URL --model NAME [--only s01,q5]",
+                     "backend/mcp_server/eval_mcp.py"),
     },
     "Evidence (questions answered from the project's records)": {
         "rag": ("rag corpus | label | refresh [--check] | ask \"a question\" [--retriever hybrid] | run | compare | answer \"a question\" [--as USER] | answer --check: the evidence, its answer key, refresh, BM25 baseline, MiniLM hybrid, hit@k/MRR, cited answers with safe absence",
@@ -118,10 +122,9 @@ COMMANDS = {
 }
 
 # The tests that need no models or GPU, run as they are run by hand, with the
-# package each needs beyond requirements.txt (None: nothing more). The MCP server
-# has its own environment (see requirements.txt), so its test is skipped where
-# "mcp" is not installed.
-TESTS = [("backend/evaluation/test_checks.py", None), ("backend/metrics/test_calibrate_words.py", None), ("backend/speech/test_pacing.py", None), ("backend/evaluation/test_sanity_all_genes.py", None), ("backend/voice_data/test_voice_map.py", None), ("backend/voice_data/test_voice_similarity.py", None), ("backend/genome/test_explore.py", None), ("backend/genome/test_editor.py", None), ("backend/genome/test_guidance_and_report.py", None), ("backend/genome/test_evidence_charts.py", None), ("backend/genome/test_evidence_snapshot.py", None), ("backend/genome/test_report_eval.py", None), ("backend/api/test_accounts.py", None), ("backend/api/test_assistant.py", None), ("API calls/test_chatbot.py", None), ("API calls/test_remote_results.py", None), ("backend/rag/test_rag.py", None), ("backend/test_storage.py", None), ("backend/test_publish_results.py", None), ("backend/mcp_server/test_api_calls.py", None), ("backend/mcp_server/test_graph.py", "mcp")]
+# package each needs beyond requirements.txt (None: nothing more). The MCP read
+# calls are tested with a stand-in API, so they need neither the server nor "mcp".
+TESTS = [("backend/evaluation/test_checks.py", None), ("backend/metrics/test_calibrate_words.py", None), ("backend/speech/test_pacing.py", None), ("backend/evaluation/test_sanity_all_genes.py", None), ("backend/voice_data/test_voice_map.py", None), ("backend/voice_data/test_voice_similarity.py", None), ("backend/genome/test_explore.py", None), ("backend/genome/test_editor.py", None), ("backend/genome/test_guidance_and_report.py", None), ("backend/genome/test_evidence_charts.py", None), ("backend/genome/test_evidence_snapshot.py", None), ("backend/genome/test_report_eval.py", None), ("backend/api/test_accounts.py", None), ("backend/api/test_assistant.py", None), ("API calls/test_chatbot.py", None), ("API calls/test_remote_results.py", None), ("API calls/test_chart_captions.py", None), ("backend/rag/test_rag.py", None), ("backend/test_storage.py", None), ("backend/test_publish_results.py", None), ("backend/mcp_server/test_read_calls.py", None)]
 
 
 def all_commands():
@@ -181,8 +184,32 @@ def main(argv):
     if name not in commands:
         print(f"Unknown command {name!r}. Run `python main_backend.py` to see them all.", file=sys.stderr)
         return 2
-    run(commands[name], args)
+    target = commands[name]
+    if target.startswith("backend/mcp_server/"):
+        return run_mcp(target, args)
+    run(target, args)
     return 0
+
+
+def run_mcp(target, args):
+    """The MCP commands need the "mcp" package, which lives in its own environment (MCP_PYTHON in .env), because
+    it would upgrade packages the main environment pins (pydantic, starlette, uvicorn)."""
+    import importlib.util
+
+    if importlib.util.find_spec("mcp") is not None:
+        run(target, args)
+        return 0
+    from dotenv import load_dotenv
+
+    load_dotenv(PROJECT_DIR / ".env")
+    python = os.environ.get("MCP_PYTHON", "").strip()
+    if not python or not Path(python).is_file():
+        print("The MCP commands need the mcp package in their own environment. Make it once:\n"
+              "    python -m venv E:/envs/dramatizer-mcp\n"
+              "    E:/envs/dramatizer-mcp/Scripts/python.exe -m pip install -r backend/mcp_server/requirements.txt\n"
+              "then set MCP_PYTHON=E:/envs/dramatizer-mcp/Scripts/python.exe in .env.", file=sys.stderr)
+        return 2
+    return subprocess.run([python, str(PROJECT_DIR / target), *args], cwd=PROJECT_DIR).returncode
 
 
 if __name__ == "__main__":

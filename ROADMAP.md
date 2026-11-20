@@ -101,7 +101,7 @@ Not needed for the result, but for a complete hand-in and demo.
 
 | # | Task | Size | Done when | Owner |
 |---|---|---|---|---|
-| 7.1 | Implement the MCP and login calls (`backend/mcp_server/api_calls.py`) | M | Its tests call the API for real; an MCP client logs in and asks | |
+| 7.1 | Implement the MCP and login calls (`backend/mcp_server/api_calls.py`) | M | Its tests call the API for real; an MCP client logs in and asks | Done in pull request #6 (Rama): `read_calls.py` logs in and makes the 13 read calls; the `api_calls.py` stubs were removed |
 | 7.2 | Move API keys, named genomes and render notes into the database too | M | No shared state left in JSON files | |
 | 7.3 | Times in UTC, one naming standard for voices and runs (`Best practices.txt`, 2C) | M | Written in `DATA_CONTRACT.md` and used everywhere | |
 | 7.4 | A Docker image for the API, and a clean-clone check of the README | M | A new computer runs it from the README alone | |

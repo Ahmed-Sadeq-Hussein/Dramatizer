@@ -28,6 +28,9 @@ from chatbot import Chatbot, make_model  # noqa: E402
 QUESTIONS = HERE / "chatbot_questions.json"
 REPORTS = HERE.parent / "history" / "chatbot"
 NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
+# An answer saying a chart has nothing to show yet
+NO_DATA = re.compile(r"\bno (data|listeners?|answers?|one|results?)\b|\bnobody\b|not (yet )?(been )?answered|"
+                     r"no\b[^.]{0,40}\banswered\b|not enough data|has no data|no chart", re.I)
 
 
 def values_at(data, path):
@@ -91,7 +94,12 @@ def judge(question, answer, truth_data):
     if truth.get("claim"):
         claim = str(truth_data.get(truth["claim"]) or "")
         wanted = list(dict.fromkeys(numbers_in(claim)))
-        if wanted:
+        if not claim and truth_data.get("skipped"):
+            # The chart has no data ("No data": e.g. no listener answered the artifact question yet). The right
+            # answer says so; an answer that names results anyway is wrong.
+            if not NO_DATA.search(answer):
+                missing.append(f"that the chart has no data ({truth_data['skipped']})")
+        elif wanted:
             hit = sum(has_number(answer, n) for n in wanted)
             if hit * 2 < len(wanted):
                 missing.append(f"{hit} of {len(wanted)} numbers of the chart's answer")

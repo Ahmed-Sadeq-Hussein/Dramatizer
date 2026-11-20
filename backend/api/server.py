@@ -101,6 +101,8 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
                                                   voice, line, genome, who made it and when
     GET  /renders/<id>/audio                      one of them
     POST /renders/<id>/rating  {score: 1-5|null}  score your own render (kept apart from the MOS)
+    POST /renders/remove {ids: [...]}             admins (remove_renders): delete renders. They are moved to
+                                                  genome_renders/removed/ with who removed them and when, not erased
 
 Who may do what: an API key may do everything. An account (accounts.py) may do
 what its role allows: listeners rate (only as themselves, only their own pile),
@@ -974,7 +976,9 @@ def named():
 # --- The genome studio: pick, edit, save, render -----------------------------
 
 GENOME_RENDERS = SPEAK_DIR / "genome_renders"      # every render made through the API, each with a .json note
-RENDER_ID = re.compile(r"^[A-Za-z0-9_-]{1,160}$")
+# A render's file name without .wav. Spaces are allowed: a custom voice's renders start with its dataset name,
+# "Custom voices_<speaker>_...". Never a dot or a slash, so an id cannot leave GENOME_RENDERS.
+RENDER_ID = re.compile(r"^[A-Za-z0-9_-][A-Za-z0-9 _-]{0,159}$")
 RENDERS_PAGE = 30
 RENDER_RATINGS = SPEAK_DIR / "render_ratings.json"    # people's scores of their own renders, apart from the MOS
 PRIVATE_GENOMES = SPEAK_DIR / "private_genomes.json"  # {user: [genome]}: named blank genomes, each seen by its maker only
@@ -1168,6 +1172,8 @@ def renders():
     for r in found:
         r["mine"] = r["by"] == g.user
         r["my_score"] = scores.get(r["id"], {}).get(g.user)
+    for r in found:
+        r["removable"] = "remove_renders" in g.permissions
     if mine:
         found = [r for r in found if r["by"] == g.user]
     if words:
@@ -1198,6 +1204,40 @@ def rate_render(render_id):
         RENDER_RATINGS.parent.mkdir(parents=True, exist_ok=True)
         safe_files.write_json(RENDER_RATINGS, scores)
     return jsonify(ok=True, score=score)
+
+
+REMOVED_RENDERS = "removed"          # a sub-folder of GENOME_RENDERS: render_notes() does not look inside it
+MAX_REMOVE = 200
+
+
+@app.post(f"{API}/renders/remove")
+@needs_key
+@needs("remove_renders")
+def remove_renders():
+    """Admins delete renders: each .wav and its note are moved to GENOME_RENDERS/removed/, the note recording who
+    removed it and when, so a mistake can be undone by moving the two files back."""
+    ids = body().get("ids")
+    if not isinstance(ids, list) or not ids or len(ids) > MAX_REMOVE:
+        raise Refused(f"Send ids: a list of 1 to {MAX_REMOVE} render ids.")
+    ids = list(dict.fromkeys(str(i) for i in ids))
+    bad = [i for i in ids if not RENDER_ID.match(i) or not (GENOME_RENDERS / f"{i}.wav").is_file()]
+    if bad:
+        raise Refused(f"No such render: {', '.join(bad[:5])}.", 404)
+    bin_dir = GENOME_RENDERS / REMOVED_RENDERS
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    when = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    removed = []
+    with _own_lock:
+        for render_id in ids:
+            wav, note = GENOME_RENDERS / f"{render_id}.wav", GENOME_RENDERS / f"{render_id}.json"
+            data = read_json(note, {})
+            data.update(removed_by=g.user, removed=when)
+            safe_files.write_json(bin_dir / f"{render_id}.json", data)
+            wav.replace(bin_dir / f"{render_id}.wav")
+            note.unlink(missing_ok=True)
+            removed.append(render_id)
+    audit("renders removed", count=len(removed), ids=removed[:20])
+    return jsonify(ok=True, removed=removed)
 
 
 @app.get(f"{API}/renders/<render_id>/audio")

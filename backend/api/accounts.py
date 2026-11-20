@@ -84,7 +84,7 @@ SESSIONS_PATH = storage.LEGACY["sessions"]
 ROLES = {
     "listener": {"rate", "speak"},                          # rate genomes as themself; speak and render lines
     "researcher": {"rate", "speak", "search", "name"},      # also make speech, start searches, name genomes
-    "admin": {"rate", "speak", "search", "name", "rate_for_others"},
+    "admin": {"rate", "speak", "search", "name", "rate_for_others", "remove_renders"},   # also delete renders
 }
 PERMISSIONS = sorted(set().union(*ROLES.values()))
 

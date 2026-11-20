@@ -363,6 +363,13 @@ class Api(Temporary):
             self.assertEqual(heard, ["Custom voices/Julius"])                               # Ahmed's render is hidden
             hidden = self.client.get("/api/v1/renders/Custom voices_Ahmed_plain_1/audio", headers=auth)
             self.assertEqual(hidden.status_code, 404)
+            # His own voice's render plays: the id has a space ("Custom voices_..."), which once made every custom
+            # voice's render 404, so the 404 above must come from the permission, not from the id
+            playing = self.client.get("/api/v1/renders/Custom voices_Julius_plain_1/audio", headers=auth)
+            self.assertEqual(playing.status_code, 200)
+            playing.close()
+            for bad in ("..%2Fsecret", " leading space", "a.b", "a%2Fb"):
+                self.assertEqual(self.client.get(f"/api/v1/renders/{bad}/audio", headers=auth).status_code, 404)
 
             admin = {"Authorization": "Bearer " + self.client.post("/api/v1/login", json={
                 "username": "rama", "password": admin_password}).get_json()["token"]}
@@ -373,6 +380,39 @@ class Api(Temporary):
                                        json={"dataset": "Custom voices", "clip_id": "Julius", "text": "Hello there."})
             self.assertEqual(refused.status_code, 400)                                     # not even for an admin
             self.assertIn("custom voice", refused.get_json()["error"])
+
+    def test_only_admins_delete_renders_and_they_can_be_brought_back(self):
+        folder = self.dir / "renders_del"
+        folder.mkdir()
+        for stem, by in (("VCTK_p250_genome_a", "Julius"), ("Custom voices_Ash_plain_b", "Ash"), ("VCTK_p250_plain_c", "Ash")):
+            (folder / f"{stem}.wav").write_bytes(b"RIFF....WAVE")
+            (folder / f"{stem}.json").write_text(json.dumps({"voice": "VCTK/p250", "text": "Hi.", "by": by,
+                                                            "made": "2030-01-01 10:00:00"}), encoding="utf-8")
+        _, admin_password = accounts.new_account("rama", "Rama", role="admin")
+        with mock.patch.object(self.server, "GENOME_RENDERS", folder):
+            listener = {"Authorization": "Bearer " + self.login().get_json()["token"]}            # julius
+            mine = self.client.get("/api/v1/renders", headers=listener).get_json()["renders"]
+            self.assertFalse(any(r["removable"] for r in mine))                                # no delete buttons
+            refused = self.client.post("/api/v1/renders/remove", headers=listener, json={"ids": ["VCTK_p250_genome_a"]})
+            self.assertEqual(refused.status_code, 403)                                         # not even their own
+            self.assertTrue((folder / "VCTK_p250_genome_a.wav").is_file())
+
+            admin = {"Authorization": "Bearer " + self.client.post("/api/v1/login", json={
+                "username": "rama", "password": admin_password}).get_json()["token"]}
+            self.assertTrue(all(r["removable"] for r in self.client.get("/api/v1/renders", headers=admin).get_json()["renders"]))
+            for bad in ({"ids": []}, {"ids": "VCTK_p250_genome_a"}, {"ids": ["../x"]}, {"ids": ["nope"]}):
+                self.assertIn(self.client.post("/api/v1/renders/remove", headers=admin, json=bad).status_code, (400, 404))
+            done = self.client.post("/api/v1/renders/remove", headers=admin,
+                                    json={"ids": ["VCTK_p250_genome_a", "Custom voices_Ash_plain_b"]})
+            self.assertEqual(done.status_code, 200)
+            self.assertEqual(done.get_json()["removed"], ["VCTK_p250_genome_a", "Custom voices_Ash_plain_b"])
+            left = [r["id"] for r in self.client.get("/api/v1/renders", headers=admin).get_json()["renders"]]
+            self.assertEqual(left, ["VCTK_p250_plain_c"])
+            kept = folder / "removed"                                                          # moved, not erased
+            self.assertTrue((kept / "VCTK_p250_genome_a.wav").is_file())
+            note = json.loads((kept / "VCTK_p250_genome_a.json").read_text(encoding="utf-8"))
+            self.assertEqual((note["by"], note["removed_by"]), ("Julius", "Rama"))
+            self.assertEqual(self.client.get("/api/v1/renders/VCTK_p250_genome_a/audio", headers=admin).status_code, 404)
 
     def test_rate_only_your_own_renders_kept_apart(self):
         folder = self.dir / "renders2"

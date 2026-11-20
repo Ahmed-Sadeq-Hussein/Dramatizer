@@ -330,6 +330,12 @@
       <button type="submit" class="quiet">Search</button>
     </form>
     <p class="muted small" id="rn-count"></p>
+    <!-- Admins only (the API refuses everyone else): pick renders and delete them; they go to a removed/ folder -->
+    <div class="row admin-bar" id="rn-admin" hidden>
+      <label class="check"><input type="checkbox" id="rn-all"> Select all on this page</label>
+      <span class="muted small" id="rn-picked">0 selected</span>
+      <button type="button" class="danger" id="rn-delete" disabled>Delete selected</button>
+    </div>
     <ul class="list" id="rn-list"></ul>
     <div class="pager"><button id="rn-prev" class="quiet">‹ Newer</button><span id="rn-page"></span><button id="rn-next" class="quiet">Older ›</button></div>
   </section>

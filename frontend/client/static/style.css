@@ -300,3 +300,11 @@ label.check { display: flex; align-items: center; gap: 6px; align-self: center; 
 .graph .caption { display: grid; gap: 4px; }
 .graph details summary { cursor: pointer; }
 .graph ul.facts { margin: 4px 0 0; padding-left: 18px; overflow-wrap: anywhere; }
+
+/* Renders: admins delete renders (Listen > Renders) */
+button.danger { background: var(--bad); color: var(--surface); }   /* light text in light mode, dark in dark */
+button.quiet.danger { background: transparent; color: var(--bad); border-color: var(--bad); }
+.admin-bar { gap: 12px; align-items: center; padding: 8px 10px; margin: 6px 0; border: 1px dashed var(--bad);
+             border-radius: 6px; background: var(--bad-soft); }
+.render-admin { gap: 8px; margin-left: auto; align-items: center; }
+.render-admin button { padding: 3px 10px; font-size: 0.85rem; }

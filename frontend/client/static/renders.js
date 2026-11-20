@@ -2,14 +2,20 @@
 "use strict";
 
 const Renders = (() => {
-  const R = { page: 1, pages: 1 };
+  const R = { page: 1, pages: 1, picked: new Set(), admin: false };
 
   function item(r) {
     const title = r.genome || (r.genes ? `Edited genome (${r.genes} gene${r.genes === 1 ? "" : "s"})` : "Plain line");
     const details = [`by ${r.by || "?"}`, r.made, r.seed !== null && r.seed !== undefined ? `seed ${r.seed}` : null,
                      r.speed && r.speed !== 1 ? `speed ${r.speed}` : null].filter(Boolean).join(" · ");
+    // Admins: a box to pick it for "Delete selected", and a Delete button for this one alone
+    const admin = r.removable ? el("span", { class: "row render-admin" },
+      el("label", { class: "check" }, el("input", { type: "checkbox", class: "rn-pick", "data-id": r.id,
+        "aria-label": `Select ${title} for deleting`, onchange: (e) => pick(r.id, e.target.checked) }), "Select"),
+      el("button", { type: "button", class: "quiet danger", onclick: () => remove([r.id], `"${title} · ${r.voice || ""}"`) }, "Delete"))
+      : null;
     return el("li", { class: "item" },
-      el("div", { class: "item-head" }, el("strong", {}, `${title} · ${r.voice || ""}`), el("span", { class: "muted small" }, details)),
+      el("div", { class: "item-head" }, el("strong", {}, `${title} · ${r.voice || ""}`), el("span", { class: "muted small" }, details), admin),
       el("p", {}, r.text || ""),
       r.genes ? el("p", { class: "markup" }, r.markup || "") : null,
       el("audio", { controls: true, preload: "none", src: `${API}/renders/${encodeURIComponent(r.id)}/audio` }),
@@ -44,6 +50,11 @@ const Renders = (() => {
       const data = await call("/renders?" + params);
       R.page = data.page;
       R.pages = data.pages;
+      R.admin = data.renders.some((r) => r.removable);
+      R.picked.clear();
+      $("rn-admin").hidden = !R.admin;
+      $("rn-all").checked = false;
+      showPicked();
       $("rn-list").replaceChildren(...data.renders.map(item));
       $("rn-count").textContent = data.total
         ? `${data.total} render${data.total === 1 ? "" : "s"}` : "No renders yet: make one in Generate.";
@@ -52,6 +63,34 @@ const Renders = (() => {
       $("rn-next").disabled = R.page >= R.pages;
     } catch (error) { $("rn-count").textContent = error.message; }
   }
+
+  // --- Admins: delete renders (the API moves them to genome_renders/removed/, so the host can bring one back)
+  function pick(id, on) {
+    if (on) R.picked.add(id); else R.picked.delete(id);
+    showPicked();
+  }
+
+  function showPicked() {
+    const n = R.picked.size;
+    $("rn-picked").textContent = `${n} selected`;
+    $("rn-delete").disabled = n === 0;
+    $("rn-delete").textContent = n ? `Delete ${n} selected` : "Delete selected";
+  }
+
+  async function remove(ids, what) {
+    const label = what || `${ids.length} render${ids.length === 1 ? "" : "s"}`;
+    if (!window.confirm(`Delete ${label}?\n\nThey disappear from Listen for everyone. The host can still bring them back from the removed folder.`)) return;
+    try {
+      const { removed } = await call("/renders/remove", { body: { ids } });
+      toast(`Deleted ${removed.length} render${removed.length === 1 ? "" : "s"}.`);
+      load(R.page);
+    } catch (error) { toast(error.message, true); }
+  }
+
+  $("rn-all").addEventListener("change", (e) => {
+    document.querySelectorAll("#rn-list .rn-pick").forEach((box) => { box.checked = e.target.checked; pick(box.dataset.id, box.checked); });
+  });
+  $("rn-delete").addEventListener("click", () => remove([...R.picked]));
 
   // Only one clip plays at a time
   $("rn-list").addEventListener("play", (e) => {

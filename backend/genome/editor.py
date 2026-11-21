@@ -120,16 +120,29 @@ def _now():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-def save(name, genes, named_by=None, text=None, based_on=None):
-    """A new named genome made by hand. Refused if the name is taken (by any named genome)."""
+def owns(entry, viewer):
+    """
+    May `viewer` see this named genome? viewer: None (the host: everything) or (username, display name).
+    A genome made by hand is its maker's alone; genomes named from a search are the project's, seen by all.
+    """
+    if viewer is None or not entry.get("edited"):
+        return True
+    username, display = viewer
+    if entry.get("account"):
+        return entry["account"] == username
+    return entry.get("named_by") == display          # saved before the account was kept: by the name shown
+
+
+def save(name, genes, named_by=None, text=None, based_on=None, account=None):
+    """A new named genome made by hand, seen only by its maker (`account`). Refused if the name is taken."""
     name = ratings.clean_name(name)
     genes = clean_genes(genes)
     shown = preview(text, genes) if text else None
     with storage.connect(write=True):       # named.json: one writer at a time, across processes
         library = ratings.load_named()
         if any(e["name"].lower() == name.lower() for e in library["genomes"]):
-            raise ValueError(f"There is already a genome named {name!r}: choose another name.")
-        entry = {"name": name, "named": _now(), "named_by": named_by, "edited": True, "run": None, "genome": None,
+            raise ValueError(f"The genome name {name!r} is taken: choose another name.")
+        entry = {"name": name, "named": _now(), "named_by": named_by, "account": account, "edited": True, "run": None, "genome": None,
                  "genes": genes, "based_on": based_on, "text": text,
                  "described": shown["described"] if shown else None, "markup": shown["markup"] if shown else None,
                  "speed": shown["speed"] if shown else None, "voice": None, "verdict": None, "mos": None}
@@ -138,11 +151,11 @@ def save(name, genes, named_by=None, text=None, based_on=None):
     return entry
 
 
-def remove(name):
-    """Delete a genome made by hand (named search genomes are unnamed from their search instead)."""
+def remove(name, viewer=None):
+    """Delete a genome made by hand, by its maker (named search genomes are unnamed from their search instead)."""
     with storage.connect(write=True):       # named.json: one writer at a time, across processes
         library = ratings.load_named()
-        found = [e for e in library["genomes"] if e["name"].lower() == str(name).lower()]
+        found = [e for e in library["genomes"] if e["name"].lower() == str(name).lower() and owns(e, viewer)]
         if not found:
             raise ValueError(f"No genome named {name!r}.")
         if not found[0].get("edited"):
@@ -151,13 +164,16 @@ def remove(name):
         safe_files.write_json(ratings.NAMED_PATH, library)
 
 
-def library(runs, with_mos=True):
+def library(runs, with_mos=True, viewer=None):
     """
     Every genome that can be picked: the named ones first (newest first), then each search's genomes.
     runs: [(folder, run dict)] the caller may see. with_mos=False leaves out the MOS (listeners rate blind).
+    viewer: (username, display name): genomes made by hand by others are left out (owns()); None: all.
     """
     out = []
     for e in reversed(ratings.load_named()["genomes"]):
+        if not owns(e, viewer):
+            continue
         out.append({"key": "named:" + e["name"], "source": "edited" if e.get("edited") else "named", "name": e["name"],
                     "run": e.get("run"), "genome": e.get("genome"), "voice": e.get("voice"), "text": e.get("text"),
                     "genes": e["genes"], "described": e.get("described"), "markup": e.get("markup"),

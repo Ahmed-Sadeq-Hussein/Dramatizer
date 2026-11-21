@@ -19,6 +19,23 @@ from backend.genome import ratings  # noqa: E402
 FAST = 1000     # hashing rounds in tests; the real number is accounts.ROUNDS
 
 
+def agreed_accounts(test):
+    """Accounts made in `test` have accepted the user agreement (the tests of other things log in and go on).
+    Returns the unpatched new_account, for the tests of the agreement itself."""
+    from backend.api import agreement
+    made = accounts.new_account
+
+    def new_account(*args, **kwargs):
+        account, password = made(*args, **kwargs)
+        if not kwargs.get("pending"):                    # registering records its own acceptance
+            accounts.accept_agreement(account.username, agreement.VERSION)
+        return account, password
+    patch = mock.patch.object(accounts, "new_account", new_account)
+    patch.start()
+    test.addCleanup(patch.stop)
+    return made
+
+
 class Temporary(unittest.TestCase):
     def setUp(self):
         folder = tempfile.TemporaryDirectory()
@@ -211,6 +228,7 @@ class Api(Temporary):
         fake_run(runs / "r1", "r1", 1)
         fake_run(runs / "r2", "r2", 1)
         fake_run(runs / "r3", "r3", 2)
+        self.new_account_not_agreed = agreed_accounts(self)
         _, self.password = accounts.new_account("julius", "Julius")
         self.client = server.app.test_client()
 
@@ -230,8 +248,12 @@ class Api(Temporary):
         self.assertEqual(self.client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"}).status_code, 401)
 
     def test_register_then_approve_then_log_in(self):
-        new = {"username": "ana", "display_name": "Ana", "email": "Ana@Example.org", "password": "a long password 1"}
+        from backend.api import agreement
+        new = {"username": "ana", "display_name": "Ana", "email": "Ana@Example.org", "password": "a long password 1",
+               "agreement": agreement.VERSION}
         self.assertTrue(self.client.get("/api/v1/register").get_json()["open"])
+        for unticked in (None, "1999-01-01"):                                  # the box not ticked, or an old text
+            self.assertEqual(self.client.post("/api/v1/register", json={**new, "agreement": unticked}).status_code, 400)
         self.assertEqual(self.client.post("/api/v1/register", json={**new, "email": ""}).status_code, 400)
         reply = self.client.post("/api/v1/register", json=new)
         self.assertEqual(reply.status_code, 201)
@@ -244,6 +266,8 @@ class Api(Temporary):
         token = self.client.post("/api/v1/login", json=login).get_json()["token"]
         me = self.client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"}).get_json()
         self.assertEqual((me["account"]["role"], me["account"]["email"]), ("listener", "ana@example.org"))
+        self.assertFalse(me["agreement_needed"])                                # accepted when registering
+        self.assertEqual([a["how"] for a in accounts.agreements_of("ana")], ["register"])
         audit = (self.dir / "audit.jsonl").read_text(encoding="utf-8")
         self.assertNotIn("example.org", audit)
         self.assertNotIn(new["password"], audit)
@@ -253,7 +277,9 @@ class Api(Temporary):
                                if name == "REGISTRATION" else default):
             self.assertEqual(self.client.post("/api/v1/register", json={}).status_code, 403)
         with mock.patch.object(self.server, "REGISTRATIONS_ALLOWED", 1):
-            ok = {"username": "bo", "display_name": "Bo", "email": "bo@example.org", "password": "a long password 2"}
+            from backend.api import agreement
+            ok = {"username": "bo", "display_name": "Bo", "email": "bo@example.org", "password": "a long password 2",
+                  "agreement": agreement.VERSION}
             self.assertEqual(self.client.post("/api/v1/register", json=ok).status_code, 201)
             again = {**ok, "username": "cy", "display_name": "Cy", "email": "cy@example.org"}
             self.assertEqual(self.client.post("/api/v1/register", json=again).status_code, 429)
@@ -381,6 +407,124 @@ class Api(Temporary):
             self.assertEqual(refused.status_code, 400)                                     # not even for an admin
             self.assertIn("custom voice", refused.get_json()["error"])
 
+    def test_an_account_does_nothing_before_accepting_the_agreement(self):
+        from backend.api import agreement
+        _, password = self.new_account_not_agreed("bo", "Bo")              # made by the host: never asked yet
+        auth = {"Authorization": "Bearer " + self.client.post("/api/v1/login", json={
+            "username": "bo", "password": password}).get_json()["token"]}
+        text = self.client.get("/api/v1/agreement").get_json()                 # no login needed: the register form
+        self.assertEqual(text["version"], agreement.VERSION)
+        self.assertIn("Genomes belong", json.dumps(text))
+        me = self.client.get("/api/v1/me", headers=auth).get_json()
+        self.assertTrue(me["agreement_needed"])
+        for path in ("/api/v1/datasets", "/api/v1/renders", "/api/v1/genome/searches"):
+            self.assertEqual(self.client.get(path, headers=auth).status_code, 403, path)
+        self.assertEqual(self.client.post("/api/v1/me/agreement", headers=auth, json={"version": "old"}).status_code, 409)
+        self.assertEqual(self.client.post("/api/v1/me/agreement", headers=auth,
+                                          json={"version": agreement.VERSION}).status_code, 200)
+        self.assertFalse(self.client.get("/api/v1/me", headers=auth).get_json()["agreement_needed"])
+        self.assertEqual(self.client.get("/api/v1/renders", headers=auth).status_code, 200)
+        self.assertEqual([a["how"] for a in accounts.agreements_of("bo")], ["login"])
+        with mock.patch.object(agreement, "VERSION", "2099-01-01"):            # the text changed: asked again
+            self.assertEqual(self.client.get("/api/v1/renders", headers=auth).status_code, 403)
+        with storage.connect(write=True) as db, self.assertRaises(Exception):  # what someone agreed to stays
+            db.execute("UPDATE agreements SET version = 'x'")
+
+    def test_an_uploaded_voice_is_only_for_the_account_that_uploaded_it(self):
+        import base64
+        import io
+        import os
+
+        import numpy as np
+        import soundfile as sf
+
+        def recording(seconds, loud=0.3):
+            buffer = io.BytesIO()
+            t = np.arange(int(16000 * seconds)) / 16000
+            sf.write(buffer, (loud * np.sin(2 * np.pi * 220 * t)).astype("float32"), 16000, format="WAV")
+            return base64.b64encode(buffer.getvalue()).decode()
+
+        voices = self.dir / "voices"
+        voices.mkdir()
+        _, other_password = accounts.new_account("ana", "Ana")
+        _, admin_password = accounts.new_account("rama", "Rama", role="admin")
+
+        def auth(name, password):
+            return {"Authorization": "Bearer " + self.client.post("/api/v1/login", json={
+                "username": name, "password": password}).get_json()["token"]}
+
+        with mock.patch.dict(os.environ, {"VOICES_DIR": str(voices), "CUSTOM_VOICES": "", "UPLOADED_VOICES_DIR": ""}):
+            julius, ana, admin = auth("julius", self.password), auth("ana", other_password), auth("rama", admin_password)
+            upload = {"name": "Calm", "script": "I am reading this calmly.", "filename": "me.wav",
+                      "audio": recording(4), "consent": True}
+            self.assertGreater(len(json.dumps(upload)), 64 * 1024)              # bigger than any other body may be
+            for bad in ({"consent": False}, {"audio": recording(1)}, {"audio": recording(4, loud=0)},
+                        {"audio": base64.b64encode(b"not audio at all" * 100).decode()}, {"filename": "me.exe"},
+                        {"name": "../x"}, {"script": ""}, {"audio": "not base64!"}):
+                reply = self.client.post("/api/v1/me/voices", headers=julius, json={**upload, **bad})
+                self.assertEqual(reply.status_code, 400, bad)
+            done = self.client.post("/api/v1/me/voices", headers=julius, json=upload)
+            self.assertEqual(done.status_code, 201, done.get_json())
+            speaker = done.get_json()["voice"]["speaker"]
+            self.assertEqual(speaker, "julius Calm")
+            stored = voices / "uploaded" / "julius" / "calm"
+            self.assertEqual(sorted(p.name for p in stored.iterdir()), ["about.json", "reference.txt", "reference.wav"])
+            self.assertEqual(self.client.post("/api/v1/me/voices", headers=julius, json=upload).status_code, 400)  # same name
+
+            listed = self.client.get("/api/v1/voices?dataset=Custom%20voices", headers=julius).get_json()["clips"]
+            self.assertEqual([c["speaker"] for c in listed], [speaker])
+            clip = {"dataset": "Custom voices", "clip_id": speaker}
+            heard = self.client.get("/api/v1/voices/audio", headers=julius, query_string=clip)
+            self.assertEqual(heard.status_code, 200)
+            heard.close()
+            # Another account: not in its list, cannot play it or speak with it, cannot delete it
+            self.assertEqual(self.client.get("/api/v1/voices?dataset=Custom%20voices", headers=ana).get_json()["clips"], [])
+            self.assertEqual(self.client.get("/api/v1/me/voices", headers=ana).get_json()["voices"], [])
+            self.assertEqual(self.client.get("/api/v1/voices/audio", headers=ana, query_string=clip).status_code, 404)
+            spoken = self.client.post("/api/v1/speak", headers=ana, json={**clip, "text": "Hello."})
+            self.assertEqual(spoken.status_code, 404)
+            self.assertEqual(self.client.post("/api/v1/me/voices/remove", headers=ana,
+                                              json={"folder": "calm"}).status_code, 404)
+            # An admin sees it (they run the service); a genome search never uses it
+            every = self.client.get("/api/v1/voices?dataset=Custom%20voices", headers=admin).get_json()["clips"]
+            self.assertEqual([c["speaker"] for c in every], [speaker])
+            search = self.client.post("/api/v1/genome/searches", headers=admin, json={**clip, "text": "Hello there."})
+            self.assertEqual(search.status_code, 400)
+            # At most 3 each
+            for name in ("Two", "Three"):
+                self.assertEqual(self.client.post("/api/v1/me/voices", headers=julius,
+                                                  json={**upload, "name": name}).status_code, 201)
+            self.assertEqual(self.client.post("/api/v1/me/voices", headers=julius,
+                                              json={**upload, "name": "Four"}).status_code, 400)
+            # Other routes keep the 64 KB limit
+            self.assertEqual(self.client.post("/api/v1/me/agreement", headers=julius,
+                                              json={"version": "x" * 70000}).status_code, 413)
+            # The owner renames it: only the name shown changes; the ID, folder and who may use it stay
+            rename = lambda who, body: self.client.post("/api/v1/me/voices/rename", headers=who, json=body)
+            self.assertEqual(rename(ana, {"folder": "calm", "name": "Warm"}).status_code, 404)      # not hers
+            for bad in ("", "../x", "x" * 30, "two"):                                               # "two": taken
+                self.assertEqual(rename(julius, {"folder": "calm", "name": bad}).status_code, 400, bad)
+            renamed = rename(julius, {"folder": "calm", "name": "Warm  voice"})
+            self.assertEqual(renamed.status_code, 200, renamed.get_json())
+            self.assertEqual({k: renamed.get_json()["voice"][k] for k in ("folder", "name", "speaker")},
+                             {"folder": "calm", "name": "Warm voice", "speaker": speaker})
+            self.assertTrue(stored.is_dir())
+            listed = self.client.get("/api/v1/voices?dataset=Custom%20voices", headers=julius).get_json()["clips"]
+            warm = next(c for c in listed if c["clip_id"] == speaker)
+            self.assertEqual((warm["speaker"], warm["details"]["name"]), (speaker, "Warm voice"))
+            self.assertEqual(self.client.get("/api/v1/voices/audio", headers=ana, query_string=clip).status_code, 404)
+            self.assertEqual(self.client.post("/api/v1/me/voices", headers=julius,                  # a name in use
+                                              json={**upload, "name": "warm voice"}).status_code, 400)
+            # The owner deletes it: gone from the host
+            gone = self.client.post("/api/v1/me/voices/remove", headers=julius, json={"folder": "calm"})
+            self.assertEqual(gone.status_code, 200)
+            self.assertFalse(stored.exists())
+            self.assertEqual(len(self.client.get("/api/v1/me/voices", headers=julius).get_json()["voices"]), 2)
+        audit = (self.dir / "audit.jsonl").read_text(encoding="utf-8")
+        self.assertIn("voice uploaded", audit)
+        self.assertIn("voice deleted", audit)
+        self.assertIn("voice renamed", audit)
+
     def test_only_admins_delete_renders_and_they_can_be_brought_back(self):
         folder = self.dir / "renders_del"
         folder.mkdir()
@@ -414,6 +558,80 @@ class Api(Temporary):
             self.assertEqual((note["by"], note["removed_by"]), ("Julius", "Rama"))
             self.assertEqual(self.client.get("/api/v1/renders/VCTK_p250_genome_a/audio", headers=admin).status_code, 404)
 
+    def test_the_lab_measures_only_what_you_may_hear(self):
+        import os
+        from backend.metrics import lab
+        folder = self.dir / "lab_renders"
+        folder.mkdir()
+        for stem, voice, by in (("VCTK_p250_genome_a", "VCTK/p250", "Ash"), ("VCTK_p250_plain_b", "VCTK/p250", "Julius"),
+                                ("Custom voices_Ahmed_plain_c", "Custom voices/Ahmed", "Ash")):
+            (folder / f"{stem}.wav").write_bytes(b"RIFF....WAVE")
+            (folder / f"{stem}.json").write_text(json.dumps({"voice": voice, "text": "Hi [sigh] there.", "genome": None,
+                                                            "by": by, "made": "2030-01-01 10:00:00"}), encoding="utf-8")
+        queued = []
+
+        def queue_job(kind, owner, work, about):
+            queued.append(work)
+            return {"id": "0" * 32, "kind": kind, "owner": owner, "status": "queued", "about": about, "result": None,
+                    "created": "2030-01-01 10:00:00"}
+
+        def compare(recordings, reference=None, measure=(), measurer=None):
+            return {"recordings": [{"label": r["label"], "text": r["text"]} for r in recordings], "matrix": None,
+                    "reference": reference, "measured": list(measure), "seconds": 0.1, "made": "2030-01-01 10:00:00"}
+
+        with mock.patch.dict(os.environ, {"VOICES_DIR": str(self.dir / "no_voices")}), \
+                mock.patch.object(self.server, "GENOME_RENDERS", folder), \
+                mock.patch.object(self.server, "LAB_RESULTS", self.dir / "lab.json"), \
+                mock.patch.object(self.server, "queue_job", queue_job), mock.patch.object(lab, "compare", compare):
+            auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}                # julius, a listener
+            ask = lambda body: self.client.post("/api/v1/lab/compare", headers=auth, json=body)   # noqa: E731
+            two = [{"kind": "render", "id": "VCTK_p250_genome_a"}, {"kind": "render", "id": "VCTK_p250_plain_b"}]
+            reply = ask({"recordings": two, "reference": 1, "measure": ["wer", "similarity"]})
+            self.assertEqual(reply.status_code, 202)
+            done = queued.pop()()
+            self.assertEqual([r["source"]["id"] for r in done["lab"]["recordings"]], ["VCTK_p250_genome_a", "VCTK_p250_plain_b"])
+            self.assertNotIn(str(folder), json.dumps(done))                       # no file paths in what is shown
+            mine = self.client.get("/api/v1/lab/results", headers=auth).get_json()["results"]
+            self.assertEqual(len(mine), 1)
+            self.assertEqual(mine[0]["by"], "Julius")
+            job = {"id": "1" * 32, "kind": "lab", "status": "done", "result": done}
+            self.assertEqual(self.server.job_json(job)["lab"]["by"], "Julius")
+
+            # Someone else's custom voice, made-up ids, a search's clips (listeners), and bad requests
+            for body, code in (({"recordings": [{"kind": "render", "id": "Custom voices_Ahmed_plain_c"}]}, 404),
+                               ({"recordings": [{"kind": "render", "id": "../secret"}]}, 404),
+                               ({"recordings": [{"kind": "search", "run": "r1", "clip": "baseline"}]}, 403),
+                               ({"recordings": [{"kind": "file", "path": "C:/x.wav"}]}, 400),
+                               ({"recordings": []}, 400),
+                               ({"recordings": two * 5}, 400),
+                               ({"recordings": two, "reference": 2}, 400),
+                               ({"recordings": two, "measure": ["mood"]}, 400)):
+                self.assertEqual(ask(body).status_code, code, body)
+            self.assertEqual(queued, [])
+            self.assertEqual(self.client.post("/api/v1/lab/compare", json={"recordings": two}).status_code, 401)
+
+    def test_a_render_is_found_by_its_short_id_with_its_genes(self):
+        folder = self.dir / "renders_id"
+        folder.mkdir()
+        genes = [{"feature": "sigh", "position": 0.3}, {"feature": "pause", "position": 0.5, "kind": "dramatic"}]
+        for stem, voice in (("VCTK_p250_genome_20301101_101010_123456", "VCTK/p250"),
+                            ("Custom voices_Ahmed_plain_20301101_101011_000001", "Custom voices/Ahmed")):
+            (folder / f"{stem}.wav").write_bytes(b"RIFF....WAVE")
+            (folder / f"{stem}.json").write_text(json.dumps({"voice": voice, "clip_id": "p250_001", "text": "Hi.",
+                                                            "genome": "Sigh", "genes": genes, "by": "Ash",
+                                                            "made": "2030-11-01 10:10:10"}), encoding="utf-8")
+        with mock.patch.object(self.server, "GENOME_RENDERS", folder):
+            auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+            listed = self.client.get("/api/v1/renders", headers=auth).get_json()["renders"]
+            self.assertEqual([(r["short_id"], len(r["gene_list"])) for r in listed], [("20301101_101010_123456", 2)])
+            for given in ("render:20301101_101010_123456", "20301101_101010_123456", "VCTK_p250_genome_20301101_101010_123456"):
+                one = self.client.get(f"/api/v1/renders/{given}", headers=auth).get_json()["render"]
+                self.assertEqual((one["id"], one["genes"]), ("VCTK_p250_genome_20301101_101010_123456", genes), given)
+            found = self.client.get("/api/v1/renders?q=render:20301101_101010_123456", headers=auth).get_json()
+            self.assertEqual(found["total"], 1)
+            for hidden in ("render:20301101_101011_000001", "render:1", "render:"):     # someone else's custom voice
+                self.assertEqual(self.client.get(f"/api/v1/renders/{hidden}", headers=auth).status_code, 404, hidden)
+
     def test_rate_only_your_own_renders_kept_apart(self):
         folder = self.dir / "renders2"
         folder.mkdir()
@@ -433,6 +651,33 @@ class Api(Temporary):
             self.assertEqual((listed["VCTK_p250_genome_a"]["my_score"], listed["VCTK_p250_genome_a"]["mine"]), (4, True))
             self.assertFalse(listed["VCTK_p250_genome_b"]["mine"])
             self.assertEqual(rate("VCTK_p250_genome_a", None).status_code, 200)  # cleared
+
+    def test_name_only_your_own_renders_and_the_id_stays(self):
+        folder = self.dir / "renders_named"
+        folder.mkdir()
+        mine, theirs = "VCTK_p250_genome_20301101_101010_000001", "VCTK_p250_genome_20301101_101010_000002"
+        for stem, by in ((mine, "Julius"), (theirs, "Ash")):
+            (folder / f"{stem}.wav").write_bytes(b"RIFF....WAVE")
+            (folder / f"{stem}.json").write_text(json.dumps({"voice": "VCTK/p250", "text": "Hi.", "genome": "Sigh",
+                                                            "by": by, "made": "2030-01-01 10:00:00"}), encoding="utf-8")
+        with mock.patch.object(self.server, "GENOME_RENDERS", folder):
+            auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+            name = lambda given, value: self.client.post(f"/api/v1/renders/{given}/name", headers=auth, json={"name": value})
+            self.assertEqual(name(theirs, "Mine now").status_code, 403)                  # someone else's
+            self.assertEqual(name("render:1", "x").status_code, 404)
+            self.assertEqual(name(mine, "x" * 61).status_code, 400)
+            done = name("render:20301101_101010_000001", "  My   best sigh ")
+            self.assertEqual(done.status_code, 200)
+            self.assertEqual(done.get_json(), {"id": mine, "short_id": "20301101_101010_000001", "name": "My best sigh"})
+            self.assertEqual(sorted(p.name for p in folder.iterdir()),                     # no file renamed
+                             sorted(f"{s}.{e}" for s in (mine, theirs) for e in ("json", "wav")))
+            listed = {r["id"]: r for r in self.client.get("/api/v1/renders", headers=auth).get_json()["renders"]}
+            self.assertEqual((listed[mine]["name"], listed[mine]["renamable"], listed[mine]["genome"]), ("My best sigh", True, "Sigh"))
+            self.assertEqual((listed[theirs]["name"], listed[theirs]["renamable"]), (None, False))
+            self.assertEqual(self.client.get("/api/v1/renders?q=best sigh", headers=auth).get_json()["total"], 1)
+            self.assertEqual(name(mine, "").get_json()["name"], None)                     # taken off
+            self.assertNotIn("name", json.loads((folder / f"{mine}.json").read_text(encoding="utf-8")))
+        self.assertIn("render renamed", (self.dir / "audit.jsonl").read_text(encoding="utf-8"))
 
     def test_private_genomes_are_seen_by_their_maker_only(self):
         from types import SimpleNamespace
@@ -469,6 +714,33 @@ class Api(Temporary):
                    clip("Rama", "VCTK/p250", None, 3.0, None, [])]
         from backend.rag import baseline
         return records, baseline.BM25(records), {"r1": {1: (["sigh after 'well'"], "Well [sigh]"), 2: (["speed 1.2"], "Well")}}
+
+    def test_a_list_of_genomes_comes_with_links_without_the_model(self):
+        from backend.api import assistant
+
+        class Off:
+            def status(self):
+                return {"state": "off", "model": None, "problem": None}
+
+        auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+        ask = lambda q: self.client.post("/api/v1/assistant/ask", headers=auth, json={"question": q}).get_json()  # noqa: E731
+        with mock.patch.object(assistant, "ASSISTANT", Off()), \
+                mock.patch.object(self.server, "evidence", self.evidence_records), \
+                mock.patch.object(self.server, "sees_others", lambda: True), \
+                mock.patch.object(self.server, "viewer", lambda: None):
+            five = ask("Did Rama rate any genomes 5?")
+            self.assertEqual(five["route"], "genome_list")
+            self.assertIn("VCTK/p250 genome 1: 5 by Rama", five["answer"])
+            self.assertNotIn("Julius", five["answer"])
+            self.assertEqual([l["key"] for l in five["links"] if l["kind"] == "genome"], ["search:r1/1"])
+            self.assertIn({"kind": "voice", "dataset": "VCTK", "speaker": "p250"}, five["links"])
+            well = ask("Show me genomes that performed well")
+            self.assertEqual(well["route"], "genome_list")
+            self.assertEqual(well["filters"]["min_score"], 4)
+            self.assertEqual(well["cited"], 2)                                   # Rama's 5 and Julius's 4
+            none = ask("Did Rama rate any genomes 4?")
+            self.assertTrue(none["absent"])
+            self.assertNotEqual(ask("Which genomes work best for each voice?").get("route"), "genome_list")
 
     def test_evidence_scores_listener_sees_only_their_own(self):
         auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
@@ -548,6 +820,40 @@ class Api(Temporary):
                                      json={"question": "Which genome suits an angry character?"}).get_json()
             self.assertTrue(angry["absent"])                                      # still a safe absence
 
+    def test_how_many_genomes_is_counted_not_one_record(self):
+        """"How many genomes have been made for this project so far?" once got one genome's sanity record."""
+        from backend.api import assistant
+        from backend.genome import search
+        auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+        runs = [(None, {"voice": "VCTK/p250", "genomes": [{"verdict": "fine"}] * 7 + [{"verdict": "terrible"}] * 2
+                        + [{"verdict": None}]}),
+                (None, {"voice": "VCTK/p231", "genomes": [{"verdict": "fine"}] * 3 + [{"verdict": "failed"}]})]
+        with mock.patch.object(assistant, "ASSISTANT", assistant.Assistant()), \
+                mock.patch.object(self.server, "evidence", self.evidence_records), \
+                mock.patch.object(self.server, "may_see", lambda run: True), \
+                mock.patch.object(self.server, "render_notes", lambda: [{}] * 4), \
+                mock.patch.object(search, "list_runs", lambda *a: runs):
+            ask = lambda q: self.client.post("/api/v1/assistant/ask", headers=auth, json={"question": q}).get_json()
+            for question in ("Okay. How many genomes have been made for this project so far?",
+                             "how many genome searches were run", "number of renders?"):
+                a = ask(question)
+                self.assertEqual((a["route"], a["citations"]), ("facts", []), question)
+                self.assertIn("14 genomes have been made by 2 genome searches on 2 voices", a["answer"])
+                self.assertIn("10 passed the automatic checks, 2 were judged terrible and 1 failed, and 1 is not "
+                              "checked yet", a["answer"])
+                self.assertIn("4 renders are kept", a["answer"])
+            nothing = ask("How many sighs are there in total?")
+            self.assertEqual((nothing["route"], nothing["absent"], nothing["citations"]), ("facts", True, []))
+            self.assertIn("needs counting", nothing["answer"])
+        many = [(self.dir, {"id": f"r{i}", "voice": f"VCTK/p{i % 7}", "text": "Hi.", "created": f"2030-01-01 {i:03d}",
+                            "status": "done", "genomes": [{"verdict": "fine"}] * 5}) for i in range(105)]
+        with mock.patch.object(self.server, "may_see", lambda run: True), \
+                mock.patch.object(search, "list_runs", lambda *a: many):
+            listed = self.client.get("/api/v1/genome/searches", headers=auth).get_json()
+            self.assertEqual(len(listed["searches"]), 100)                        # the list stops at 100 ...
+            self.assertEqual(listed["totals"], {"searches": 105, "listed": 100, "voices": 7, "genomes": 525,
+                                                "passed_checks": 525, "terrible": 0, "failed": 0})  # ... the totals do not
+
     def test_ask_uses_the_model_with_the_askers_own_token(self):
         from backend.api import assistant
         token = self.login().get_json()["token"]
@@ -608,8 +914,59 @@ class Api(Temporary):
             joke = self.client.post("/api/v1/assistant/ask", headers=auth, json={"question": "Tell me a joke"}).get_json()
             self.assertEqual((joke["source"], joke["answer"]), ("model", declined))
         self.assertTrue(declined.startswith(self.server.DECLINED))
-        chatbot_text = (assistant.CHATBOT).read_text(encoding="utf-8")       # the chatbot's own wording still matches
-        self.assertIn(f'OFF_TOPIC = ("{self.server.DECLINED}', chatbot_text)
+        from backend.api import small_talk                                     # the chatbot's own wording still matches
+        self.assertTrue(small_talk.OFF_TOPIC.startswith(self.server.DECLINED))
+        self.assertIn("OFF_TOPIC = small_talk.OFF_TOPIC", assistant.CHATBOT.read_text(encoding="utf-8"))
+
+    def test_greetings_are_welcomed_and_other_topics_are_not_looked_up(self):
+        from backend.api import assistant
+
+        class Off:
+            def status(self):
+                return {"state": "off", "model": None, "problem": None}
+
+        auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+        looked_up = []
+        with mock.patch.object(assistant, "ASSISTANT", Off()), \
+                mock.patch.object(self.server, "evidence", lambda: looked_up.append(1) or self.evidence_records()):
+            for hello in ("hello", "Hi!", "thanks"):
+                a = self.client.post("/api/v1/assistant/ask", headers=auth, json={"question": hello}).get_json()
+                self.assertEqual(a["source"], "small_talk", hello)
+            self.assertIn("Hello", self.client.post("/api/v1/assistant/ask", headers=auth,
+                                                     json={"question": "hello"}).get_json()["answer"])
+            for other in ("How many cookies can I EAT?", "What is the capital of France?"):
+                a = self.client.post("/api/v1/assistant/ask", headers=auth, json={"question": other}).get_json()
+                self.assertEqual(a["route"], "off_topic", other)
+                self.assertTrue(a["answer"].startswith(self.server.DECLINED))
+            self.assertEqual(looked_up, [])                                     # neither reached the records
+
+    def test_what_a_term_means_comes_from_the_glossary_even_without_the_model(self):
+        from backend.api import assistant
+
+        class Ready:                                   # the model must not be asked for a plain definition
+            def status(self):
+                return {"state": "ready", "model": "stand-in", "problem": None}
+
+            def ask(self, *args):
+                raise AssertionError("the model was asked")
+
+        auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+        ask = lambda q, history=(): self.client.post("/api/v1/assistant/ask", headers=auth,     # noqa: E731
+                                                     json={"question": q, "history": list(history)}).get_json()
+        with mock.patch.object(assistant, "ASSISTANT", Ready()):
+            stoi = ask("what is STOI")
+            self.assertEqual((stoi["source"], stoi["term"]), ("glossary", "STOI"))
+            self.assertIn("intelligib", stoi["answer"].lower())
+            follow = ask("but specifically what does it measure?",
+                         [{"role": "user", "content": "what is STOI"}, {"role": "assistant", "content": "..."}])
+            self.assertEqual(follow["term"], "STOI")                         # the term from the conversation
+            self.assertEqual(ask("Explain the sanity check")["term"], "Sanity check")
+            self.assertIn("0.9", ask("Explain the sanity check")["answer"])      # the limits come from the code
+        listed = self.client.get("/api/v1/glossary", headers=auth).get_json()["terms"]
+        self.assertGreater(len(listed), 30)
+        found = self.client.get("/api/v1/glossary?q=word%20error%20rate", headers=auth).get_json()["matches"]
+        self.assertEqual(found[0]["term"], "WER")
+        self.assertEqual(self.client.get("/api/v1/glossary").status_code, 401)
 
     def test_evidence_scores_filter_sort_and_group_for_those_who_see_all(self):
         auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}

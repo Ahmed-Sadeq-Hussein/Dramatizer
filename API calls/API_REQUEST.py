@@ -31,6 +31,7 @@ use a researcher account or an API key. Only Python's standard library is needed
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
@@ -105,10 +106,17 @@ class Results:
         except SystemExit as error:            # dramatizer_api stops a script; a chatbot gets the reason instead
             raise ApiError(str(error)) from None
 
+    def _post(self, route, body):
+        try:
+            return self.api.json("POST", route, body)
+        except SystemExit as error:
+            raise ApiError(str(error)) from None
+
     # -------------------------------------------------------------- questions --
     def overview(self):
         """How much there is: searches (rated or not), listening piles, named genomes, renders, result sets."""
         searches = self._get("genome/searches")
+        totals = searches.get("totals") or {}            # every search; the list itself stops at 100
         results = self._get("results")
         me = self._get("me")
         data = self._get("datasets")
@@ -116,8 +124,11 @@ class Results:
                 "voices_in_the_project": data.get("voice_split"),
                 "validation_voices_per_dataset": {d["name"]: d["speakers"] for d in data["datasets"]},
                 "sees_everyones_mos": bool({"search", "rate_for_others"} & set((me.get("account") or {}).get("permissions") or [])),
-                "searches": len(searches["searches"]), "rated_searches": sum(s["rated"] for s in searches["searches"]),
-                "voices_with_genome_searches": len({s["voice"] for s in searches["searches"]}),
+                "searches": totals.get("searches", len(searches["searches"])),
+                "rated_searches_among_the_newest_100": sum(s["rated"] for s in searches["searches"]),
+                "voices_with_genome_searches": totals.get("voices", len({s["voice"] for s in searches["searches"]})),
+                "genomes_made_in_searches": totals.get("genomes"),
+                "genomes_that_passed_the_checks": totals.get("passed_checks"),
                 "listening_piles": searches["piles"], "named_genomes": len(self._get("genome/named")["named"]),
                 "renders": self._get("renders")["total"],
                 "baselines": [b["name"] for b in results["baselines"]],
@@ -205,7 +216,13 @@ class Results:
     def baseline_results(self, name=None):
         """The measured baselines (plain CosyVoice 3, no genome): mean WER, similarity, PESQ, STOI, SI-SDR, checks."""
         out = []
-        for b in self._get("results")["baselines"]:
+        every_baseline = self._get("results")["baselines"]
+        names = [b["name"] for b in every_baseline]
+        note = None
+        if name and name not in names:            # e.g. a metric's name: every baseline, which has every metric
+            note = f"No baseline is called {name!r} (they are {', '.join(names)}): all of them are shown."
+            name = None
+        for b in every_baseline:
             if name and b["name"] != name:
                 continue
             every = (b.get("summary") or {}).get("all") or {}
@@ -215,7 +232,7 @@ class Results:
                                         "high": _num(v.get("high"), 4), "clips": v.get("n")}
                                     for m, v in every.items() if isinstance(v, dict) and "mean" in v},
                         "checks_passed": sum(c["passed"] for c in b.get("checks", [])), "checks": len(b.get("checks", []))})
-        return {"baselines": out}
+        return {"baselines": out, **({"note": note} if note else {})}
 
     def milestone2_results(self, name=None):
         """Milestone 2 (random genome search against the baseline): share of genomes that passed, and why others failed."""
@@ -244,14 +261,14 @@ class Results:
     # ------------------------------------------------- the evidence (scores, six questions) --
     def query_scores(self, listener=None, voice=None, dataset=None, gene_type=None, genes=None, genome=None, verdict=None,
                      pile=None, clip="genome", group_by=None, sort=None, order="desc", limit=10,
-                     from_date=None, to_date=None):
+                     from_date=None, to_date=None, min_score=None, max_score=None):
         """Listeners' scores, filtered, then sorted or grouped (means, counts, share better than the plain line)."""
         data = self._get("evidence/scores", listener=listener, voice=voice, dataset=dataset, gene_type=gene_type,
                          genes=genes, genome=genome, verdict=verdict, pile=pile, clip=clip, group_by=group_by, sort=sort,
-                         order=order, limit=limit, **{"from": from_date, "to": to_date})
+                         order=order, limit=limit, min_score=min_score, max_score=max_score,
+                         **{"from": from_date, "to": to_date})
         for row in data.get("rows", []):
-            row.pop("spoken_as", None)
-            row.pop("search", None)
+            row.pop("spoken_as", None)            # "search" stays: the page links each genome to the studio by it
         return data
 
     def evidence_question(self, number, from_date=None, to_date=None):
@@ -262,6 +279,65 @@ class Results:
         """The analysis's conclusions and how sure they are: snapshot_id, ratings up to, rule, coverage, per voice
         a winner only with enough evidence (else why not), artifact checks, caveats."""
         return self._get("evidence/snapshot", voice=voice)
+
+    def define(self, term=None):
+        """What a word or measurement means in the Dramatizer, how to read its number and where it is used."""
+        return self._get("glossary", q=term)
+
+    def render_info(self, render_id):
+        """One render by its ID (as Copy ID copies it, "render:..."): voice, line, genome, genes, who made it."""
+        r = self._get(f"renders/{quote(str(render_id).strip(), safe='')}")["render"]
+        return {"id": r["id"], "short_id": r.get("short_id"), "name": r.get("name"), "voice": r.get("voice"),
+                "line": r.get("text"),
+                "genome": r.get("genome") or ("edited genome" if r.get("genes") else "plain line (no genome)"),
+                "genes": r.get("genes") or [], "spoken_as": r.get("markup"), "speed": r.get("speed"),
+                "seed": r.get("seed"), "made_by": r.get("by"), "made": r.get("made"),
+                "render_seconds": r.get("seconds")}
+
+    MEASURE_SECONDS = 50          # how long measure_render waits for the GPU job before handing back its job id
+
+    def measure_render(self, render_id, compare_with=None):
+        """A render measured on the host (the Lab's measurements): against its voice's original recording, and
+        against another render when one is given."""
+        first = self._get(f"renders/{quote(str(render_id).strip(), safe='')}")["render"]
+        recordings, names = [{"kind": "render", "id": first["id"]}], ["the render"]
+        if compare_with:
+            other = self._get(f"renders/{quote(str(compare_with).strip(), safe='')}")["render"]
+            recordings.append({"kind": "render", "id": other["id"]})
+            names.append("the other render")
+        reference = None
+        if first.get("clip_id") and "/" in str(first.get("voice") or ""):
+            recordings.append({"kind": "voice", "dataset": first["voice"].split("/", 1)[0], "clip_id": first["clip_id"]})
+            names.append("the original recording")
+            reference = len(recordings) - 1
+        job = self._post("lab/compare", {"recordings": recordings, "reference": reference})["job"]
+        waited = 0.0
+        while job["status"] in ("queued", "running") and waited < self.MEASURE_SECONDS:
+            time.sleep(2)
+            waited += 2
+            job = self._get(f"jobs/{job['id']}")["job"]
+        if job["status"] == "failed":
+            raise ApiError(f"The measurement failed: {job.get('error')}")
+        if job["status"] != "done":
+            return {"note": f"Still measuring on the host (the job is {job['status']}). The result will be in the "
+                            "Lab tab under 'Your earlier comparisons' when it is done.", "job": job["id"]}
+        lab = job["lab"]
+        rows = []
+        for name, row in zip(names, lab["recordings"]):
+            quality = row.get("quality") or {}
+            rows.append({"which": name, "label": row["label"], "wer": row.get("wer"),
+                         "wrong_words": f"{row['errors']} of {row['word_count']}" if row.get("word_count") else None,
+                         "script": row.get("text"), "heard": row.get("heard"),
+                         "similarity_to_original": row.get("similarity"), "pesq": quality.get("pesq"),
+                         "stoi": quality.get("stoi"), "si_sdr_db": quality.get("si_sdr"), "seconds": row.get("seconds"),
+                         "speech_seconds": row.get("speech_seconds"), "words_per_second": row.get("words_per_second")})
+        out = {"render_id": first["id"], "voice": first.get("voice"), "recordings": rows,
+               "limits": lab.get("thresholds"), "models": lab.get("models"), "measured_in_seconds": lab.get("seconds")}
+        if compare_with and lab.get("matrix"):
+            out["similarity_between_the_two_renders"] = lab["matrix"][0][1]
+        if reference is None:
+            out["note"] = "The render's original recording is not known, so there is no similarity to it."
+        return out
 
     def about_dramatizer(self):
         """What the Dramatizer is, how to use the website, and who made it (the Home page's About)."""
@@ -304,7 +380,8 @@ STRING, INTEGER, BOOLEAN = {"type": "string"}, {"type": "integer"}, {"type": "bo
 TOOLS = [
     _tool("overview", "How much data there is, as counts: how many genome searches (and rated ones), the voices in "
           "the project (total, validation, locked test, per dataset), listening piles, named genomes, renders, and "
-          "which baseline and Milestone 2 results exist. Use it for 'how many searches/voices/renders'."),
+          "which baseline and Milestone 2 results exist, and how many genomes the searches made (and how many passed "
+          "the checks). Use it for 'how many genomes/searches/voices/renders'."),
     _tool("list_searches", "List genome searches (newest first, a page at a time) with voice, line, status and how "
           "many genomes passed the automatic checks. Not for counting them: use overview.", {
               "voice": {**STRING, "description": "Part of a voice name, e.g. 'CREMA-D/1014' or '1014'"},
@@ -331,7 +408,8 @@ TOOLS = [
               "page": INTEGER}),
     _tool("baseline_results", "The measured baselines (plain voice cloning, no genome): mean WER, speaker "
           "similarity, PESQ, STOI and SI-SDR with confidence ranges.", {
-              "name": {**STRING, "description": "One baseline, e.g. 'v4'; all when left out"}}),
+              "name": {**STRING, "description": "One baseline version, e.g. 'v4' (not a metric: every baseline has "
+                                                "every metric); all when left out"}}),
     _tool("milestone2_results", "Milestone 2: how many random-search genomes passed the checks against the baseline, "
           "by group (short or long lines, dataset), and why the others failed.", {
               "name": {**STRING, "description": "One run, e.g. 'random-v2'; all when left out"}}),
@@ -350,7 +428,9 @@ TOOLS = [
               "group_by": {**STRING, "enum": ["listener", "voice", "dataset", "gene_type", "genes", "verdict", "genome", "pile"]},
               "sort": {**STRING, "enum": ["score", "above_plain", "rated_on", "mean", "mean_above_plain", "count", "beat_plain"]},
               "order": {**STRING, "enum": ["desc", "asc"], "description": "desc = highest first (default), asc = lowest first"},
-              "limit": {**INTEGER, "description": "How many rows or groups (default 10)"},
+              "limit": {**INTEGER, "description": "How many rows or groups (default 10; 20 for a list)"},
+              "min_score": {**INTEGER, "description": "Only scores of at least this (e.g. 5: 'rated 5', 4: 'did well')"},
+              "max_score": {**INTEGER, "description": "Only scores of at most this"},
               "from_date": {**STRING, "description": "Scores given from this date, YYYY-MM-DD"},
               "to_date": {**STRING, "description": "Scores given up to this date, YYYY-MM-DD"}}),
     _tool("evidence_question", "The six research questions, answered exactly as their charts answer them: "
@@ -365,6 +445,28 @@ TOOLS = [
           "winner or not enough evidence and why, the artifact checks, and caveats. Use it for 'which genome should I "
           "use', 'is there a winner', 'how sure are we', 'which ratings is this based on'.", {
               "voice": {**STRING, "description": "One voice, DATASET/SPEAKER, e.g. VCTK/p250; all when left out"}}),
+    _tool("define", "What a word or measurement means in the Dramatizer, how to read its number (its scale and the "
+          "project's limits) and where the program uses it. Measurements: WER, speaker similarity, PESQ, STOI, "
+          "SI-SDR, SQUIM, speech seconds, words per second, pace, MOS, above plain, beat the plain line, confidence "
+          "interval, sanity check (verdict fine/terrible), artifact check, different person, reward. Ideas: genome, "
+          "gene and every gene type (sigh, pause, laughing speech, accent, emphasis, speed...), plain line, baseline, "
+          "reference recording, voice cloning, render, seed, markup, genome search, named genome, listening pile, "
+          "blind, voice, validation and test voices, custom voice, evidence, milestone 2, the Lab. Use it for "
+          "'what is X', 'what does X mean / measure / stand for', 'explain X'. Without a term: every term.", {
+              "term": {**STRING, "description": "The word to explain, e.g. 'STOI', 'plain line', 'sanity check'"}}),
+    _tool("render_info", "One render (a line spoken in the website, listed in Listen > Renders) by its ID, as its "
+          "Copy ID button copies it, e.g. 'render:20261119_220500_543947': its voice, line, genome and every gene, "
+          "how it was spoken (markup), seed, who made it and when.", {
+              "render_id": {**STRING, "description": "The render's ID exactly as given, with or without 'render:'"}},
+          ["render_id"]),
+    _tool("measure_render", "Measure a render on the host: speaker similarity to its voice's original recording "
+          "(the reference), word error rate with what was heard, PESQ, STOI, SI-SDR, length and speaking rate, for "
+          "the render and the original. With compare_with (another render's ID): also how alike the two renders "
+          "sound. Use it for 'how similar is this render to its reference', 'what is the WER of render X', "
+          "'compare these two renders'. It runs on the GPU and takes 10 to 60 seconds.", {
+              "render_id": {**STRING, "description": "The render's ID exactly as given, with or without 'render:'"},
+              "compare_with": {**STRING, "description": "Another render's ID, to compare the two"}},
+          ["render_id"]),
     _tool("about_dramatizer", "What the Dramatizer is, how to use the website (Rate, Generate, Listen, Ask, "
           "Research), and the project's contributors."),
     _tool("answer_evidence", "Answer a question from the evidence records, citing their IDs, or say that nothing "

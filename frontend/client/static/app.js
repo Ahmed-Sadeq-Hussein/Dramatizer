@@ -37,6 +37,44 @@ async function call(path, options = {}) {
 }
 
 let toastTimer;
+// Copy text to the clipboard (the page is on https or 127.0.0.1, where the browser allows it; else the old way)
+async function copyText(text, what) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const box = el("textarea", { style: "position: fixed; opacity: 0" });
+    box.value = text;
+    document.body.append(box);
+    box.select();
+    document.execCommand("copy");
+    box.remove();
+  }
+  toast(`${what} copied.`);
+}
+
+// A genome copied from the site: {"dramatizer_genome": 1, "genes": [...], "from": "..."}; a bare list of genes works too
+function genomeText(genes, from) {
+  return JSON.stringify({ dramatizer_genome: 1, from, genes }, null, 1);
+}
+
+function readGenome(text) {
+  let data;
+  try { data = JSON.parse(String(text || "").trim()); } catch { throw new Error("That is not a copied genome (it is not JSON)."); }
+  const genes = Array.isArray(data) ? data : data && data.genes;
+  if (!Array.isArray(genes) || !genes.every((g) => g && typeof g.feature === "string")) {
+    throw new Error("That is not a copied genome: it needs a list of genes, each with a feature.");
+  }
+  return { genes: genes.map((g) => ({ ...g })), from: (data && data.from) || null };
+}
+
+// One gene in words: "sigh at 32% of the line", "pause (realization) at 19%", "speed × 1.1"
+function geneWords(g) {
+  const name = String(g.feature).replace(/_/g, " ");
+  if (g.feature === "speed") return `speed × ${g.rate}`;
+  const where = g.position === undefined ? "" : ` at ${Math.round(Number(g.position) * 100)}% of the line`;
+  return `${name}${g.kind ? ` (${g.kind})` : ""}${where}`;
+}
+
 function toast(message, error) {
   const t = $("toast");
   t.textContent = message;
@@ -58,6 +96,8 @@ const MODES = {
   rate: { tabs: ["rate"], note: "Choose a pile of clips meant for rating, and score each one." },
   generate: { tabs: ["voices", "studio"], note: "Choose a voice, then optionally a genome, and render a line." },
   listen: { tabs: ["voices", "renders"], note: "Listen to a voice in the data, or to the renders people have made." },
+  ask: { tabs: ["ask"], note: "Ask about genomes, voices, ratings and results; see what each answer looked up." },
+  measure: { tabs: ["measure"], note: "Measure renders and voices side by side: word error rate, speaker similarity and quality." },
   research: { tabs: ["genomes", "speak", "results", "graphs"], note: "Genome searches, their rankings, the measured results and the graphs.",
               needs: "search" },
 };
@@ -114,6 +154,8 @@ function showTab(name) {
   if (name === "renders") Renders.open();
   if (name === "rate") Rate.open();
   if (name === "studio") Studio.open();
+  if (name === "measure" && typeof Measure !== "undefined") Measure.open();
+  if (name === "ask" && typeof Ask !== "undefined") { Ask.init(); setTimeout(() => $("ask-q").focus(), 0); }
 }
 document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
 
@@ -130,6 +172,12 @@ async function connect() {
     $("account").hidden = local.mode !== "login" || !local.name;
     if (local.mode === "login" && !local.name) { showLogin(); return false; }
     state.me = await call("/me");
+    if (state.me.agreement_needed) {
+      c.textContent = `${state.me.name} · ${local.host}`;
+      c.className = "conn";
+      askAgreement();
+      return false;
+    }
     const role = state.me.account && state.me.account.role !== "api key" ? ` (${state.me.account.role})` : "";
     c.textContent = `${state.me.name}${role} · ${local.host}` + (state.me.jobs_waiting ? ` · ${state.me.jobs_waiting} job(s) on the host` : "");
     c.className = "conn ok";
@@ -176,10 +224,51 @@ function showLogin() {
   call("/register").then((r) => { $("register-offer").hidden = !r.open; }).catch(() => {});
 }
 
+// ------------------------------------------------------------- agreement --
+// The user agreement (GET /agreement): accepted when registering, and at login by accounts that have not
+// accepted its current version (the host refuses them everything else until they do)
+let agreement = null;
+async function showAgreement(box) {
+  try {
+    agreement = agreement || await call("/agreement");
+    box.replaceChildren(el("h3", {}, `${agreement.title} · version ${agreement.version}`),
+      ...agreement.sections.flatMap((s) => [el("h4", {}, s.heading), el("p", {}, s.text)]));
+  } catch (error) { box.replaceChildren(el("p", { class: "muted" }, error.message)); }
+}
+
+function askAgreement() {
+  $("login").hidden = true;
+  $("app").hidden = true;
+  $("agree").hidden = false;
+  $("agree-box").checked = false;
+  showAgreement($("agree-text"));
+}
+
+$("agree-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const button = $("agree-form").querySelector("button[type=submit]");
+  button.disabled = true;
+  $("agree-error").hidden = true;
+  try {
+    await call("/me/agreement", { body: { version: agreement && agreement.version } });
+    $("agree").hidden = true;
+    $("app").hidden = false;
+    if (await connect()) start();
+  } catch (error) {
+    $("agree-error").textContent = error.message;
+    $("agree-error").hidden = false;
+  } finally { button.disabled = false; }
+});
+$("agree-logout").addEventListener("click", async () => {
+  try { await call("/logout", { body: {} }); } catch (e) {}
+  location.reload();
+});
+
 // ------------------------------------------------------------------ register --
 function showForm(register) {
   $("login-form").hidden = register;
   $("register-form").hidden = !register;
+  if (register) showAgreement($("reg-agreement"));
   setTimeout(() => $(register ? "reg-user" : "login-user").focus(), 0);
 }
 $("show-register").addEventListener("click", () => showForm(true));
@@ -199,7 +288,8 @@ $("register-form").addEventListener("submit", async (e) => {
   try {
     const reply = await call("/register", { body: {
       username: $("reg-user").value.trim().toLowerCase(), display_name: $("reg-name").value.trim(),
-      email: $("reg-email").value.trim(), password: $("reg-pass").value } });
+      email: $("reg-email").value.trim(), password: $("reg-pass").value,
+      agreement: $("reg-agree").checked && agreement ? agreement.version : null } });
     $("reg-pass").value = $("reg-again").value = "";
     $("login-user").value = reply.username;
     $("register-done").textContent = reply.message;
@@ -252,7 +342,81 @@ async function loadDatasets() {
       ...(custom ? [el("option", { value: "Custom voices" }, `Custom voices (${custom} ${custom === 1 ? "voice" : "voices"}, private)`)] : []));
     loadVoices(1);
   } catch (error) { toast(error.message, true); }
+  loadMyVoices();
 }
+
+// Your uploaded voices (POST /me/voices): only this account (and admins) can use them, under Custom voices
+async function loadMyVoices() {
+  if (!state.me || !state.me.account || !state.me.account.username) { $("my-voices").hidden = true; return; }
+  try {
+    const data = await call("/me/voices");
+    $("my-voices").hidden = !data.available;
+    const l = data.limits;
+    $("up-limits").textContent = `${l.formats.map((f) => f.slice(1)).join(", ")} · up to ${l.max_mb} MB · `
+      + `${l.seconds[0]} to ${l.seconds[1]} seconds · at most ${l.per_account} voices (you have ${data.voices.length})`;
+    $("my-voice-list").replaceChildren(...data.voices.map((v) => el("li", { class: "item" },
+      el("div", { class: "item-head" },
+        el("strong", {}, v.name, el("span", { class: "muted small" }, ` · ID ${v.speaker} · ${v.seconds} s · uploaded ${v.uploaded}`)),
+        el("span", { class: "row" },
+          el("button", { type: "button", onclick: () => useMyVoice(v) }, "Use this voice"),
+          el("button", { type: "button", class: "quiet", onclick: () => renameMyVoice(v) }, "Rename"),
+          el("button", { type: "button", class: "quiet danger", onclick: () => removeMyVoice(v) }, "Delete"))))));
+  } catch (error) { $("my-voice-list").replaceChildren(el("li", { class: "muted" }, error.message)); }
+}
+
+async function useMyVoice(v) {
+  $("dataset").value = "Custom voices";
+  $("voice-q").value = v.speaker;
+  await loadVoices(1);
+  const data = await call("/voices?" + new URLSearchParams({ dataset: "Custom voices", q: v.speaker }));
+  const clip = data.clips.find((c) => c.speaker === v.speaker);
+  if (clip) chooseVoice(clip, `${API}/voices/audio?` + new URLSearchParams({ dataset: clip.dataset, clip_id: clip.clip_id }));
+}
+
+async function renameMyVoice(v) {
+  const name = window.prompt(`A new name for "${v.name}".\nIts ID stays "${v.speaker}", so your renders with it keep working.`, v.name);
+  if (name === null || name.trim() === v.name) return;
+  try {
+    const { voice } = await call("/me/voices/rename", { body: { folder: v.folder, name } });
+    toast(`Renamed to ${voice.name}.`);
+    if (state.voice && state.voice.speaker === v.speaker) state.voice.details.name = voice.name;
+    loadDatasets();
+  } catch (error) { toast(error.message, true); }
+}
+
+async function removeMyVoice(v) {
+  if (!window.confirm(`Delete your voice "${v.name}" from the host?\n\nIt cannot be brought back. Renders you made with it stay in your renders.`)) return;
+  try {
+    await call("/me/voices/remove", { body: { folder: v.folder } });
+    toast(`Deleted ${v.name}.`);
+    if (state.voice && state.voice.speaker === v.speaker) { state.voice = null; $("chosen").hidden = true; }
+    loadDatasets();
+  } catch (error) { toast(error.message, true); }
+}
+
+const asBase64 = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result).split(",", 2)[1] || "");
+  reader.onerror = () => reject(new Error("The file could not be read."));
+  reader.readAsDataURL(file);
+});
+
+$("upload-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const file = $("up-file").files[0];
+  if (!file) return;
+  if (file.size > 8 * 1024 * 1024) return toast("The file is larger than 8 MB.", true);
+  const button = $("upload-form").querySelector("button[type=submit]");
+  button.disabled = true;
+  try {
+    const { voice } = await call("/me/voices", { body: { name: $("up-name").value.trim(), script: $("up-script").value.trim(),
+      filename: file.name, audio: await asBase64(file), consent: $("up-consent").checked } });
+    $("upload-form").reset();
+    toast(`Uploaded ${voice.name}: it is under Dataset: Custom voices, for you only.`);
+    loadDatasets();
+  } catch (error) { toast(error.message, true); }
+  finally { button.disabled = !can("speak"); }
+});
 
 async function loadVoices(page) {
   const params = new URLSearchParams({ dataset: $("dataset").value, q: $("voice-q").value.trim(), page });
@@ -267,12 +431,16 @@ async function loadVoices(page) {
   } catch (error) { toast(error.message, true); }
 }
 
+// An uploaded voice shows the name its owner gave it, and its fixed ID with the details
+const voiceName = (clip) => (clip.details && clip.details.name) || clip.speaker;
+
 function voiceItem(clip) {
-  const details = Object.values(clip.details).filter(Boolean).join(" · ");
+  const details = [clip.details.name && clip.details.name !== clip.speaker ? `ID ${clip.speaker}` : null,
+                   ...Object.entries(clip.details).filter(([k]) => k !== "name").map(([, v]) => v)].filter(Boolean).join(" · ");
   const src = `${API}/voices/audio?` + new URLSearchParams({ dataset: clip.dataset, clip_id: clip.clip_id });
   return el("li", { class: "item" },
     el("div", { class: "item-head" },
-      el("strong", {}, `${clip.speaker} · ${clip.dataset}`, details ? el("span", { class: "muted small" }, " · " + details) : null),
+      el("strong", {}, `${voiceName(clip)} · ${clip.dataset}`, details ? el("span", { class: "muted small" }, " · " + details) : null),
       el("button", { type: "button", onclick: () => chooseVoice(clip, src) }, "Use this voice")),
     el("p", {}, clip.text),
     el("audio", { controls: true, preload: "none", src }));
@@ -281,10 +449,10 @@ function voiceItem(clip) {
 function chooseVoice(clip, src) {
   state.voice = clip;
   $("chosen").hidden = false;
-  $("chosen-name").textContent = `${clip.speaker} · ${clip.dataset}`;
+  $("chosen-name").textContent = `${voiceName(clip)} · ${clip.dataset}`;
   $("chosen-text").textContent = clip.text;
   $("chosen-audio").src = src;
-  toast(`Voice chosen: ${clip.speaker}.`);
+  toast(`Voice chosen: ${voiceName(clip)}.`);
   if (mode === "generate") showTab("studio");          // step 2: the line and, optionally, a genome
 }
 

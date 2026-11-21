@@ -131,6 +131,19 @@ MIGRATIONS = [
     """
     ALTER TABLE ratings ADD COLUMN different INTEGER CHECK (different IN (0, 1));
     """,
+    # 3: which version of the user agreement (backend/api/agreement.py) each account accepted, and when;
+    #    rows are only added, so the record of what someone agreed to stays
+    """
+    CREATE TABLE agreements (
+        username TEXT NOT NULL REFERENCES accounts (username) ON DELETE CASCADE,
+        version  TEXT NOT NULL,
+        time     TEXT NOT NULL,
+        how      TEXT NOT NULL,                         -- "register" or "login"
+        PRIMARY KEY (username, version)
+    );
+    CREATE TRIGGER agreements_are_kept BEFORE UPDATE ON agreements
+        BEGIN SELECT RAISE(ABORT, 'an accepted agreement is not changed'); END;
+    """,
 ]
 SCHEMA_VERSION = len(MIGRATIONS)
 

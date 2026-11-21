@@ -12,6 +12,54 @@ const Studio = (() => {
     S.pending = null;
     if (!S.lib) await load(key);
     else if (key) showList(key);
+    if (S.incoming) take();
+  }
+
+  // Genes from elsewhere (a render's Open in studio, or Paste genome): edited here as a new, unsaved genome
+  function useGenes(genes, about = {}) {
+    S.incoming = { genes, ...about };
+    if (!$("tab-studio").hidden && S.lib) take();
+    else showTab("studio");            // calls open(), which takes them once the library is loaded
+  }
+
+  async function take() {
+    const { genes, from, text, voice } = S.incoming;
+    S.incoming = null;
+    S.picked = null;
+    S.from = from || "the clipboard";
+    S.genes = genes.map((g) => ({ ...g }));
+    S.changed = true;
+    $("st-pick").value = "";
+    $("st-remove").hidden = true;
+    blank(false);
+    $("st-picked").textContent = `Copied from ${from || "the clipboard"}: edit it, render it, or save it under a name.`;
+    if (text) $("st-text").value = text;
+    renderGenes();
+    schedulePreview();
+    if (voice && !(state.voice && state.voice.dataset === voice.dataset && state.voice.clip_id === voice.clip_id)) {
+      try {                             // the render's own voice, when this account may use it
+        const { clips } = await call("/voices?" + new URLSearchParams({ dataset: voice.dataset, q: voice.speaker }));
+        const clip = clips.find((c) => c.clip_id === voice.clip_id);
+        if (clip) {
+          chooseVoice(clip, `${API}/voices/audio?` + new URLSearchParams({ dataset: clip.dataset, clip_id: clip.clip_id }));
+          showVoice();
+        }
+      } catch { /* the voice stays as it was */ }
+    }
+  }
+
+  async function paste() {
+    let text = null;
+    try { text = await navigator.clipboard.readText(); } catch { /* not allowed here: ask for it */ }
+    if (!text || !text.trim().startsWith("{") && !text.trim().startsWith("[")) {
+      text = window.prompt("Paste a copied genome (Copy genome on a render, or in the studio):", "");
+      if (text === null) return;
+    }
+    try {
+      const found = readGenome(text);
+      useGenes(found.genes, { from: found.from || "the clipboard" });
+      toast(`Pasted ${found.genes.length} gene${found.genes.length === 1 ? "" : "s"}.`);
+    } catch (error) { toast(error.message, true); }
   }
 
   function showVoice() {
@@ -50,14 +98,18 @@ const Studio = (() => {
     const source = $("st-source").value, find = $("st-find").value.trim();
     const shown = S.lib.filter((g) => (!source || g.source === source) && matches(g, find));
     const groups = new Map();
-    for (const g of shown.slice(0, 400)) {
+    const first = shown.slice(0, 400);
+    const wanted = selectKey && S.lib.find((g) => g.key === selectKey);
+    if (wanted && !first.includes(wanted)) first.unshift(wanted);          // opened from a link (Ask)
+    for (const g of first) {
       if (!groups.has(g.group)) groups.set(g.group, el("optgroup", { label: g.group || "Other" }));
       groups.get(g.group).append(el("option", { value: g.key, title: g.markup || "" }, title(g)));
     }
     $("st-pick").replaceChildren(...groups.values());
     if (shown.length > 400) $("st-pick").append(el("option", { disabled: true }, `… ${shown.length - 400} more: narrow the search`));
     if (!shown.length) $("st-pick").append(el("option", { disabled: true }, "Nothing matches."));
-    if (selectKey) { $("st-pick").value = selectKey; pick(selectKey); }
+    if (selectKey && wanted) { $("st-pick").value = selectKey; pick(selectKey); }
+    else if (selectKey) toast("That genome is not in your genome library (your account may not see it).", true);
   }
 
   function pick(key) {
@@ -227,12 +279,19 @@ const Studio = (() => {
   $("st-text").addEventListener("input", schedulePreview);
   $("st-add").addEventListener("click", () => { S.genes.push({ feature: "emphasis", position: 0.5 }); changed(); });
   $("st-new").addEventListener("click", () => {
-    S.picked = null; S.genes = []; S.changed = true;
+    S.picked = null; S.from = null; S.genes = []; S.changed = true;
     $("st-pick").value = ""; $("st-picked").textContent = "Empty: name it and add genes below."; $("st-remove").hidden = true;
     blank(true); $("st-blank-name").focus();
     renderGenes(); schedulePreview();
   });
   $("st-remove").addEventListener("click", remove);
+  $("st-paste").addEventListener("click", paste);
+  $("st-copy").addEventListener("click", () => {
+    if (!S.genes.length) { toast("There are no genes to copy: this is the plain line.", true); return; }
+    const from = S.picked ? (S.picked.name || `${S.picked.voice} genome ${S.picked.genome}`)
+                          : S.from ? `${S.from}, edited in the studio` : "the genome studio";
+    copyText(genomeText(S.genes, from), "The genome");
+  });
   $("st-save").addEventListener("click", save);
   $("st-render").addEventListener("click", render);
 
@@ -244,5 +303,5 @@ const Studio = (() => {
     showTab("studio");          // calls open()
   }
 
-  return { open, show };
+  return { open, show, useGenes };
 })();

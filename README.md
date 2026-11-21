@@ -139,6 +139,20 @@ own `.env`, and it is never committed.
 
 `.env.example` lists every setting with its default.
 
+## Debugging locally
+
+`python main_offline.py` (or double-click `Dramatizer offline.bat`) opens a menu. Its main option starts the
+API and the website together on a sandbox copy of the data (`OUTPUT_DIR/offline`), already logged in as a
+debug admin, researcher or listener. It restarts by itself when a `.py` file changes. The real data is never
+written. `python main_offline.py --help` lists the rest: tests by name, `--live`, `reset`.
+
+## License
+
+The code is released under the [MIT License](LICENSE). It does not cover what the code works with,
+which keeps its own terms: the voice datasets (VCTK, CREMA-D, LibriTTS-R), the models it downloads
+(the voice cloning model, Whisper, Resemblyzer, SQUIM, Gemma), and people's own recorded or uploaded
+voices, which are handled under the user agreement (`backend/api/agreement.py`).
+
 ## Still to come
 
 - Installation

@@ -58,7 +58,22 @@ body[data-mode="listen"] #voice-list .item-head button { display: none; }   /* l
 .home-panel { padding: 16px 18px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); min-width: 0; }
 .home-panel h3 { margin: 0 0 6px; }
 .home-panel h4 { margin: 14px 0 4px; font-size: 0.95rem; }
-.ask-log { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow-y: auto; margin: 10px 0; }
+.home-about { grid-template-columns: minmax(0, 1fr); }
+.ask-columns { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; }
+@media (max-width: 860px) { .ask-columns { grid-template-columns: minmax(0, 1fr); } }
+.ask-debug { font-size: 0.88rem; }
+.ask-debug dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 10px; margin: 6px 0; }
+.ask-debug dt { color: var(--muted); }
+.ask-debug dd { margin: 0; overflow-wrap: anywhere; }
+.ask-debug pre { max-height: 320px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.75rem;
+  padding: 6px 8px; border: 1px solid var(--rule); border-radius: 6px; background: var(--bg); margin: 4px 0 8px; }
+.ask-debug details { margin: 6px 0; }
+.ask-msg.bot { cursor: pointer; }
+.ask-msg.bot.selected { outline: 2px solid var(--accent); }
+.ask-links { margin: 6px 0 2px; padding-left: 18px; }
+.ask-links li { margin: 2px 0; }
+.ask-links a { cursor: pointer; }
+.ask-log { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; margin: 10px 0; }
 .ask-log:empty { display: none; }
 .ask-msg { padding: 8px 12px; border-radius: 10px; max-width: 92%; overflow-wrap: anywhere; }
 .ask-msg p { margin: 0 0 4px; }
@@ -157,6 +172,11 @@ th { color: var(--muted); font-weight: 600; }
 .login { max-width: 380px; margin: 8vh auto; padding: 0 16px; }
 .login h2 { margin: 0; }
 .login-error { margin: 0; color: var(--bad); font-size: 0.9rem; }
+.agreement { max-height: 40vh; overflow: auto; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 6px;
+  font-size: 0.9rem; background: var(--bg, transparent); }
+.agreement h3 { margin: 0 0 4px; font-size: 0.95rem; }
+.agreement h4 { margin: 10px 0 2px; font-size: 0.9rem; }
+.agreement p { margin: 0; }
 .login .link { background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; cursor: pointer; font: inherit; }
 body:not(.can-name) .pick { display: none; }
 .own-scores-only #rater-count { pointer-events: none; opacity: 0.6; }
@@ -308,3 +328,33 @@ button.quiet.danger { background: transparent; color: var(--bad); border-color: 
              border-radius: 6px; background: var(--bad-soft); }
 .render-admin { gap: 8px; margin-left: auto; align-items: center; }
 .render-admin button { padding: 3px 10px; font-size: 0.85rem; }
+
+/* The Lab: measuring recordings side by side */
+.lab-picked { display: grid; gap: 8px; padding-left: 0; list-style: none; margin: 0; }
+.lab-pick audio { width: 100%; max-width: 420px; }
+.lab-sources { display: flex; flex-wrap: wrap; gap: 6px; }
+.lab-sources button { background: transparent; color: var(--muted); border: 1px solid var(--rule); border-radius: 999px; padding: 4px 12px; }
+.lab-sources button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.lab-found { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; max-height: 340px; overflow-y: auto; }
+.lab-found-item { display: flex; gap: 8px; align-items: baseline; }
+.lab-measures { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.table-wrap { overflow-x: auto; }
+.lab-table { border-collapse: collapse; font-size: 0.9rem; width: 100%; }
+.lab-table th, .lab-table td { border-bottom: 1px solid var(--rule); padding: 5px 8px; text-align: left; vertical-align: top; }
+.lab-table:not(.lab-matrix) td:nth-child(2) { min-width: 14em; }
+.lab-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lab-off { color: var(--bad); font-weight: 600; }
+.lab-flag { font-size: 0.75em; }
+.lab-matrix .lab-cell { background: color-mix(in srgb, var(--accent) calc(var(--s) * 45%), transparent); }
+.lab-diag { color: var(--muted); }
+.lab-heard { border-top: 1px solid var(--rule); padding-top: 6px; }
+.lab-heard p { margin: 3px 0; }
+.lab-words del { color: var(--bad); text-decoration: line-through; }
+.lab-words ins { color: var(--fine); text-decoration: underline; }
+.lab-history { padding-left: 18px; margin: 0; display: grid; gap: 4px; }
+
+/* A render's ID and genome (Listen > Renders) */
+.render-id { align-items: center; gap: 6px; }
+.render-id code { background: var(--bg); border: 1px solid var(--rule); border-radius: 4px; padding: 1px 6px; }
+.render-genome summary { cursor: pointer; color: var(--accent); font-size: 0.9rem; }
+.render-genome ol { margin: 4px 0 6px; padding-left: 22px; }

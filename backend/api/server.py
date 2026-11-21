@@ -17,13 +17,16 @@ Safe to put behind a tunnel because:
     - only validation voices are offered to everyone; final test speakers never are. A custom voice
       (CUSTOM_VOICES, someone's own recorded voice) is offered only to its owner's account (the
       account whose username is the voice's name) and to admins; its renders are listed only to them
-      and to whoever made them, and it is never used for genome searches
+      and to whoever made them, and it is never used for genome searches. A voice an account uploads
+      (uploaded_voices.py) is a custom voice of that account in the same way
+    - an account must accept the user agreement (agreement.py) when registering, and an account that
+      has not accepted its current version can do nothing but read and accept it, see itself and log out
     - every call is logged with who made it (history/api/access.log); logins, refused logins,
       logouts, password changes and saved scores also go to history/api/audit.jsonl
     - an account locks after 5 wrong passwords; past 30 refused logins in 10 minutes (someone
       trying many names) every login waits until it is quiet again; each refusal takes a second
     - replies carry strict browser headers (no framing, no sniffing, no referrer, no caching),
-      bodies are capped at 64 KB, and the server does not say what software it runs
+      bodies are capped at 64 KB (an uploaded voice: 12 MB), and the server does not say what software it runs
 
 The website is served here too, for phones and browsers without the client app
 (python main_backend.py tunnel gives it a public https:// address through Cloudflare):
@@ -40,7 +43,14 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
     POST /login   {username, password}            no key needed: an account logs in -> {token, account}
     POST /register {username, display_name, email, password}   no key needed: ask for a listener account;
                                                   it waits for the host's approval (account approve)
+    GET  /agreement                               no key needed: the user agreement {version, title, sections}
+    POST /register also needs {agreement: <its version>}: the person ticked that they accept it
     POST /logout                                  end this session
+    POST /me/agreement {version}                  accept the current user agreement (asked at login until done)
+    GET  /me/voices                               the voices this account uploaded, and the upload limits
+    POST /me/voices {name, script, filename, audio: base64, consent: true}   upload a voice (wav, mp3, flac or ogg,
+                                                  3-30 s, at most 3 per account): only this account (and admins) may use it
+    POST /me/voices/remove {folder}               delete one of your uploaded voices from the host
     POST /me/password {current, new}              change your own password (ends your sessions)
     GET  /me                                      who this key or session belongs to, and the queue
     GET  /datasets                                the datasets and how many validation voices each has, and
@@ -69,8 +79,9 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
     GET  /genome/library                          every genome to pick from (named, then every search's),
                                                   and what the editor offers (features, limits)
     POST /genome/preview {text, genes}            the genes on a line, in words and as markup (no GPU)
-    POST /genome/edited  {name, genes, text?, based_on?}   save a genome edited by hand, under a new name
-    POST /genome/edited/remove {name}             delete a genome made by hand
+    POST /genome/edited  {name, genes, text?, based_on?}   save a genome edited by hand, under a new name;
+                                                  only the account that made it sees it (and API keys)
+    POST /genome/edited/remove {name}             delete a genome you made by hand
     POST /genome/render  {dataset, clip_id, text, genes, seed?, name?, private_name?}
                                                   (private_name: also keep the genes as the caller's own private genome)
                                                   queue a line spoken with a genome (no genes: the plain
@@ -94,13 +105,24 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
                                                   scope}: the data state the reply was made from (blind accounts:
                                                   their own); search hits carry each record's revision
     GET  /about                                   what the Dramatizer is, how to use it, its contributors
+    GET  /glossary?q=                             what a term means (WER, STOI, MOS, genome, plain line...): the best
+                                                  matches with how to read the number; without q, every term
     GET  /assistant                               whether the chatbot's language model is ready
     POST /assistant/ask  {question, history?}     "Ask the Dramatizer": the chatbot (Gemma 4, with your own
                                                   token) or, until it is ready, the records answer
     GET  /renders?q=&mine=&page=                  every line spoken or rendered through the API, newest first:
                                                   voice, line, genome, who made it and when
+    GET  /renders/<id>                            one of them by its id or short id (render:<time>): its note and genes
     GET  /renders/<id>/audio                      one of them
     POST /renders/<id>/rating  {score: 1-5|null}  score your own render (kept apart from the MOS)
+    POST /renders/<id>/name {name}                name your own render (empty: none); its ID never changes
+    POST /me/voices/rename {folder, name}         a new name for your uploaded voice; its ID (speaker) never changes
+    POST /lab/compare {recordings: [{kind: render, id} | {kind: voice, dataset, clip_id} | {kind: search, run, clip}],
+                       reference?: index, measure?: [wer, similarity, quality], text?}
+                                                  the Lab: queue measuring up to 8 recordings side by side -> {job};
+                                                  the finished job has "lab": WER (and what was heard, word by word),
+                                                  speaker similarity to the reference and between every pair, quality
+    GET  /lab/results                             your last 20 comparisons
     POST /renders/remove {ids: [...]}             admins (remove_renders): delete renders. They are moved to
                                                   genome_renders/removed/ with who removed them and when, not erased
 
@@ -132,7 +154,8 @@ from werkzeug.serving import WSGIRequestHandler
 
 from backend import model, safe_files
 from backend import evidence_views as views
-from backend.api import accounts, keys
+from backend.api import accounts, agreement, keys
+from backend.voice_data import uploaded_voices
 
 API = "/api/v1"
 VERSION = 1
@@ -271,8 +294,15 @@ def needs_key(view):
             raise Refused("Log in, or use a valid API key (Authorization: Bearer <key>).", 401)
         g.user, g.account = name, account
         g.permissions = account.permissions if account else set(accounts.PERMISSIONS)
+        if account and request.endpoint not in BEFORE_AGREEING and not accounts.has_agreed(account.username,
+                                                                                           agreement.VERSION):
+            raise Refused("Accept the Dramatizer user agreement first: reload the page to read it.", 403)
         return view(*args, **kwargs)
     return checked
+
+
+# What an account that has not accepted the current user agreement may still do
+BEFORE_AGREEING = {"me", "logout", "accept_agreement", "change_password"}
 
 
 def needs(permission):
@@ -376,11 +406,11 @@ def custom_voices():
         return []
     folder = model.setting("VOICES_DIR", "")
     if not folder or not Path(folder).is_dir():
-        return []
+        return uploaded_voices.clips() if account.role == "admin" else uploaded_voices.clips(account.username)
     every = read_custom_voices(folder)
     if account.role == "admin":
-        return every
-    return [c for c in every if c.speaker.lower() == account.username.lower()]
+        return every + uploaded_voices.clips()
+    return [c for c in every if c.speaker.lower() == account.username.lower()] + uploaded_voices.clips(account.username)
 
 
 def may_hear_voice(voice):
@@ -457,6 +487,8 @@ def job_json(job):
         shown["seconds"] = result.get("seconds")
     if job["kind"] == "genome":
         shown["run"] = (job.get("about") or {}).get("run")
+    if job["kind"] == "lab" and job["status"] == "done":
+        shown["lab"] = result.get("lab")
     return shown
 
 
@@ -511,19 +543,21 @@ def register():
     _same_page_only()
     data = body()
     tried = str(data.get("username") or "")[:40]
+    if data.get("agreement") != agreement.VERSION:
+        raise Refused("Read the user agreement and tick that you accept it.", 400)
     if _too_many_registrations():
         audit("registration held back", username=tried)
         raise Refused("Too many accounts were asked for just now. Try again later.", 429)
     try:
         account = accounts.register(data.get("username"), data.get("display_name"), data.get("email"),
-                                    data.get("password"))
+                                    data.get("password"), agreement=agreement.VERSION)
     except accounts.RegistrationRefused as error:
         audit("registration refused", username=tried, reason=str(error))      # never the email or password
         time.sleep(0.5)
         raise Refused(str(error), 400)
     _too_many_registrations(add=True)
     g.user = account.display_name
-    audit("registered", username=account.username)
+    audit("registered", username=account.username, agreement=agreement.VERSION)
     return jsonify(ok=True, username=account.username, pending=True,
                    message="Thank you. The host will approve your account; then you can log in."), 201
 
@@ -566,8 +600,111 @@ def me():
         busy = sum(j["status"] in ("queued", "running") for j in jobs.values())
     account = g.account.public() if g.account else {"username": None, "display_name": g.user, "role": "api key",
                                                     "permissions": sorted(g.permissions), "last_login": None}
-    extras = EXTRAS if private_allowed() else []
-    return jsonify(name=g.user, account=account, version=VERSION, jobs_waiting=busy, my_jobs=mine[-20:], extras=extras)
+    agreed = g.account is None or accounts.has_agreed(g.account.username, agreement.VERSION)
+    extras = EXTRAS if private_allowed() and agreed else []
+    return jsonify(name=g.user, account=account, version=VERSION, jobs_waiting=busy, my_jobs=mine[-20:], extras=extras,
+                   agreement_needed=not agreed, agreement_version=agreement.VERSION)
+
+
+@app.get(f"{API}/agreement")
+def agreement_text():
+    """The user agreement, for the register form and for accounts asked to accept it at login."""
+    return jsonify(agreement.as_json())
+
+
+@app.post(f"{API}/me/agreement")
+@needs_key
+def accept_agreement():
+    if g.account is None:
+        raise Refused("API keys are given by the host; only accounts accept the user agreement.", 400)
+    if body().get("version") != agreement.VERSION:
+        raise Refused("That is not the current user agreement: reload the page.", 409)
+    accounts.accept_agreement(g.account.username, agreement.VERSION, how="login")
+    audit("agreement accepted", version=agreement.VERSION)
+    return jsonify(ok=True, version=agreement.VERSION)
+
+
+# --------------------------------------------------------------------------- #
+# Voices an account uploads (uploaded_voices.py): only that account (and admins) may use them
+# --------------------------------------------------------------------------- #
+
+UPLOAD_BYTES = 12 * 1024 * 1024        # the JSON body: the audio in base64 is a third larger than the file
+
+
+@app.before_request
+def bigger_body_for_uploads():
+    if request.endpoint == "upload_voice":
+        request.max_content_length = UPLOAD_BYTES
+
+
+def _own_account():
+    if g.account is None:
+        raise Refused("Uploaded voices belong to an account: log in to upload one.", 400)
+    return g.account.username
+
+
+VOICE_FIELDS = ("folder", "name", "speaker", "uploaded", "seconds")
+
+
+@app.get(f"{API}/me/voices")
+@needs_key
+def my_voices():
+    owner = _own_account()
+    mine = uploaded_voices.voices(owner) if uploaded_voices.root() else []
+    return jsonify(voices=[{k: v[k] for k in VOICE_FIELDS} for v in mine],
+                   limits={"per_account": uploaded_voices.MAX_PER_ACCOUNT, "formats": list(uploaded_voices.FORMATS),
+                           "max_mb": uploaded_voices.MAX_BYTES // (1024 * 1024),
+                           "seconds": [uploaded_voices.MIN_SECONDS, uploaded_voices.MAX_SECONDS],
+                           "script": uploaded_voices.MAX_SCRIPT},
+                   available=uploaded_voices.root() is not None)
+
+
+@app.post(f"{API}/me/voices")
+@needs_key
+@needs("speak")
+def upload_voice():
+    import base64
+    import binascii
+
+    owner = _own_account()
+    data = body()
+    try:
+        audio = base64.b64decode(str(data.get("audio") or ""), validate=True)
+    except (binascii.Error, ValueError):
+        raise Refused("The audio did not arrive whole: upload it again.")
+    try:
+        about = uploaded_voices.save(owner, data.get("name"), data.get("script"), audio, data.get("filename"),
+                                     consent=data.get("consent") is True)
+    except uploaded_voices.UploadRefused as error:
+        raise Refused(str(error))
+    audit("voice uploaded", voice=about["speaker"], seconds=about["seconds"])
+    return jsonify(ok=True, voice={k: about[k] for k in VOICE_FIELDS}), 201
+
+
+@app.post(f"{API}/me/voices/remove")
+@needs_key
+def remove_voice():
+    owner = _own_account()
+    try:
+        about = uploaded_voices.remove(owner, body().get("folder"))
+    except uploaded_voices.UploadRefused as error:
+        raise Refused(str(error), 404)
+    audit("voice deleted", voice=about["speaker"])
+    return jsonify(ok=True, removed=about["speaker"])
+
+
+@app.post(f"{API}/me/voices/rename")
+@needs_key
+def rename_voice():
+    """A new name for one of your uploaded voices: {folder, name}. Its ID (speaker) does not change."""
+    owner = _own_account()
+    data = body()
+    try:
+        about = uploaded_voices.rename(owner, data.get("folder"), data.get("name"))
+    except uploaded_voices.UploadRefused as error:
+        raise Refused(str(error), 404 if "No such" in str(error) else 400)
+    audit("voice renamed", voice=about["speaker"], name=about["name"])
+    return jsonify(voice={k: about[k] for k in VOICE_FIELDS})
 
 
 @app.get(f"{API}/datasets")
@@ -741,7 +878,12 @@ def searches():
                     "status": "queued or running" if searching(run["id"]) else run["status"],
                     "summary": search.summary(run), "requested_by": run.get("requested_by"),
                     "rated": ratings.is_rated(folder), "batch": run.get("batch"), "pile": run.get("pile")})
-    return jsonify(searches=out, piles={b: sorted(p for p in ps if p) for b, ps in piles.items()})
+    sums = [search.summary(r) for _, r in runs]
+    # The list stops at 100; the totals count every search (the chatbot once added up the 100 and said 485, not 585)
+    totals = {"searches": len(runs), "listed": len(out), "voices": len({r["voice"] for _, r in runs}),
+              "genomes": sum(s["total"] for s in sums), "passed_checks": sum(s["fine"] for s in sums),
+              "terrible": sum(s["terrible"] for s in sums), "failed": sum(s["failed"] for s in sums)}
+    return jsonify(searches=out, totals=totals, piles={b: sorted(p for p in ps if p) for b, ps in piles.items()})
 
 
 @app.get(f"{API}/genome/listening")
@@ -970,7 +1112,15 @@ def unpick(run_id):
 def named():
     from backend.genome import ratings
 
-    return jsonify(named=[{k: v for k, v in e.items() if k != "origin"} for e in ratings.load_named()["genomes"]])
+    from backend.genome import editor
+
+    return jsonify(named=[{k: v for k, v in e.items() if k not in ("origin", "account")}
+                          for e in ratings.load_named()["genomes"] if editor.owns(e, genome_viewer())])
+
+
+def genome_viewer():
+    """Who is asking, for genomes made by hand (editor.owns): (username, display name), or None for an API key."""
+    return (g.account.username, g.account.display_name) if g.account else None
 
 
 # --- The genome studio: pick, edit, save, render -----------------------------
@@ -1039,7 +1189,7 @@ def genome_library():
     from backend.genome import editor, search
 
     runs = [(f, r) for f, r in search.list_runs() if may_see(r)]
-    genomes = editor.library(runs, with_mos=True)       # the MOS orders the list; its number is shown only to those who may
+    genomes = editor.library(runs, with_mos=True, viewer=genome_viewer())       # the MOS orders the list; its number is shown only to those who may
     for e in genomes:
         e["group"] = e.get("voice") or "Made by hand"
     # Grouped by the voice each was found for, the best rated first (unrated last)
@@ -1078,7 +1228,8 @@ def save_edited():
     based_on = str(based_on)[:200] if based_on else None
     text = text_of(data) if data.get("text") else None
     try:
-        entry = editor.save(data.get("name"), genes_of(data), named_by=g.user, text=text, based_on=based_on)
+        entry = editor.save(data.get("name"), genes_of(data), named_by=g.user, text=text, based_on=based_on,
+                            account=g.account.username if g.account else None)
     except ValueError as error:
         raise Refused(str(error))
     audit("genome saved", name=entry["name"], genes=len(entry["genes"]))
@@ -1092,7 +1243,7 @@ def remove_edited():
     from backend.genome import editor
 
     try:
-        editor.remove(body().get("name"))
+        editor.remove(body().get("name"), viewer=genome_viewer())
     except ValueError as error:
         raise Refused(str(error))
     return jsonify(ok=True)
@@ -1141,6 +1292,34 @@ def render_genome():
 
 # --- Renders: everyone's spoken and rendered lines, to listen to ------------------
 
+SHORT_RENDER_ID = re.compile(r"\d{8}_\d{6}_\d{6}$")      # the time a render was made, to the microsecond
+
+
+def short_render_id(render_id):
+    """What the page's Copy ID copies after "render:": the time in its name (unique, no spaces), else the whole id."""
+    found = SHORT_RENDER_ID.search(render_id)
+    return found.group(0) if found else render_id
+
+
+def find_render(given):
+    """A render's full id from what someone pasted: "render:<short or full id>", the full id or its short id.
+    None when it matches no render, or more than one."""
+    given = " ".join(str(given or "").split())
+    if given.lower().startswith("render:"):
+        given = given[len("render:"):].strip()
+    if not given or len(given) > 160:
+        return None
+    if RENDER_ID.match(given) and (GENOME_RENDERS / f"{given}.wav").is_file():
+        return given
+    if not GENOME_RENDERS.is_dir():
+        return None
+    if len(given) < 6:                      # "render:1" names nothing, though some id ends in 1
+        return None
+    found = [w.stem for w in GENOME_RENDERS.glob("*.wav")         # a whole tail of the id: after a "_"
+             if w.stem.endswith("_" + given) and RENDER_ID.match(w.stem)]
+    return found[0] if len(found) == 1 else None
+
+
 def render_notes():
     """Every kept render, newest first: its note plus its id (the file name without .wav)."""
     out = []
@@ -1151,8 +1330,10 @@ def render_notes():
             data = json.loads(note.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        out.append({"id": note.stem, "voice": data.get("voice"), "text": data.get("text"),
-                    "genome": data.get("genome"), "genes": len(data.get("genes") or []), "markup": data.get("markup"),
+        out.append({"id": note.stem, "short_id": short_render_id(note.stem), "name": data.get("name"),
+                    "voice": data.get("voice"),
+                    "clip_id": data.get("clip_id"), "text": data.get("text"), "genome": data.get("genome"),
+                    "genes": len(data.get("genes") or []), "gene_list": data.get("genes") or [], "markup": data.get("markup"),
                     "speed": data.get("speed"), "seed": data.get("seed"), "by": data.get("by"),
                     "made": data.get("made"), "seconds": data.get("seconds")})
     return sorted(out, key=lambda r: r["made"] or "", reverse=True)
@@ -1171,16 +1352,58 @@ def renders():
     scores = read_json(RENDER_RATINGS, {})
     for r in found:
         r["mine"] = r["by"] == g.user
+        r["renamable"] = r["mine"]
         r["my_score"] = scores.get(r["id"], {}).get(g.user)
     for r in found:
         r["removable"] = "remove_renders" in g.permissions
     if mine:
         found = [r for r in found if r["by"] == g.user]
     if words:
-        found = [r for r in found if words in " ".join(str(r[k] or "") for k in ("voice", "text", "genome", "by")).lower()]
+        if words.startswith("render:"):
+            words = words[len("render:"):].strip()
+        found = [r for r in found if words in " ".join(str(r[k] or "") for k in ("voice", "text", "genome", "by", "id", "name")).lower()]
     start = (page - 1) * RENDERS_PAGE
     return jsonify(renders=found[start:start + RENDERS_PAGE], total=len(found), page=page,
                    pages=max(1, -(-len(found) // RENDERS_PAGE)))
+
+
+@app.get(f"{API}/renders/<given>")
+@needs_key
+def one_render(given):
+    """One render by its id or short id ("render:20261119_220500_543947"): voice, line, genome and its genes."""
+    render_id = find_render(given)
+    note = read_json(GENOME_RENDERS / f"{render_id}.json", {}) if render_id else {}
+    if not render_id or (note.get("by") != g.user and not may_hear_voice(note.get("voice"))):
+        raise Refused("No such render. Copy its ID from Listen > Renders.", 404)
+    return jsonify(render={"id": render_id, "short_id": short_render_id(render_id), **note,
+                           "audio": f"{API}/renders/{render_id}/audio"})
+
+
+RENDER_NAME_CHARS = 60
+
+
+@app.post(f"{API}/renders/<given>/name")
+@needs_key
+def rename_render(given):
+    """Name one of your own renders: {name} (empty: no name). Its ID, the file name, does not change."""
+    render_id = find_render(given)
+    if not render_id:
+        raise Refused("No such render.", 404)
+    note_path = GENOME_RENDERS / f"{render_id}.json"
+    with _own_lock:
+        note = read_json(note_path, {})
+        if note.get("by") != g.user:
+            raise Refused("You can rename only the renders you made.", 403)
+        name = " ".join(str(body().get("name") or "").split())
+        if len(name) > RENDER_NAME_CHARS:
+            raise Refused(f"A render's name is at most {RENDER_NAME_CHARS} characters.")
+        if name:
+            note["name"] = name
+        else:
+            note.pop("name", None)
+        safe_files.write_json(note_path, note)
+    audit("render renamed", render=render_id, name=name or None)
+    return jsonify(id=render_id, short_id=short_render_id(render_id), name=name or None)
 
 
 @app.post(f"{API}/renders/<render_id>/rating")
@@ -1250,6 +1473,107 @@ def render_audio(render_id):
     if note.get("by") != g.user and not may_hear_voice(note.get("voice")):
         raise Refused("No such render.", 404)                 # someone else's custom voice: not even its existence
     return send_file(path, mimetype="audio/wav", conditional=True)
+
+
+# --- The Lab: measure recordings side by side (backend/metrics/lab.py) -------------------------
+
+LAB_RESULTS = SPEAK_DIR / "lab_results.json"        # {user: [comparison]}: each person's last comparisons
+LAB_KEEP = 20
+SEARCH_CLIP = re.compile(r"^(baseline|genome_\d{2}|reference)$")
+
+
+def lab_source(source):
+    """One recording the caller may hear, from the request -> {"label", "text", "path" or "clip"}, never a file
+    path from outside: a render by id, a voice's original by dataset and clip id, or (accounts that may search)
+    a genome search's clip."""
+    if not isinstance(source, dict):
+        raise Refused("Each recording is an object with a kind: render, voice or search.")
+    kind = source.get("kind")
+    if kind == "render":
+        render_id = find_render(source.get("id")) or str(source.get("id") or "")
+        path = GENOME_RENDERS / f"{render_id}.wav"
+        if not RENDER_ID.match(render_id) or not path.is_file():
+            raise Refused("No such render.", 404)
+        note = read_json(path.with_suffix(".json"), {})
+        if note.get("by") != g.user and not may_hear_voice(note.get("voice")):
+            raise Refused("No such render.", 404)
+        what = note.get("name") or note.get("genome") or ("Edited genome" if note.get("genes") else "Plain line")
+        return {"label": f"{what} · {note.get('voice') or '?'} · by {note.get('by') or '?'}", "text": note.get("text"),
+                "path": path, "source": {"kind": "render", "id": render_id}}
+    if kind == "voice":
+        clip = clip_of(source.get("dataset"), source.get("clip_id"))
+        return {"label": f"Original · {clip.dataset}/{clip.speaker}", "text": clip.text, "clip": clip,
+                "source": {"kind": "voice", "dataset": clip.dataset, "clip_id": clip.clip_id}}
+    if kind == "search":
+        if g.account is not None and not g.account.can("search"):
+            raise Refused("Only researchers and admins measure a search's clips.", 403)
+        from backend.genome import ratings, search
+
+        run_id, name = str(source.get("run") or ""), str(source.get("clip") or "")
+        run = search.load_run(run_dir_of(run_id))
+        if not may_see(run) or not SEARCH_CLIP.match(name) or run.get("blind") or run.get("sealed"):
+            raise Refused("No such clip.", 404)
+        path = ratings.reference_path(run) if name == "reference" else run_dir_of(run_id) / f"{name}.wav"
+        if path is None or not path.is_file():
+            raise Refused("That clip is not on the host.", 404)
+        text = run.get("reference_text") if name == "reference" else run.get("text")
+        shown = {"reference": "original", "baseline": "plain line"}.get(name) or f"genome {int(name[len('genome_'):])}"
+        return {"label": f"{run['voice']} · {shown} · search {run_id[:20]}", "text": text,
+                "path": path, "source": {"kind": "search", "run": run_id, "clip": name}}
+    raise Refused("A recording's kind is render, voice or search.")
+
+
+@app.post(f"{API}/lab/compare")
+@needs_key
+@needs("speak")
+def lab_compare():
+    """Queue a comparison: {recordings: [source], reference?: index, measure?: [wer, similarity, quality],
+    text?: one script for every recording} -> {job}; the job's result holds the measurements."""
+    from backend.metrics import lab
+
+    data = body()
+    sources = data.get("recordings")
+    if not isinstance(sources, list) or not 1 <= len(sources) <= lab.MAX_RECORDINGS:
+        raise Refused(f"Choose 1 to {lab.MAX_RECORDINGS} recordings.")
+    picked = [lab_source(s) for s in sources]
+    reference = data.get("reference")
+    if reference is not None and (not isinstance(reference, int) or isinstance(reference, bool)
+                                  or not 0 <= reference < len(picked)):
+        raise Refused("The reference must be one of the chosen recordings.")
+    measure = data.get("measure") or ["wer", "similarity", "quality"]
+    if not isinstance(measure, list) or not measure or any(m not in ("wer", "similarity", "quality") for m in measure):
+        raise Refused("measure is a list of: wer, similarity, quality.")
+    script = " ".join(str(data.get("text") or "").split())[:500] or None
+    owner = g.user
+
+    def work():
+        from backend.voice_data.Voice_Importer import get_clip
+
+        recordings = []
+        for p in picked:
+            path = p["path"] if "path" in p else get_clip(p["clip"])[0]
+            recordings.append({"label": p["label"], "path": path, "text": script or p["text"]})
+        result = lab.compare(recordings, reference=reference, measure=measure)
+        for row, p in zip(result["recordings"], picked):
+            row["source"] = p["source"]
+        result.update(by=owner, script=script)
+        with _own_lock:
+            everyone = read_json(LAB_RESULTS, {})
+            everyone[owner] = ([result] + everyone.get(owner, []))[:LAB_KEEP]
+            LAB_RESULTS.parent.mkdir(parents=True, exist_ok=True)
+            safe_files.write_json(LAB_RESULTS, everyone)
+        return {"lab": result}
+
+    job = queue_job("lab", owner, work, {"recordings": [p["label"] for p in picked], "reference": reference,
+                                         "measure": measure})
+    return jsonify(job=job_json(job)), 202
+
+
+@app.get(f"{API}/lab/results")
+@needs_key
+def lab_results():
+    """Your last comparisons, newest first."""
+    return jsonify(results=read_json(LAB_RESULTS, {}).get(g.user, []))
 
 
 # --- Private extensions -----------------------------------------------------------
@@ -1533,6 +1857,41 @@ ASK_CHARS = 500
 DECLINED = "I only answer questions about the Dramatizer"     # how the chatbot starts its off-topic reply (chatbot.OFF_TOPIC)
 FACTS_QUESTION = re.compile(r"\b(how many|number of|which|what|list)\b.*\b(voices?|speakers?|datasets?|clips?|listeners?|"
                             r"raters?|data|split)\b", re.IGNORECASE)
+# "How many genomes have been made?": counted from the searches, not looked up in the records (where the
+# nearest record, one genome's sanity check, was once given as the answer)
+COUNT_QUESTION = re.compile(r"\b(how many|number of|count of|total|so far)\b", re.IGNORECASE)
+MADE_WORDS = re.compile(r"\b(genomes?|searche?s?|runs?|renders?)\b", re.IGNORECASE)
+VOICE_WORDS = re.compile(r"\b(voices?|speakers?|datasets?|clips?|listeners?|raters?|data|split)\b", re.IGNORECASE)
+
+
+def genome_counts():
+    """How many genomes there are, from what this caller may see: the searches' genomes and their sanity
+    checks, the named genomes (and those made by hand), and the renders kept."""
+    from backend.genome import editor, search
+
+    runs = [r for _, r in search.list_runs() if may_see(r)]
+    sums = [search.summary(r) for r in runs]                 # every search: the same totals as GET /genome/searches
+    named = [e for e in editor.library([], with_mos=False, viewer=genome_viewer()) if e["source"] in ("named", "edited")]
+    return {"searches": len(runs), "voices_searched": len({r.get("voice") for r in runs}),
+            "genomes_in_searches": sum(s["total"] for s in sums), "checked": sum(s["done"] for s in sums),
+            "passed_checks": sum(s["fine"] for s in sums), "terrible": sum(s["terrible"] for s in sums),
+            "failed": sum(s["failed"] for s in sums), "named": len(named),
+            "made_by_hand": sum(e["source"] == "edited" for e in named),
+            "private": len(read_json(PRIVATE_GENOMES, {}).get(g.user, [])),
+            "renders": len(render_notes())}
+
+
+def _genome_counts_text():
+    c = genome_counts()
+    unchecked = c["genomes_in_searches"] - c["checked"]
+    return (f"{c['genomes_in_searches']} genomes have been made by {c['searches']} genome searches on "
+            f"{c['voices_searched']} voices. Of these, {c['passed_checks']} passed the automatic checks, "
+            f"{c['terrible']} were judged terrible and {c['failed']} failed"
+            + (f", and {unchecked} {'is' if unchecked == 1 else 'are'} not checked yet" if unchecked else "") + ". "
+            + (f"1 genome has" if c["named"] == 1 else f"{c['named']} genomes have")
+            + f" been picked and named ({c['made_by_hand']} of them edited by hand)"
+            + (f", you keep {c['private']} private genome{'s' if c['private'] != 1 else ''} of your own" if c["private"] else "")
+            + f", and {c['renders']} render{'s are' if c['renders'] != 1 else ' is'} kept.")
 
 
 def _facts_answer(question):
@@ -1541,6 +1900,10 @@ def _facts_answer(question):
     from backend.rag import answer
     from backend.voice_data.split_voice_data import load_splits
 
+    made = COUNT_QUESTION.search(question) and MADE_WORDS.search(question)
+    if made and not VOICE_WORDS.search(question):
+        return {"answer": _genome_counts_text(), "source": "records", "route": "facts", "citations": [], "cited": [],
+                "absent": False}
     if not FACTS_QUESTION.search(question):
         return None
     splits = load_splits()
@@ -1559,6 +1922,8 @@ def _facts_answer(question):
             f"Genome searches have been run on {len(searched)} voices. "
             f"Listener scores ({'everyone' if everyone else 'yours'}): {len(clips)} clip scores on "
             f"{len(rated_voices)} voices" + (f", from {len(listeners)} listeners" if everyone else "") + ".")
+    if made:
+        text += " " + _genome_counts_text()
     return {"answer": text, "source": "records", "route": "facts", "citations": [], "cited": [], "absent": False}
 
 
@@ -1578,13 +1943,139 @@ def assistant_status():
     return jsonify(ASSISTANT.status())
 
 
+def _off_topic():
+    from backend.api import small_talk
+    return {"answer": small_talk.OFF_TOPIC, "source": "records", "route": "off_topic", "citations": [], "absent": True,
+            "links": []}
+
+
+def _record_links(records, ids, limit=25):
+    """The genomes and voices behind the cited records, for the page to link to (as chatbot.links does)."""
+    by_id = {r["id"]: r for r in records}
+    out, seen = [], set()
+    for i in ids:
+        f = (by_id.get(i) or {}).get("fields") or {}
+        if f.get("run") and f.get("genome") not in (None, ""):
+            key = f"search:{f['run']}/{f['genome']}"
+            if key not in seen:
+                seen.add(key)
+                out.append({"kind": "genome", "key": key, "voice": f.get("voice"), "genome": f["genome"],
+                            **({"score": f["score"], "listener": f.get("listener")} if f.get("score") is not None else {})})
+        voice = f.get("voice")
+        if voice and "/" in voice and ("voice", voice) not in seen:
+            seen.add(("voice", voice))
+            dataset, speaker = voice.split("/", 1)
+            out.append({"kind": "voice", "dataset": dataset, "speaker": speaker})
+        if len(out) >= limit:
+            break
+    return out[:limit]
+
+
+GENOME_LIST = re.compile(r"\bgenomes?\b", re.IGNORECASE)
+LIST_WORDS = re.compile(r"\b(list|show|which|any|all|give|find|performed|perform|did well|do well|good|great|best|top|"
+                        r"highest|rated|scored|gave|5|4)\b", re.IGNORECASE)
+WELL = re.compile(r"\b(perform\w*|did well|do(?:es)? well|good|great|best|top|highest|well)\b", re.IGNORECASE)
+SCORE_ASKED = re.compile(r"(?<![\w/.])([0-5](?:\.5)?)(?![\w/.])\s*(?:/\s*5|stars?|points?)?\s*(or (?:more|higher|above|better)|\+)?",
+                         re.IGNORECASE)
+AT_LEAST = re.compile(r"\b(at least|or more|or higher|or above|or better|above|over)\b|\+", re.IGNORECASE)
+LIST_SIZE = 20
+# The six research questions (and per-voice summaries) keep their own answers (evidence questions 1-6)
+RESEARCH_QUESTION = re.compile(r"\b(each|every|per)\s+(voice|dataset|feature|gene)|exclude|artifact|configuration|"
+                               r"consistent|beat(s)? the plain|active features", re.IGNORECASE)
+
+
+def _genome_list_answer(question):
+    """
+    A list of genomes, straight from the scores, for questions like "Did Rama rate any genomes 5?" or "Show me
+    genomes that performed well": each with its voice, number, score and listener, and a link for the page.
+    None when the question is not one (the records answer it instead). Only the scores the asker may see.
+    """
+    if not GENOME_LIST.search(question) or not LIST_WORDS.search(question) or RESEARCH_QUESTION.search(question):
+        return None
+    rows = score_rows()
+    args = {"clip": "genome", "sort": "score", "limit": 200}
+    listeners = sorted({r["listener"] for r in rows if r.get("listener")}, key=len, reverse=True)
+    said = next((n for n in listeners if re.search(rf"\b{re.escape(n)}\b", question, re.IGNORECASE)), None)
+    if said:
+        args["listener"] = said
+    voice = re.search(r"\b(p\d{3}|\d{4}|vctk|crema-d|libritts-r)\b", question, re.IGNORECASE)
+    if voice:
+        args["voice"] = voice.group(1)
+    score = SCORE_ASKED.search(question)
+    if score:
+        args["min_score"] = score.group(1)
+        if not (score.group(2) or AT_LEAST.search(question)):
+            args["max_score"] = score.group(1)
+    elif WELL.search(question):
+        args["min_score"] = 4
+    else:
+        return None                            # no score and no "well/best": not a list question we can answer
+    if re.search(r"\b(worst|lowest|bad|poor)\b", question, re.IGNORECASE):
+        args["order"] = "asc"
+    result = views.scores(rows, args)
+    found, matched = result["rows"], result["rows_matched"]
+    if not found:
+        who = f"{said} " if said else "the listeners you may see "
+        return {"answer": f"I found no genome scores matching that: {who}gave no genome "
+                          + (f"a {args['min_score']}" if "max_score" in args else f"{args['min_score']} or more") + ".",
+                "source": "records", "route": "genome_list", "citations": [], "absent": True, "links": []}
+    shown = found[:LIST_SIZE]
+    asked = (f"exactly {args['min_score']}" if "max_score" in args else f"{args['min_score']} or more")
+    lines = [f"- {r['voice']} genome {r['genome']}: {r['score']:g} by {r['listener']}"
+             + (f" ({'; '.join(r['genes_described'][:2])})" if r.get("genes_described") else "") for r in shown]
+    head = (f"{matched} genome score{'s' if matched != 1 else ''} of {asked}"
+            + (f" from {said}" if said else "") + (f" for {args['voice']}" if "voice" in args else "")
+            + (f"; the first {len(shown)}" if matched > len(shown) else "") + ":")
+    return {"answer": head + "\n" + "\n".join(lines), "source": "records", "route": "genome_list", "citations": [],
+            "absent": False, "cited": matched, "links": _row_links(shown), "filters": args}
+
+
+def _row_links(rows, limit=25):
+    """Links for the page: each genome of the rows (to open in the studio) and each voice, once each."""
+    out, seen = [], set()
+    for r in rows:
+        key = f"search:{r['search']}/{r['genome']}"
+        if r.get("search") and r.get("genome") is not None and key not in seen:
+            seen.add(key)
+            out.append({"kind": "genome", "key": key, "voice": r["voice"], "genome": r["genome"], "score": r["score"],
+                        "listener": r.get("listener"), "genes": r.get("genes_described") or None})
+    for r in rows:
+        if r.get("voice") and "/" in r["voice"] and ("voice", r["voice"]) not in seen:
+            seen.add(("voice", r["voice"]))
+            dataset, speaker = r["voice"].split("/", 1)
+            out.append({"kind": "voice", "dataset": dataset, "speaker": speaker})
+    return out[:limit + 10]
+
+
+def _about_us(question):
+    """Whether a question could be about the Dramatizer: small_talk's words, or a term of the glossary."""
+    from backend import glossary
+    from backend.api import small_talk
+
+    return small_talk.about_us(question) or glossary.best(question) is not None
+
+
 def _answer_from_records(question):
     """The answer without the model: About for questions about the project, else the records (answer.py)."""
     from backend.api import about as about_text
+    from backend.api import small_talk
     from backend.rag import answer
 
     if ABOUT_QUESTION.search(question):
-        return {"answer": about_text.as_text(), "source": "about", "citations": [], "absent": False}
+        return {"answer": about_text.as_text(), "source": "about", "citations": [], "absent": False, "links": []}
+    if not _about_us(question):
+        return _off_topic()                    # never matched against the records: that once gave nonsense
+    listed = _genome_list_answer(question)
+    if listed:
+        return listed
+    if COUNT_QUESTION.search(question) and answer.route(question)[0] == "search":
+        facts = _facts_answer(question)        # "how many genomes / voices": counted, never the nearest record
+        if facts:
+            return facts
+        return {"answer": "That needs counting, and one record cannot answer it. Without the language model, "
+                          "these counts are ready: how many genomes, genome searches, renders, voices, clips and "
+                          "listeners there are. Once the model has loaded, it can count other things too.",
+                "source": "records", "route": "facts", "citations": [], "cited": 0, "absent": True, "links": []}
     records, index, _ = evidence()
     a = answer.answer(question, records, index, listener=None if sees_others() else g.user)
     if a["absent"]:
@@ -1592,7 +2083,42 @@ def _answer_from_records(question):
         if facts:
             return facts
     return {"answer": a["answer"], "source": "records", "citations": a["citations"], "cited": a["cited"],
-            "absent": a["absent"], "route": a["route"]}
+            "absent": a["absent"], "route": a["route"],
+            "links": [] if a["absent"] else _record_links(records, a.get("cited_ids") or [])}
+
+
+@app.get(f"{API}/glossary")
+@needs_key
+def glossary_terms():
+    """What the Dramatizer's words mean (backend/glossary.py): ?q= a term or a question -> the best matches;
+    without q, every term with its one-line meaning."""
+    from backend import glossary
+
+    q = " ".join(request.args.get("q", "").split())[:200]
+    if not q:
+        return jsonify(terms=[{"term": e["term"], "kind": e["kind"], "meaning": e["meaning"]} for e in glossary.entries()])
+    found = glossary.lookup(q)
+    return jsonify(query=q, matches=found, note=None if found else
+                   "No term of the Dramatizer matches that. Without q, every term is listed.")
+
+
+def _glossary_answer(question, history):
+    """A question that only asks what a term means, answered from the glossary at once (no model, no records).
+    A follow-up such as "but what does it measure?" takes the term from the last question that named one."""
+    from backend import glossary
+
+    if ABOUT_QUESTION.search(question):
+        return None
+    entry, follow_up = glossary.asked(question)
+    if follow_up:
+        for earlier in reversed([m["content"] for m in history if m.get("role") == "user"]):
+            entry = glossary.best(earlier)
+            if entry:
+                break
+    if entry is None:
+        return None
+    return {"answer": glossary.as_text(entry), "source": "glossary", "route": "glossary", "term": entry["term"],
+            "citations": [], "links": [], "tools": [], "absent": False}
 
 
 @app.post(f"{API}/assistant/ask")
@@ -1603,25 +2129,34 @@ def assistant_ask():
     answers when it is ready, calling this API with the asker's own token; otherwise, or if it fails, the
     records answer (with citations). "source" says which: model, records or about. "note" says why.
     """
+    from backend.api import small_talk
     from backend.api.assistant import ASSISTANT
 
     data = request.get_json(silent=True) or {}
     question = " ".join(str(data.get("question") or "").split())[:ASK_CHARS]
     if not question:
         raise Refused("Ask something.")
+    hello = small_talk.greeting(question)
+    if hello:                                  # small talk: answered at once, not looked up anywhere
+        return jsonify(answer=hello, source="small_talk", citations=[], links=[], tools=[], absent=False)
     history = [{"role": m.get("role"), "content": str(m.get("content", ""))[:2000]}
                for m in (data.get("history") or [])[-6:] if isinstance(m, dict) and m.get("role") in ("user", "assistant")]
+    defined = _glossary_answer(question, history)
+    if defined:                                # "what is STOI?": the glossary says it exactly, at once
+        return jsonify(defined)
     status = ASSISTANT.status()
     note = None
     if status["state"] == "ready":
         try:
             reply = ASSISTANT.ask(question, _token(), history)
-            if str(reply.get("answer", "")).startswith(DECLINED):
+            if str(reply.get("answer", "")).startswith(DECLINED) and (ABOUT_QUESTION.search(question)
+                                                                       or _about_us(question)):
                 out = _answer_from_records(question)        # declined, but About or the records may still answer it
                 if not out.get("absent"):
                     out["note"] = None
                     return jsonify(out)
-            return jsonify(answer=reply["answer"], source="model", model=status["model"], tools=reply.get("tools", []),
+            return jsonify(answer=reply["answer"], source="small_talk" if reply.get("small_talk") else "model",
+                           model=status["model"], tools=reply.get("tools", []), links=reply.get("links", []),
                            seconds=reply.get("seconds"), citations=[])
         except RuntimeError as error:
             note = f"The language model could not answer ({error}), so this answer comes from the records."

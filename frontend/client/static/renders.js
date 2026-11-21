@@ -5,7 +5,8 @@ const Renders = (() => {
   const R = { page: 1, pages: 1, picked: new Set(), admin: false };
 
   function item(r) {
-    const title = r.genome || (r.genes ? `Edited genome (${r.genes} gene${r.genes === 1 ? "" : "s"})` : "Plain line");
+    const made = r.genome || (r.genes ? `Edited genome (${r.genes} gene${r.genes === 1 ? "" : "s"})` : "Plain line");
+    const title = r.name || made;
     const details = [`by ${r.by || "?"}`, r.made, r.seed !== null && r.seed !== undefined ? `seed ${r.seed}` : null,
                      r.speed && r.speed !== 1 ? `speed ${r.speed}` : null].filter(Boolean).join(" · ");
     // Admins: a box to pick it for "Delete selected", and a Delete button for this one alone
@@ -14,12 +15,52 @@ const Renders = (() => {
         "aria-label": `Select ${title} for deleting`, onchange: (e) => pick(r.id, e.target.checked) }), "Select"),
       el("button", { type: "button", class: "quiet danger", onclick: () => remove([r.id], `"${title} · ${r.voice || ""}"`) }, "Delete"))
       : null;
+    const tag = `render:${r.short_id || r.id}`;
     return el("li", { class: "item" },
       el("div", { class: "item-head" }, el("strong", {}, `${title} · ${r.voice || ""}`), el("span", { class: "muted small" }, details), admin),
+      el("div", { class: "row render-id" }, el("code", { class: "small", title: `The whole id: ${r.id}` }, tag),
+        el("button", { type: "button", class: "quiet small", title: "Paste it in Ask, the Lab or the Renders search to find this render",
+                       onclick: () => copyText(tag, "The render's ID") }, "Copy ID"),
+        r.renamable ? el("button", { type: "button", class: "quiet small", onclick: () => rename(r, made) },
+                         r.name ? "Rename" : "Name it") : null,
+        r.name ? el("span", { class: "muted small" }, made) : null),
       el("p", {}, r.text || ""),
       r.genes ? el("p", { class: "markup" }, r.markup || "") : null,
+      (r.gene_list || []).length ? genome(r, tag) : null,
       el("audio", { controls: true, preload: "none", src: `${API}/renders/${encodeURIComponent(r.id)}/audio` }),
+      el("div", { class: "row" }, el("button", { type: "button", class: "quiet small", onclick: () => {
+        Measure.add({ kind: "render", id: r.id }, `${title} · ${r.voice || "?"} · by ${r.by || "?"}`, r.text);
+        toast("Added to the Lab.");
+      } }, "Add to Lab")),
       r.mine ? stars(r) : null);
+  }
+
+  // Your own render: a name to show (its ID stays as it is)
+  async function rename(r, made) {
+    const name = window.prompt(`A name for this render (empty: no name, shown as "${made}").\nIts ID stays render:${r.short_id || r.id}.`,
+                               r.name || "");
+    if (name === null) return;
+    try {
+      const done = await call(`/renders/${encodeURIComponent(r.id)}/name`, { body: { name } });
+      toast(done.name ? `Named “${done.name}”.` : "The name is taken off.");
+      load(R.page);
+    } catch (error) { toast(error.message, true); }
+  }
+
+  // The genome a render was made with: its genes in words, to copy or to open in the studio
+  function genome(r, tag) {
+    const genes = r.gene_list;
+    return el("details", { class: "render-genome" },
+      el("summary", {}, `Genome: ${r.genome ? r.genome + " · " : ""}${genes.length} gene${genes.length === 1 ? "" : "s"}`
+                        + (r.speed && r.speed !== 1 ? ` · speed ${r.speed}` : "")),
+      el("ol", { class: "small" }, ...genes.map((g) => el("li", {}, geneWords(g)))),
+      el("div", { class: "row" },
+        el("button", { type: "button", class: "quiet small", onclick: () => copyText(genomeText(genes, tag), "The genome") }, "Copy genome"),
+        el("button", { type: "button", class: "quiet small", onclick: () => {
+          const [dataset, ...rest] = String(r.voice || "").split("/");
+          Studio.useGenes(genes, { from: `${r.name || r.genome || "the genome"} of ${tag}`, text: r.text,
+                                   voice: rest.length && r.clip_id ? { dataset, speaker: rest.join("/"), clip_id: r.clip_id } : null });
+        } }, "Open in studio")));
   }
 
   // Your own renders: a score from 1 to 5, kept apart from the listening piles' MOS

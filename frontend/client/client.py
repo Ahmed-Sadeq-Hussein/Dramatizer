@@ -41,6 +41,7 @@ HERE = Path(__file__).resolve().parent
 CONFIG = Path.home() / ".dramatizer_client.json"
 LOCAL_PORT = 5010
 API = "/api/v1"
+UPLOAD_BYTES = 12 * 1024 * 1024    # POST /me/voices only (server.py UPLOAD_BYTES); every other body is 64 KB
 TIMEOUT = 120         # the first voice list after the host starts can take a while (the library is read from disk)
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -174,6 +175,8 @@ def make_app(url, session, name):
             abort(403)
         if request.method == "POST" and request.path.startswith(API) and not request.is_json:
             abort(415)          # a plain form from another page cannot send JSON without asking first
+        if request.method == "POST" and request.path == f"{API}/me/voices":
+            request.max_content_length = UPLOAD_BYTES    # an uploaded voice, in base64; the host checks it again
 
     @app.after_request
     def strict_headers(response):

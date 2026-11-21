@@ -323,7 +323,7 @@ class RegistrationRefused(Exception):
     """A registration that cannot be made. The message is safe to show."""
 
 
-def register(username, display_name, email, password, path=None):
+def register(username, display_name, email, password, path=None, agreement=None):
     """A pending listener account asked for on the website: the person's own password, an email required.
 
     Returns the Account. It cannot log in until the host approves it. A username, display name or email
@@ -339,10 +339,38 @@ def register(username, display_name, email, password, path=None):
     if problem:
         raise RegistrationRefused(problem)
     try:
-        account, _ = new_account(username, display_name, "listener", password, path, email=email, pending=True)
+        with storage.connect(path, write=True):          # the account and its accepted agreement, or neither
+            account, _ = new_account(username, display_name, "listener", password, path, email=email, pending=True)
+            if agreement:
+                accept_agreement(account.username, agreement, how="register", path=path)
     except ValueError:
         raise RegistrationRefused("That username, name or email is already in use. Choose another, or ask the host.")
     return account
+
+
+# --------------------------------------------------------------------------- #
+# The user agreement (agreement.py): which version each account accepted
+# --------------------------------------------------------------------------- #
+
+def accept_agreement(username, version, how="login", path=None):
+    """Record that `username` accepted agreement `version` (once per version; accepting again changes nothing)."""
+    with storage.connect(path, write=True) as db:
+        db.execute("INSERT OR IGNORE INTO agreements (username, version, time, how) VALUES (?, ?, ?, ?)",
+                   (clean_username(username), str(version), _stamp(), how))
+
+
+def has_agreed(username, version, path=None):
+    """Whether `username` has accepted agreement `version`."""
+    with storage.connect(path) as db:
+        return db.execute("SELECT 1 FROM agreements WHERE username = ? AND version = ?",
+                          (username, str(version))).fetchone() is not None
+
+
+def agreements_of(username, path=None):
+    """Every agreement version `username` accepted: [{"version", "time", "how"}], oldest first."""
+    with storage.connect(path) as db:
+        return [dict(r) for r in db.execute("SELECT version, time, how FROM agreements WHERE username = ? "
+                                            "ORDER BY time", (username,))]
 
 
 def approve(username, path=None):
@@ -601,10 +629,12 @@ if __name__ == "__main__":
             accounts = load()
             if not accounts:
                 print("No accounts yet: python main_backend.py account add USERNAME --name NAME")
+            from backend.api import agreement
             for a in accounts.values():
-                state = "pending" if a.pending else "disabled" if a.disabled else ("locked" if a.locked() else "active")
+                agreed = "agreed" if has_agreed(a.username, agreement.VERSION) else "not agreed"
+                state ="pending" if a.pending else "disabled" if a.disabled else ("locked" if a.locked() else "active")
                 print(f"  {a.username:16s} {a.display_name:16s} {a.role:11s} {state:9s} {a.email or '(no email)':28s} "
-                      f"last login {a.last_login or 'never'}"
+                      f"last login {a.last_login or 'never'}  {agreed}"
                       f"  piles: {', '.join(a.assignments) or 'any'}")
     except ValueError as error:
         raise SystemExit(str(error))

@@ -77,6 +77,13 @@ def matches(row, args):
         return False
     if args.get("search") and args["search"] != row["search"]:
         return False
+    for name, keep in (("min_score", lambda s, x: s >= x), ("max_score", lambda s, x: s <= x)):
+        if args.get(name) not in (None, ""):
+            try:
+                if not keep(float(row["score"]), float(args[name])):
+                    return False
+            except ValueError:
+                raise Refused(f"{name} is a number from 0 to 5.")
     if args.get("from") and row["rated_on"] < args["from"] or args.get("to") and row["rated_on"] > args["to"] + "~":
         return False
     return True

@@ -37,11 +37,19 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+sys.path.insert(1, str(HERE.parent))                  # the project: backend/api/small_talk.py
 from API_REQUEST import TOOLS, Results  # noqa: E402
+from backend.api import small_talk  # noqa: E402
 
 MAX_STEPS = 6                 # tool calls per question, at most
 RESULT_CHARS = 6000           # a tool's answer is cut to this many characters for the prompt
+SHOWN_CHARS = 8000            # and to this many in the reply to the page (the Ask tab's look-up details)
+MAX_LINKS = 25                # genomes and voices the page may link to, per answer
 ANSWER_TOKENS = 600
+# A question that asks what something means: the glossary is looked up before the model answers, so the model
+# explains the program's own definition instead of guessing one (it once called STOI "Speech Transmission Index")
+ASKS_MEANING = re.compile(r"\b(what (is|are|does|do)|what's|whats|mean|means|meaning|measure|measures|stand for|"
+                          r"stands for|define|definition|explain)\b", re.IGNORECASE)
 
 INSTRUCTIONS = """You answer questions about the Dramatizer, a project that clones voices and adds a delivery to a
 line with a "genome": a few edits (genes) such as a sigh, a pause, a laugh, stress (accent) or a speed change.
@@ -74,7 +82,14 @@ Rules:
 - How many genome searches, voices or renders there are: overview.
 - What the Dramatizer is, how to use the website (how to rate clips, generate, listen, ask, research), who made
   it: about_dramatizer. These are questions about the Dramatizer: always call the tool for them.
-- Baselines (WER, similarity, PESQ, STOI, SI-SDR): baseline_results. Milestone 2: milestone2_results.
+- What a word, measurement or idea of the program means ("what is STOI", "what does WER measure", "explain the
+  sanity check", "what is a genome"): define with that term. For a follow-up ("what does it measure?") use the
+  term from the conversation. Answer from its meaning and scale in your own short words; never define a term
+  without calling define. For the project's own numbers of that measurement, also call the tool that has them.
+- A render's ID (from Copy ID: "render:" and digits, or a long name): render_info for what it is (voice, line,
+  genome, genes); measure_render for its similarity to its reference (original recording), its WER or quality, or
+  to compare two renders (compare_with). Pass the ID exactly as the question gives it.
+- Baselines (the measured WER, similarity, PESQ, STOI, SI-SDR): baseline_results. Milestone 2: milestone2_results.
 - Other questions about genomes, scores or sanity checks: answer_evidence. Give its record IDs as the sources, and if
   it says nothing in the evidence answers the question, say that and do not guess.
 - You explain the analysis; you never decide. Recommending a genome, naming a winner, "which should I use", "how
@@ -88,6 +103,13 @@ Rules:
 - Quote the numbers you were given, with the voice and genome they belong to. Mention ties.
 - If a tool returns nothing, an error or a note that the account cannot see the data, say so plainly.
 - Keep the answer short: a few sentences or a short list.
+- Lists of genomes ("list", "show", "which genomes", "genomes that performed well", "good genomes", "did X rate any
+  genome 5"): query_scores with limit 20 (or more when asked), sort "score". "Rated 5" or "a score of N" is
+  min_score N (and max_score N for exactly N); "performed well" is min_score 4. Give at least 10 when there are
+  that many: one line each with the voice, genome number, score and listener. The page adds a link to each genome
+  and voice in the tool results, so do not write links or URLs yourself.
+- Lists of voices: voices with a dataset (and query for words or a speaker); without a dataset first to see them.
+- A greeting, thanks or "what can you do": call no tool and reply exactly {"answer": "GREETING"}.
 - How many voices, speakers or datasets the project uses, or which datasets: voices (no arguments). Give the total,
   the validation and the locked test voices, and the voices per dataset.
 - Only answer questions about the Dramatizer: its voices, genomes, scores, listeners, results, website and team.
@@ -177,8 +199,13 @@ class Chatbot:
     def ask(self, question, history=()):
         """Answer one question: {"answer", "steps": [{"tool", "arguments", "result"}], "seconds"}."""
         started = time.time()
+        hello = small_talk.greeting(question)
+        if hello:                                  # small talk: answered at once, no model, no look-up
+            return {"answer": hello, "steps": [], "seconds": 0.0, "small_talk": True}
         messages = [{"role": "system", "content": self.system}, *history, {"role": "user", "content": question}]
         steps = []
+        if ASKS_MEANING.search(question):
+            self._define_first(question, messages, steps)
         for _ in range(MAX_STEPS + 1):
             reply = self.model.chat(messages)
             call = first_json(reply)
@@ -194,15 +221,107 @@ class Chatbot:
             answer = call.get("answer") if call and "answer" in call else reply
             if call and "tool" in call:            # out of steps
                 answer = "I could not finish: too many tool calls for one question."
+            elif "GREETING" in str(answer) and not steps:
+                answer = small_talk.HELLO_REPLY
             elif "OFF_TOPIC" in str(answer) or not steps and not history:
                 answer = OFF_TOPIC                 # every fact comes from a tool: an answer without one is not about us
             return {"answer": str(answer).strip(), "steps": steps, "seconds": round(time.time() - started, 1)}
         return {"answer": "I could not finish.", "steps": steps, "seconds": round(time.time() - started, 1)}
 
+    def _define_first(self, question, messages, steps):
+        """Look the question's terms up in the glossary (define) and hand the model what it found, as if it had
+        called define itself. Nothing is added when no term matches."""
+        if self.results is None:
+            return
+        result = self.results.run_tool("define", {"term": question})
+        try:
+            found = json.loads(result).get("matches")
+        except (ValueError, AttributeError):
+            return
+        if not found:
+            return
+        steps.append({"tool": "define", "arguments": {"term": question}, "result": result})
+        shown = result if len(result) <= RESULT_CHARS else result[:RESULT_CHARS] + " ... (cut)"
+        messages += [{"role": "assistant", "content": json.dumps({"tool": "define", "arguments": {"term": question}})},
+                     {"role": "user", "content": f"Result of define:\n{shown}\n\nThese are the program's own "
+                                                 "definitions: use them for what the terms mean (never another meaning "
+                                                 "of the same letters). Call another tool for numbers, or reply "
+                                                 '{"answer": "..."} using only these results.'}]
+
 
 REPLY = "@@reply "
-OFF_TOPIC = ("I only answer questions about the Dramatizer: its voices, genomes, listening scores, results, the website "
-             "and the team. Try for example \"Which genomes work best for each voice?\" or \"How do I rate clips?\"")
+OFF_TOPIC = small_talk.OFF_TOPIC
+
+
+def links(steps):
+    """
+    The genomes and voices in the tool results, for the page to link to (it opens the genome in the studio, or
+    the voice in Voices): [{"kind": "genome", "key", "voice", "genome", "score"?, "listener"?, "genes"?} |
+    {"kind": "voice", "dataset", "speaker"}], each once, in the order the results gave them. The model does not
+    write links: they come from the data, so a link always points at something the asker may see.
+    """
+    out, seen = [], set()
+
+    def add(item, key):
+        if key not in seen and len(out) < MAX_LINKS:
+            seen.add(key)
+            out.append(item)
+
+    def voice(name):
+        if name and "/" in str(name):
+            dataset, speaker = str(name).split("/", 1)
+            add({"kind": "voice", "dataset": dataset, "speaker": speaker}, ("voice", dataset, speaker))
+
+    def genome(search, number, voice_name, **more):
+        if search and number is not None:
+            key = f"search:{search}/{number}"
+            add({"kind": "genome", "key": key, "voice": voice_name, "genome": number,
+                 **{k: v for k, v in more.items() if v is not None}}, key)
+
+    for step in steps:
+        try:
+            data = json.loads(step["result"])
+        except (TypeError, ValueError):
+            continue
+        if not isinstance(data, dict) or data.get("error"):
+            continue
+        tool = step["tool"]
+        if tool == "query_scores":
+            for row in data.get("rows") or []:
+                genome(row.get("search"), row.get("genome"), row.get("voice"), score=row.get("score"),
+                       listener=row.get("listener"), genes=row.get("genes_described") or None)
+            for row in data.get("rows") or []:
+                voice(row.get("voice"))
+            for grp in data.get("groups") or []:
+                voice(grp.get("voice"))
+        elif tool == "top_genomes":
+            for g in data.get("genomes") or []:
+                genome(g.get("search"), g.get("number"), g.get("voice"), score=(g.get("mos") or {}).get("mos")
+                       if isinstance(g.get("mos"), dict) else g.get("mos"), genes=g.get("genes") or None)
+        elif tool == "search_details":
+            for g in data.get("genomes") or []:
+                genome(data.get("id"), g.get("number"), data.get("voice"), genes=g.get("genes") or None)
+            voice(data.get("voice"))
+        elif tool == "named_genomes":
+            for g in data.get("named") or []:
+                if g.get("from_search"):
+                    genome(g["from_search"], g.get("genome"), g.get("voice"), name=g.get("name"))
+                elif g.get("name"):
+                    add({"kind": "genome", "key": "named:" + g["name"], "name": g["name"]}, "named:" + g["name"])
+        elif tool == "voices":
+            for v in data.get("voices") or []:
+                add({"kind": "voice", "dataset": v.get("dataset"), "speaker": v.get("speaker")},
+                    ("voice", v.get("dataset"), v.get("speaker")))
+        elif tool == "pile":
+            for v in data.get("voices") or []:
+                voice(v.get("voice"))
+        elif tool in ("render_info", "measure_render"):
+            render_id = data.get("id") or data.get("render_id")
+            if render_id:
+                add({"kind": "render", "id": render_id, "voice": data.get("voice"), "genome": data.get("genome")},
+                    ("render", render_id))
+            voice(data.get("voice"))
+    return out
 HISTORY_TURNS = 6             # earlier messages of the conversation sent with a question, at most
 
 
@@ -223,7 +342,10 @@ def serve(model, api, stdin=None, stdout=None):
                        and isinstance(m.get("content"), str)][-HISTORY_TURNS:]
             out = bot.ask(str(request["question"]), history)
             reply = {"id": request.get("id"), "answer": out["answer"], "seconds": out["seconds"],
-                     "tools": [{"tool": s["tool"], "arguments": s["arguments"]} for s in out["steps"]]}
+                     "tools": [{"tool": s["tool"], "arguments": s["arguments"],
+                                "result": s["result"] if len(s["result"]) <= SHOWN_CHARS
+                                else s["result"][:SHOWN_CHARS] + " ... (cut)"} for s in out["steps"]],
+                     "links": links(out["steps"]), "small_talk": bool(out.get("small_talk"))}
         except Exception as error:                 # one bad question must not stop the service
             reply = {"id": request.get("id"), "error": f"{type(error).__name__}: {error}"}
         finally:

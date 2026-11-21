@@ -47,10 +47,24 @@
     <label>Password (12 or more characters) <input id="reg-pass" type="password" autocomplete="new-password" minlength="12" required></label>
     <label>Password again <input id="reg-again" type="password" autocomplete="new-password" minlength="12" required></label>
     <p class="muted small">Your email stays on the host's computer, to know who asked and to reach you.</p>
+    <div class="agreement" id="reg-agreement" tabindex="0" aria-label="User agreement"></div>
+    <label class="check"><input type="checkbox" id="reg-agree" required> I have read the user agreement and accept it</label>
     <p class="login-error" id="register-error" role="alert" hidden></p>
     <p class="muted" id="register-done" role="status" hidden></p>
     <button type="submit">Register</button>
     <p class="muted small"><button type="button" class="link" id="show-login">Back to log in</button></p>
+  </form>
+</section>
+
+<section class="login" id="agree" hidden>
+  <form id="agree-form" class="stack card">
+    <h2>User agreement</h2>
+    <p class="muted small">Before you go on, read and accept the Dramatizer user agreement. You are asked again only if it changes.</p>
+    <div class="agreement" id="agree-text" tabindex="0" aria-label="User agreement"></div>
+    <label class="check"><input type="checkbox" id="agree-box" required> I have read the user agreement and accept it</label>
+    <p class="login-error" id="agree-error" role="alert" hidden></p>
+    <button type="submit">Accept and continue</button>
+    <p class="muted small"><button type="button" class="link" id="agree-logout">Log out instead</button></p>
   </form>
 </section>
 
@@ -61,6 +75,8 @@
   <button type="button" data-mode="rate" aria-pressed="false">Rate</button>
   <button type="button" data-mode="generate" aria-pressed="false">Generate</button>
   <button type="button" data-mode="listen" aria-pressed="false">Listen</button>
+  <button type="button" data-mode="ask" aria-pressed="false">Ask</button>
+  <button type="button" data-mode="measure" aria-pressed="false">Lab</button>
   <button type="button" data-mode="research" aria-pressed="false" hidden>Research</button>
   <span class="mode-note" id="mode-note"></span>
 </nav>
@@ -81,6 +97,8 @@
   <button role="tab" data-tab="renders">Renders</button>
   <button role="tab" data-tab="results">Results</button>
   <button role="tab" data-tab="graphs">Graphs</button>
+  <button role="tab" data-tab="ask">Ask the Dramatizer</button>
+  <button role="tab" data-tab="measure">Lab</button>
 </nav>
 
 <main>
@@ -103,28 +121,21 @@
         <strong>Listen</strong>
         <span>Listen to the voices in the data, or to the renders people have made.</span>
       </button>
+      <button type="button" class="home-card" data-go="ask">
+        <strong>Ask</strong>
+        <span>Ask the Dramatizer about genomes, voices, ratings and results, with links to each one.</span>
+      </button>
+      <button type="button" class="home-card" data-go="measure">
+        <strong>Lab</strong>
+        <span>Measure renders and voices side by side: word error rate, how alike two voices sound, and quality.</span>
+      </button>
       <button type="button" class="home-card" data-go="research" id="home-research" hidden>
         <strong>Research</strong>
         <span>Genome searches, their rankings, and the measured results.</span>
       </button>
     </div>
 
-    <div class="home-columns">
-      <section class="home-panel ask" aria-labelledby="ask-title">
-        <h3 id="ask-title">Ask the Dramatizer</h3>
-        <p class="muted small">Ask about the ratings, the genomes, the results or how to use the site. Answers come from
-          the project's own records, and you only get what your account may see.</p>
-        <div class="ask-log" id="ask-log" aria-live="polite"></div>
-        <form class="ask-form" id="ask-form">
-          <label class="grow"><span class="visually-hidden">Your question</span>
-            <input type="text" id="ask-q" maxlength="500" autocomplete="off"
-                   placeholder="e.g. Which genomes work best for each voice?"></label>
-          <button type="submit" id="ask-send">Ask</button>
-        </form>
-        <div class="ask-examples" id="ask-examples"></div>
-        <p class="muted small" id="ask-status"></p>
-      </section>
-
+    <div class="home-columns home-about">
       <section class="home-panel about" aria-labelledby="about-title">
         <h3 id="about-title">About the Dramatizer</h3>
         <p id="about-what"></p>
@@ -140,6 +151,20 @@
   <section class="tab" id="tab-voices" hidden>
     <p class="intro for-generate">Step 1: pick the voice to clone, then go on to the line and genome. Only validation speakers are offered; the final test speakers stay locked. Your own recorded voice is under Dataset: Custom voices, seen only by you and the admins.</p>
     <p class="intro for-listen">The voices in the data: play any recording. Only validation speakers are offered.</p>
+    <details class="card for-generate" id="my-voices">
+      <summary>Your uploaded voices</summary>
+      <p class="muted small">Upload a short recording of a voice to clone. Only your account can use it (and the host's
+        admins, who run the service); it is never used to train AI. You can delete it at any time.</p>
+      <ul class="list" id="my-voice-list"></ul>
+      <form id="upload-form" class="stack">
+        <label>Voice name <input id="up-name" maxlength="24" pattern="[A-Za-z0-9][A-Za-z0-9 \-]{0,23}" placeholder="e.g. Calm" required></label>
+        <label>Recording <input type="file" id="up-file" accept=".wav,.mp3,.flac,.ogg,audio/*" required></label>
+        <label>The words spoken in the recording <textarea id="up-script" rows="2" maxlength="500" required></textarea></label>
+        <label class="check"><input type="checkbox" id="up-consent" required> This is my own voice, or the speaker has allowed me to upload it</label>
+        <p class="muted small" id="up-limits"></p>
+        <div class="row"><button type="submit" data-needs="speak">Upload voice</button></div>
+      </form>
+    </details>
     <form class="row" id="voice-search">
       <label>Dataset <select id="dataset"></select></label>
       <label class="grow">Speaker or words <input type="search" id="voice-q" placeholder="e.g. p231, or: the door"></label>
@@ -270,6 +295,93 @@
   </section>
 
   <!-- 4. Genome studio -->
+  <!-- Ask the Dramatizer: the chat, and what each answer looked up (for checking and debugging) -->
+  <section class="tab" id="tab-ask" hidden>
+    <div class="ask-columns">
+      <section class="home-panel ask" aria-labelledby="ask-title">
+        <h3 id="ask-title">Ask the Dramatizer</h3>
+        <p class="muted small">Ask about the ratings, the genomes, the voices, the results or how to use the site. Answers
+          come from the project's own records, and you only get what your account may see. Genomes and voices in an
+          answer are links: open one to see it.</p>
+        <div class="ask-log" id="ask-log" aria-live="polite"></div>
+        <form class="ask-form" id="ask-form">
+          <label class="grow"><span class="visually-hidden">Your question</span>
+            <input type="text" id="ask-q" maxlength="500" autocomplete="off"
+                   placeholder="e.g. Did Rama rate any genomes 5?"></label>
+          <button type="submit" id="ask-send">Ask</button>
+        </form>
+        <div class="ask-examples" id="ask-examples"></div>
+        <p class="muted small" id="ask-status"></p>
+      </section>
+      <aside class="home-panel ask-debug" aria-labelledby="ask-debug-title">
+        <h3 id="ask-debug-title">Look-up details</h3>
+        <p class="muted small" id="ask-debug-hint">Ask something: what the answer looked up shows here. Click an answer to
+          see its details again.</p>
+        <div id="ask-debug"></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- The Lab: measure recordings side by side (POST /lab/compare) -->
+  <section class="tab" id="tab-measure" hidden>
+    <p class="notice" data-lacks="speak" hidden>Measuring runs on the host's GPU: your account cannot start it. Ask the host.</p>
+    <p class="intro">Choose up to 8 recordings (renders, a voice's original, or a search's clips) and measure them side by
+      side: the <strong>word error rate</strong> (how many words of the script a speech recogniser gets wrong, and which),
+      the <strong>speaker similarity</strong> to a reference and between every pair, and the estimated
+      <strong>quality</strong>. Mark one as the reference: usually the voice's original.</p>
+
+    <div class="card stack">
+      <div class="item-head"><strong>Recordings to compare</strong><span class="muted small" id="lab-count"></span>
+        <button type="button" class="quiet small" id="lab-clear">Clear</button></div>
+      <ol class="lab-picked" id="lab-picked"></ol>
+      <label class="check"><input type="radio" name="lab-ref" id="lab-noref"> No reference (compare every pair only)</label>
+      <div class="row">
+        <fieldset class="lab-measures"><legend class="muted small">Measure</legend>
+          <label class="check"><input type="checkbox" id="lab-m-wer" checked> Word error rate</label>
+          <label class="check"><input type="checkbox" id="lab-m-similarity" checked> Speaker similarity</label>
+          <label class="check"><input type="checkbox" id="lab-m-quality" checked> Quality (PESQ, STOI, SI-SDR)</label>
+        </fieldset>
+        <label class="grow">Script for every recording (optional: otherwise each one's own line)
+          <input type="text" id="lab-script" maxlength="500" placeholder="the words each recording should say"></label>
+      </div>
+      <div class="row"><button type="button" id="lab-run" disabled>Measure</button>
+        <span class="muted small" id="lab-progress" aria-live="polite"></span></div>
+    </div>
+
+    <div class="card stack">
+      <strong>Add recordings</strong>
+      <div class="lab-sources" id="lab-sources" role="group" aria-label="Where to add recordings from">
+        <button type="button" data-source="renders" aria-pressed="true">Renders</button>
+        <button type="button" data-source="voices" aria-pressed="false">Original voices</button>
+        <button type="button" data-source="searches" aria-pressed="false">Search clips</button>
+      </div>
+      <form class="row lab-source" data-source="renders" id="lab-rform">
+        <label class="grow">Find <input type="search" id="lab-rq" placeholder="a voice, line, genome or person"></label>
+        <label class="check"><input type="checkbox" id="lab-rmine"> Only mine</label>
+        <button type="submit" class="quiet">Find</button>
+      </form>
+      <form class="row lab-source" data-source="voices" id="lab-vform" hidden>
+        <label>Dataset <select id="lab-dataset"></select></label>
+        <label class="grow">Find <input type="search" id="lab-vq" placeholder="a speaker id or words"></label>
+        <button type="submit" class="quiet">Find</button>
+      </form>
+      <div class="row lab-source" data-source="searches" hidden>
+        <label class="grow">Search <select id="lab-run-id"></select></label>
+      </div>
+      <ul class="lab-found" id="lab-found"></ul>
+    </div>
+
+    <div class="card stack" id="lab-result-card" hidden>
+      <strong>Results</strong>
+      <div id="lab-result"></div>
+    </div>
+
+    <div class="card stack">
+      <strong>Your earlier comparisons</strong>
+      <ul class="lab-history small" id="lab-history"></ul>
+    </div>
+  </section>
+
   <section class="tab" id="tab-studio" hidden>
 <p class="notice" data-lacks="speak" hidden>Your account can look at and edit genomes here, but not render or save them. Ask the host for a researcher account.</p>
     <p class="intro">Step 2: type a line and render it in the chosen voice. A genome is optional: pick one, or start an
@@ -288,6 +400,7 @@
       <div class="row" id="st-blank" hidden><label class="grow">Name your genome <input type="text" id="st-blank-name" maxlength="60" placeholder="e.g. My dramatic sigh"></label></div>
       <p class="muted small" id="st-blank-note" hidden>When you render it, it is saved under “My genomes”, seen only by you.</p>
       <div class="row"><button type="button" class="quiet" id="st-new">Start empty</button>
+        <button type="button" class="quiet" id="st-paste" title="A genome copied from a render or from here">Paste genome</button>
         <button type="button" class="quiet" id="st-remove" hidden>Delete this hand-made genome</button></div>
     </div>
 
@@ -296,6 +409,7 @@
       <label>Line <textarea id="st-text" rows="2" maxlength="300">Well, you really did it this time, and I honestly didn't think you had it in you, so I'll be waiting.</textarea></label>
       <ol class="genes" id="st-genes"></ol>
       <div class="row"><button type="button" class="quiet" id="st-add">+ Add gene</button>
+        <button type="button" class="quiet" id="st-copy">Copy genome</button>
         <span class="muted small" id="st-count"></span></div>
       <div class="preview">
         <span class="label">Will be spoken as</span>
@@ -364,5 +478,6 @@
 <script src="/static/studio.js"></script>
 <script src="/static/renders.js"></script>
 <script src="/static/ask.js"></script>
+<script src="/static/measure.js"></script>
 </body>
 </html>

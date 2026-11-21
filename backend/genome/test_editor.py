@@ -147,7 +147,9 @@ class Routes(Library):
         self.client = server.app.test_client()
 
     def auth(self, role):
+        from backend.api import agreement
         _, password = accounts.new_account(role, role.title(), role=role)
+        accounts.accept_agreement(role, agreement.VERSION)
         token = self.client.post("/api/v1/login", json={"username": role, "password": password}).get_json()["token"]
         return {"Authorization": f"Bearer {token}"}
 
@@ -167,6 +169,12 @@ class Routes(Library):
         self.assertIn("Giggle", [g["name"] for g in library["genomes"]])      # sorted by voice, then MOS
         self.assertIn("speed", library["options"]["features"])
         self.assertIn("genome saved", (self.dir / "audit.jsonl").read_text(encoding="utf-8"))
+        # A genome made by hand is its maker's alone: another account (an admin too) neither sees nor deletes it
+        admin = self.auth("admin")
+        theirs = self.client.get("/api/v1/genome/library", headers=admin).get_json()["genomes"]
+        self.assertNotIn("Giggle", [g["name"] for g in theirs])
+        self.assertNotIn("Giggle", [g["name"] for g in self.client.get("/api/v1/genome/named", headers=admin).get_json()["named"]])
+        self.assertEqual(self.client.post("/api/v1/genome/edited/remove", headers=admin, json={"name": "Giggle"}).status_code, 400)
         self.assertEqual(self.client.post("/api/v1/genome/edited/remove", headers=auth, json={"name": "Giggle"}).status_code, 200)
 
     def test_render_queues_a_job_with_the_genome(self):

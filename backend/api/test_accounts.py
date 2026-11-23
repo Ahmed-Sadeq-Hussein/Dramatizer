@@ -27,7 +27,7 @@ def agreed_accounts(test):
 
     def new_account(*args, **kwargs):
         account, password = made(*args, **kwargs)
-        if not kwargs.get("pending"):                    # registering records its own acceptance
+        if not kwargs.get("pending") and not kwargs.get("email"):     # registering records its own acceptance
             accounts.accept_agreement(account.username, agreement.VERSION)
         return account, password
     patch = mock.patch.object(accounts, "new_account", new_account)
@@ -161,15 +161,20 @@ def fake_run(folder, run_id, pile, genomes=3):
 
 
 class Registering(Temporary):
-    def test_a_registration_is_a_pending_listener_with_an_email(self):
+    def test_a_registration_is_a_member_who_may_log_in_at_once(self):
         account = accounts.register("ana", "Ana", " Ana@Example.org ", "a long password 1")
-        self.assertEqual((account.role, account.email, account.pending), ("listener", "ana@example.org", True))
-        with self.assertRaisesRegex(accounts.LoginRefused, "approval"):
-            accounts.authenticate("ana", "a long password 1")
-        accounts.approve("ana")
+        self.assertEqual((account.role, account.email, account.pending), ("member", "ana@example.org", False))
+        self.assertEqual(account.permissions, {"speak"})                # speaks and renders; does not rate
         self.assertEqual(accounts.authenticate("ana", "a long password 1").username, "ana")
         with self.assertRaises(ValueError):
-            accounts.approve("ana")                                 # not waiting any more
+            accounts.approve("ana")                                 # nothing to approve
+
+    def test_an_old_pending_registration_still_needs_approving(self):
+        accounts.new_account("bo", "Bo", password="a long password 1", email="bo@example.org", pending=True)
+        with self.assertRaisesRegex(accounts.LoginRefused, "approval"):
+            accounts.authenticate("bo", "a long password 1")
+        accounts.approve("bo")
+        self.assertEqual(accounts.authenticate("bo", "a long password 1").username, "bo")
 
     def test_email_is_required_and_checked(self):
         for email in ("", None, "no-at-sign", "a@b", "a b@example.org", "x" * 250 + "@ex.org"):
@@ -221,7 +226,9 @@ class Api(Temporary):
                   mock.patch.object(server, "ACCESS_LOG", self.dir / "access.log"),
                   mock.patch.object(server, "AUDIT_LOG", self.dir / "audit.jsonl"),
                   mock.patch.object(server, "_failed_logins", []),
-                  mock.patch.object(server, "_registrations", [])):
+                  mock.patch.object(server, "_registrations", []),
+                  mock.patch.object(server, "_per_minute", __import__("collections").defaultdict(__import__("collections").deque)),
+                  mock.patch.dict(server.PER_MINUTE, {"render": 1000, "question": 1000})):
             p.start()
             self.addCleanup(p.stop)
         self.ratings = ratings
@@ -247,7 +254,7 @@ class Api(Temporary):
         self.client.post("/api/v1/logout", headers={"Authorization": f"Bearer {token}"})
         self.assertEqual(self.client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"}).status_code, 401)
 
-    def test_register_then_approve_then_log_in(self):
+    def test_register_then_log_in_at_once_as_a_member(self):
         from backend.api import agreement
         new = {"username": "ana", "display_name": "Ana", "email": "Ana@Example.org", "password": "a long password 1",
                "agreement": agreement.VERSION}
@@ -257,20 +264,62 @@ class Api(Temporary):
         self.assertEqual(self.client.post("/api/v1/register", json={**new, "email": ""}).status_code, 400)
         reply = self.client.post("/api/v1/register", json=new)
         self.assertEqual(reply.status_code, 201)
-        self.assertTrue(reply.get_json()["pending"])
+        self.assertFalse(reply.get_json()["pending"])
         login = {"username": "ana", "password": new["password"]}
-        refused = self.client.post("/api/v1/login", json=login)
-        self.assertEqual(refused.status_code, 401)
-        self.assertIn("approval", refused.get_json()["error"])
-        accounts.approve("ana")
         token = self.client.post("/api/v1/login", json=login).get_json()["token"]
-        me = self.client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"}).get_json()
-        self.assertEqual((me["account"]["role"], me["account"]["email"]), ("listener", "ana@example.org"))
+        auth = {"Authorization": f"Bearer {token}"}
+        me = self.client.get("/api/v1/me", headers=auth).get_json()
+        self.assertEqual((me["account"]["role"], me["account"]["email"]), ("member", "ana@example.org"))
+        self.assertEqual(self.client.post("/api/v1/genome/searches/r1/ratings", headers=auth,     # members do not rate
+                                          json={}).status_code, 403)
         self.assertFalse(me["agreement_needed"])                                # accepted when registering
         self.assertEqual([a["how"] for a in accounts.agreements_of("ana")], ["register"])
         audit = (self.dir / "audit.jsonl").read_text(encoding="utf-8")
         self.assertNotIn("example.org", audit)
         self.assertNotIn(new["password"], audit)
+
+    def test_renders_and_questions_per_minute_for_everyone_but_admins(self):
+        from backend.api import agreement, assistant
+        server = self.server
+        clock = [1000.0]
+        _, admin_password = accounts.new_account("rama", "Rama", role="admin")
+
+        def auth(name, password):
+            return {"Authorization": "Bearer " + self.client.post("/api/v1/login", json={
+                "username": name, "password": password}).get_json()["token"]}
+
+        listener, admin = auth("julius", self.password), auth("rama", admin_password)
+        ask = lambda who: self.client.post("/api/v1/assistant/ask", headers=who, json={"question": "hello"})
+        with mock.patch.dict(server.PER_MINUTE, {"render": 5, "question": 10}), \
+                mock.patch.object(server.time, "monotonic", lambda: clock[0]), \
+                mock.patch.object(assistant, "ASSISTANT", assistant.Assistant()):
+            self.assertEqual([ask(listener).status_code for _ in range(10)], [200] * 10)
+            refused = ask(listener)
+            self.assertEqual(refused.status_code, 429)
+            self.assertEqual(refused.headers["Retry-After"], "60")
+            self.assertIn("10 questions a minute", refused.get_json()["error"])
+            self.assertEqual([ask(admin).status_code for _ in range(12)], [200] * 12)         # admins: no limit
+            clock[0] += 45
+            self.assertEqual(ask(listener).headers["Retry-After"], "15")
+            clock[0] += 15                                                               # a minute after the first
+            self.assertEqual(ask(listener).status_code, 200)
+
+            # Renders: only accepted ones count (a refused line, here an unknown voice, does not use one)
+            with self.server.app.test_request_context():
+                server.g.account = accounts.get("julius")
+                for _ in range(5):
+                    server.per_minute("render")
+                    server.per_minute("render", add=True)
+                with self.assertRaises(server.Refused) as caught:
+                    server.per_minute("render")
+                self.assertEqual((caught.exception.status, caught.exception.retry_after), (429, 60))
+                self.assertIn("5 renders a minute", str(caught.exception))
+            bad = self.client.post("/api/v1/speak", headers=listener, json={"dataset": "VCTK", "clip_id": "nope", "text": "Hi."})
+            self.assertEqual(bad.status_code, 429)                                       # over the limit: refused first
+            self.assertIn("5 renders", bad.get_json()["error"])
+        terms = agreement.as_text()
+        self.assertIn("5 renders a minute", terms)
+        self.assertIn("10 questions a minute", terms)
 
     def test_registering_can_be_switched_off_and_is_limited(self):
         with mock.patch.object(self.server.model, "setting", lambda name, default=None: "off"

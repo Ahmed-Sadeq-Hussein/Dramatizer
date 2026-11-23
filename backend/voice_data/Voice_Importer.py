@@ -33,7 +33,6 @@ read_custom_voices reads your own recordings (CUSTOM_VOICES in .env), for the
 UIs. They are not a dataset: build_manifest.py and the splits leave them out.
 """
 import argparse
-import io
 import os
 import sys
 from collections import Counter

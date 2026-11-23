@@ -1,0 +1,9 @@
+# ruff.toml | The lint checked by CI (.github/workflows/ci.yml): `ruff check .`
+# ruff's default rules (syntax errors, undefined names, unused imports and variables), minus two this
+# project uses on purpose: short lambdas given a name (E731) and one-letter names like `l` in loops (E741).
+target-version = "py310"
+line-length = 120
+extend-exclude = ["private", "frontend/ui_versions"]
+
+[lint]
+ignore = ["E731", "E741"]

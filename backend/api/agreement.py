@@ -10,7 +10,7 @@ Changing the text: change VERSION too (the date of the change), so everyone is a
 This text was drafted for a school project and has not been reviewed by a lawyer.
 """
 
-VERSION = "2026-11-20"
+VERSION = "2026-11-23"
 TITLE = "Dramatizer user agreement"
 
 SECTIONS = [
@@ -34,10 +34,18 @@ SECTIONS = [
      "use Dramatizer for such acts, you accept full responsibility and liability for them: you cannot deny that "
      "liability or pass it on to the Dramatizer development team, and you agree to cover the team's costs from "
      "any claim that arises from your use."),
-    ("4. If the agreement is broken",
+    ("4. Limits on use",
+     "Dramatizer runs on one computer with one graphics card, shared by everyone. So that no one person can "
+     "fill it, every account except the administrators' may make at most 5 renders a minute (lines spoken, "
+     "with or without a genome) and ask at most 10 questions a minute in Ask the Dramatizer, and may have at "
+     "most 3 jobs waiting at once. Above a limit the site refuses for a moment and says how many seconds to "
+     "wait; nothing is lost. The team may change these limits to keep the service working for everyone, and "
+     "changes are shown here. Do not try to get around them, for example with several accounts or a script: "
+     "the team may disable accounts that do."),
+    ("5. If the agreement is broken",
      "The team may disable your account and remove what you made with Dramatizer, and may report misuse to the "
      "people affected or to the authorities."),
-    ("5. Changes",
+    ("6. Changes",
      "If this agreement changes, you are asked to accept the new version before you can use Dramatizer again."),
 ]
 

@@ -57,10 +57,13 @@ _lock = threading.RLock()
 
 
 def setting(name, default=None):
-    """A value from .env (or the environment). Without a default, it must exist."""
+    """A value from .env (or the environment). Without a default, it must exist; an empty or missing value gives
+    the default (setting("VOICES_DIR", "") is "" on a machine without one)."""
     value = os.environ.get(name, default)
 
     if value is None or not str(value).strip():
+        if default is not None:
+            return str(default).strip()
         raise KeyError(f"{name} is not set. Add it to .env (see requirements.txt and README.md).")
 
     return str(value).strip()

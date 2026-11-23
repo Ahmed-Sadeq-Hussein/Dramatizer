@@ -41,8 +41,8 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
 
     GET  /health                                  no key needed: is it up?
     POST /login   {username, password}            no key needed: an account logs in -> {token, account}
-    POST /register {username, display_name, email, password}   no key needed: ask for a listener account;
-                                                  it waits for the host's approval (account approve)
+    POST /register {username, display_name, email, password}   no key needed: make a member account,
+                                                  which may log in at once (members do not rate)
     GET  /agreement                               no key needed: the user agreement {version, title, sections}
     POST /register also needs {agreement: <its version>}: the person ticked that they accept it
     POST /logout                                  end this session
@@ -99,6 +99,9 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
     GET  /evidence/questions/<1-6>/chart          that chart (JPEG)
     GET  /evidence/charts/latest                  the six charts as they were last made (the Graphs tab)
     GET  /evidence/charts/latest/<file>.jpg       one of them
+    GET  /evidence/mos-study                      the listening studies from assigned piles only: the Report
+                                                  evaluation's methods compared (totals only) and the pilot
+    GET  /evidence/mos-study/<file>.jpg           one of its charts
     GET  /evidence/search?q=&kind=&k=             the evidence records best matching a question (BM25)
     GET  /evidence/answer?q=                      an answer citing its record IDs, or "no evidence" (rag/answer.py)
                                                   both with provenance {snapshot_id, ratings_up_to, data_revision,
@@ -127,7 +130,7 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
                                                   genome_renders/removed/ with who removed them and when, not erased
 
 Who may do what: an API key may do everything. An account (accounts.py) may do
-what its role allows: listeners rate (only as themselves, only their own pile),
+what its role allows: members (registered on the website) speak and render lines; listeners also rate (only as themselves, only their own pile),
 see rankings, and speak or render lines; starting searches and naming genomes
 need a researcher or admin.
 """
@@ -135,6 +138,7 @@ import argparse
 import atexit
 import hashlib
 import json
+import math
 import queue
 import re
 import ssl
@@ -142,13 +146,14 @@ import threading
 import time
 import traceback
 import uuid
+from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from ipaddress import ip_address
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from flask import Flask, abort, g, jsonify, request, send_file, send_from_directory
+from flask import Flask, g, jsonify, request, send_file, send_from_directory
 from werkzeug.exceptions import HTTPException
 from werkzeug.serving import WSGIRequestHandler
 
@@ -171,6 +176,9 @@ DATASETS = ("VCTK", "CREMA-D", "LibriTTS-R")
 PAGE_SIZE = 50
 MAX_TEXT = 300
 MAX_WAITING = 3          # jobs per person, queued or running
+# Every account but the admins' (user agreement, section 4): one GPU is shared by everyone
+RENDERS_PER_MINUTE, QUESTIONS_PER_MINUTE = 5, 10
+PER_MINUTE = {"render": RENDERS_PER_MINUTE, "question": QUESTIONS_PER_MINUTE}
 IDLE_SECONDS = 30
 CLIP_FILE = re.compile(r"^(baseline|genome_\d{2}|[0-9a-f]{12})\.wav$")     # a blind token on the Rate page
 JOB_ID = re.compile(r"^[0-9a-f]{32}$")
@@ -193,7 +201,9 @@ from backend.evidence_views import Refused  # noqa: E402  (a request that cannot
 
 @app.errorhandler(Refused)
 def refused(error):
-    return jsonify(error=str(error)), error.status
+    reply = jsonify(error=str(error))
+    wait = getattr(error, "retry_after", None)
+    return (reply, error.status, {"Retry-After": str(wait)}) if wait else (reply, error.status)
 
 
 @app.errorhandler(HTTPException)
@@ -248,6 +258,31 @@ def _too_many_registrations(add=False):
         if add:
             _registrations.append(now)
         return len(_registrations) >= REGISTRATIONS_ALLOWED
+
+
+_per_minute = defaultdict(deque)          # (username, kind) -> when each one was accepted, the last minute
+
+
+def per_minute(kind, add=False):
+    """Refuse (429, with Retry-After) an account that already did PER_MINUTE[kind] of `kind` in the last 60 s.
+    Admins and API keys (scripts the host runs) are not limited. add=True counts one, once it was accepted."""
+    account = getattr(g, "account", None)
+    if account is None or account.role == "admin":
+        return
+    limit, now = PER_MINUTE[kind], time.monotonic()
+    with _audit_lock:
+        done = _per_minute[(account.username, kind)]
+        while done and now - done[0] >= 60:
+            done.popleft()
+        if add:
+            done.append(now)
+            return
+        if len(done) >= limit:
+            wait = max(1, math.ceil(60 - (now - done[0])))
+            what = f"make {limit} renders" if kind == "render" else f"ask {limit} questions"
+            error = Refused(f"You can {what} a minute (see the user agreement). Try again in {wait} s.", 429)
+            error.retry_after = wait
+            raise error
 
 
 def _bearer():
@@ -378,14 +413,22 @@ def library():
     """
     {dataset: {"clips": [...], "by_id": {...}}} of the validation voices, read once (a few seconds).
     Each voice offers one clip: the one the voice manifest chose for it, its longest neutral clip.
+    A server without the voice library (VOICE_LIBRARY_DIR not set or not there: a test machine, a container
+    without the voice pack) has no voices, so a request for one is a 404, not a crash. That is not kept, so the
+    library is read once it is there.
     """
     with _library_lock:
         if _library["clips"] is None:
             from backend.voice_data import split_voice_data
 
-            chosen = set(split_voice_data.voice_clips("validation").items())
             out = {name: {"clips": [], "by_id": {}} for name in DATASETS}
-            for clip in split_voice_data.read_library():
+            try:
+                chosen = set(split_voice_data.voice_clips("validation").items())
+                clips = split_voice_data.read_library()
+            except (KeyError, OSError) as error:
+                print(f"No voice library: {error}", flush=True)
+                return out
+            for clip in clips:
                 if clip.dataset in out and (f"{clip.dataset}/{clip.speaker}", clip.clip_id) in chosen:
                     out[clip.dataset]["clips"].append(clip)
                     out[clip.dataset]["by_id"][clip.clip_id] = clip
@@ -532,12 +575,13 @@ def login():
 @app.get(f"{API}/register")
 def registration_state():
     """Whether the website may offer registering."""
-    return jsonify(open=registration_open(), needs_approval=True, email_required=True)
+    return jsonify(open=registration_open(), needs_approval=False, email_required=True,
+                   limits={"renders_per_minute": RENDERS_PER_MINUTE, "questions_per_minute": QUESTIONS_PER_MINUTE})
 
 
 @app.post(f"{API}/register")
 def register():
-    """Ask for a listener account: {username, display_name, email, password}. It waits for the host's approval."""
+    """Make a member account: {username, display_name, email, password}. It may log in at once."""
     if not registration_open():
         raise Refused("Registering is switched off on this server. Ask the host for an account.", 403)
     _same_page_only()
@@ -558,8 +602,8 @@ def register():
     _too_many_registrations(add=True)
     g.user = account.display_name
     audit("registered", username=account.username, agreement=agreement.VERSION)
-    return jsonify(ok=True, username=account.username, pending=True,
-                   message="Thank you. The host will approve your account; then you can log in."), 201
+    return jsonify(ok=True, username=account.username, pending=False,
+                   message="Your account is ready: log in with it."), 201
 
 
 @app.post(f"{API}/logout")
@@ -756,6 +800,7 @@ def voice_audio():
 def speak():
     from backend.voice_data.Voice_Importer import get_clip
 
+    per_minute("render")
     data = body()
     clip = clip_of(data.get("dataset"), data.get("clip_id"))
     text, seed, owner = text_of(data), seed_of(data), g.user
@@ -772,6 +817,7 @@ def speak():
         return {"path": str(path), "seconds": seconds}
 
     job = queue_job("speak", owner, work, {"voice": clip_json(clip), "text": text, "seed": seed})
+    per_minute("render", add=True)
     return jsonify(job=job_json(job)), 202
 
 
@@ -1257,6 +1303,7 @@ def render_genome():
     from backend.genome import editor, search
     from backend.voice_data.Voice_Importer import get_clip
 
+    per_minute("render")
     data = body()
     clip = clip_of(data.get("dataset"), data.get("clip_id"))
     text, genes, owner = text_of(data), genes_of(data, allow_empty=True), g.user
@@ -1287,6 +1334,7 @@ def render_genome():
 
     job = queue_job("speak", owner, work, {"voice": clip_json(clip), "text": text, "seed": seed, "genome": name,
                                            "genes": genes, "markup": shown["markup"]})
+    per_minute("render", add=True)
     return jsonify(job=job_json(job), preview=shown), 202
 
 
@@ -1825,6 +1873,46 @@ def evidence_charts_latest_file(name):
     return send_file(folder / name, mimetype="image/jpeg")
 
 
+_mos_lock = threading.Lock()
+
+
+def mos_study_summary():
+    """The mos_study summary, made again when a score was given after it was made."""
+    from backend.genome import mos_study, ratings
+
+    path, who = Path(mos_study.OUT_DIR) / "summary.json", ratings.who_path()
+    with _mos_lock:
+        stale = not path.is_file() or (who.is_file() and who.stat().st_mtime > path.stat().st_mtime)
+        if stale:
+            return mos_study.build()
+        return json.loads(path.read_text(encoding="utf-8"))
+
+
+@app.get(f"{API}/evidence/mos-study")
+@needs_key
+def evidence_mos_study():
+    """The listening studies, counted only from the piles each listener was assigned: the Report evaluation's
+    three methods compared (totals only, never which version of a run was which) and the pilot."""
+    if not sees_others():
+        raise Refused("The study is made from every listener's scores, which this account may not see.", 403)
+    summary = mos_study_summary()
+    charts = [{**c, "url": f"{API}/evidence/mos-study/{c['file']}"} for c in summary.get("charts", [])]
+    return jsonify({**summary, "charts": charts})
+
+
+@app.get(f"{API}/evidence/mos-study/<name>")
+@needs_key
+def evidence_mos_study_file(name):
+    from backend.genome import mos_study
+
+    if not sees_others():
+        raise Refused("The study is made from every listener's scores, which this account may not see.", 403)
+    names = {c["file"] for c in mos_study_summary().get("charts", [])}
+    if name not in names or not (Path(mos_study.OUT_DIR) / name).is_file():
+        raise Refused("No such chart.", 404)
+    return send_file(Path(mos_study.OUT_DIR) / name, mimetype="image/jpeg")
+
+
 @app.get(f"{API}/evidence/search")
 @needs_key
 def evidence_search():
@@ -1888,7 +1976,7 @@ def _genome_counts_text():
             f"{c['voices_searched']} voices. Of these, {c['passed_checks']} passed the automatic checks, "
             f"{c['terrible']} were judged terrible and {c['failed']} failed"
             + (f", and {unchecked} {'is' if unchecked == 1 else 'are'} not checked yet" if unchecked else "") + ". "
-            + (f"1 genome has" if c["named"] == 1 else f"{c['named']} genomes have")
+            + ("1 genome has" if c["named"] == 1 else f"{c['named']} genomes have")
             + f" been picked and named ({c['made_by_hand']} of them edited by hand)"
             + (f", you keep {c['private']} private genome{'s' if c['private'] != 1 else ''} of your own" if c["private"] else "")
             + f", and {c['renders']} render{'s are' if c['renders'] != 1 else ' is'} kept.")
@@ -2058,7 +2146,6 @@ def _about_us(question):
 def _answer_from_records(question):
     """The answer without the model: About for questions about the project, else the records (answer.py)."""
     from backend.api import about as about_text
-    from backend.api import small_talk
     from backend.rag import answer
 
     if ABOUT_QUESTION.search(question):
@@ -2136,6 +2223,8 @@ def assistant_ask():
     question = " ".join(str(data.get("question") or "").split())[:ASK_CHARS]
     if not question:
         raise Refused("Ask something.")
+    per_minute("question")
+    per_minute("question", add=True)
     hello = small_talk.greeting(question)
     if hello:                                  # small talk: answered at once, not looked up anywhere
         return jsonify(answer=hello, source="small_talk", citations=[], links=[], tools=[], absent=False)

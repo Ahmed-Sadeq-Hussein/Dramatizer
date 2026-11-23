@@ -3,6 +3,7 @@ here), and picking the closest voice with a genome. No GPU needed.
 
     python -m unittest backend.voice_data.test_voice_similarity
 """
+import importlib.util
 import json
 import sys
 import tempfile
@@ -68,6 +69,8 @@ class Clips(unittest.TestCase):
         self.assertEqual(len([u for u in units if len(u) == 2]), 1)
 
 
+@unittest.skipUnless(importlib.util.find_spec("resemblyzer") and importlib.util.find_spec("torch"),
+                     "needs Resemblyzer and PyTorch (not installed for CI: requirements-ci.txt)")
 class SameAsResemblyzer(unittest.TestCase):
     def test_trimming_silences(self):
         from resemblyzer.audio import trim_long_silences

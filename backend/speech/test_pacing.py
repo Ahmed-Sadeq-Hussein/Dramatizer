@@ -2,6 +2,7 @@
 
     python -m unittest backend.speech.test_pacing
 """
+import importlib.util
 import os
 import sys
 import tempfile
@@ -91,6 +92,7 @@ class FakeCosyVoice:
         yield {"tts_speech": torch.from_numpy(line().astype(np.float32)).unsqueeze(0)}
 
 
+@unittest.skipUnless(importlib.util.find_spec("torch"), "needs PyTorch (not installed for CI: requirements-ci.txt)")
 class Synthesize(unittest.TestCase):
     def setUp(self):
         import soundfile

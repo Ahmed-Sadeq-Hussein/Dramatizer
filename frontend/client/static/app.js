@@ -93,7 +93,7 @@ const audioOf = (run, name) => el("audio", { controls: true, preload: "none", sr
 // A mode is a set of tabs for one kind of work; a tab can be in more than one mode.
 const MODES = {
   home: { tabs: ["home"], note: "" },
-  rate: { tabs: ["rate"], note: "Choose a pile of clips meant for rating, and score each one." },
+  rate: { tabs: ["rate"], note: "Choose a pile of clips meant for rating, and score each one.", needs: "rate" },
   generate: { tabs: ["voices", "studio"], note: "Choose a voice, then optionally a genome, and render a line." },
   listen: { tabs: ["voices", "renders"], note: "Listen to a voice in the data, or to the renders people have made." },
   ask: { tabs: ["ask"], note: "Ask about genomes, voices, ratings and results; see what each answer looked up." },
@@ -132,6 +132,7 @@ function renderModes() {
   const usable = usableModes();
   document.querySelectorAll(".modes button").forEach((b) => (b.hidden = !usable.includes(b.dataset.mode)));
   $("home-research").hidden = !usable.includes("research");
+  document.querySelector('.home-card[data-go="rate"]').hidden = !usable.includes("rate");
   if (!mode || !usable.includes(mode)) setMode("home");
   else applyMode(mode);
 }
@@ -780,7 +781,62 @@ async function loadResults() {
 
 // ---------------------------------------------------------------- graphs --
 // The six questions' charts as the host last made them (evidence-charts, or a question asked through the API)
+async function loadStudy() {
+  // The listening study from the piles each listener was assigned (GET /evidence/mos-study): totals only
+  const box = $("mos-study");
+  if (!box) return;
+  box.replaceChildren(el("p", { class: "muted" }, "Loading…"));
+  try {
+    const s = await call("/evidence/mos-study");
+    const r = s.report;
+    if (!r) { box.replaceChildren(el("p", { class: "muted" }, s.report_note || "No study yet.")); return; }
+    const pct = (x) => Math.round(100 * x) + " %";
+    const p = (x) => x === null || x === undefined ? "–" : (x < 0.001 ? "< 0.001" : Number(x).toFixed(3));
+    const conds = Object.values(r.conditions);
+    box.replaceChildren(
+      el("p", { class: "graphs-stamp" }, el("strong", {}, "Report evaluation: the three methods"),
+        el("span", { class: "muted" }, ` · ${r.scores} scores of ${r.items} items on ${r.voices} test voices · assigned piles only (${r.listeners.join(", ")})`)),
+      el("div", { class: "table-wrap" }, el("table", {},
+        el("thead", {}, el("tr", {}, ["Method", "Mean", "95 % interval", "Scored 4 or more", "Scored 2 or less", "Artifact flags"].map((h) => el("th", {}, h)))),
+        el("tbody", {}, conds.map((c) => el("tr", {}, el("td", {}, c.label), el("td", {}, fmt(c.mean, 2)),
+          el("td", {}, `${fmt(c.ci95[0], 2)} – ${fmt(c.ci95[1], 2)}`), el("td", {}, pct(c.share_4_or_more)),
+          el("td", {}, pct(c.share_2_or_less)), el("td", {}, String(c.artifact_flags))))))),
+      el("div", { class: "table-wrap" }, el("table", {},
+        el("thead", {}, el("tr", {}, ["Same item, same listener", "Mean difference", "95 % interval", "First higher / tie / second higher", "p (Holm)"].map((h) => el("th", {}, h)))),
+        el("tbody", {}, r.paired.map((d) => el("tr", {}, el("td", {}, `${d.a} vs ${d.b}`),
+          el("td", {}, (d.mean_difference > 0 ? "+" : "") + fmt(d.mean_difference, 2)),
+          el("td", {}, `${fmt(d.ci95[0], 2)} to ${fmt(d.ci95[1], 2)}`),
+          el("td", {}, `${d.a_higher} / ${d.tie} / ${d.b_higher}`), el("td", {}, p(d.holm_p))))))),
+      el("div", { class: "graphs" }, s.charts.map((c) => el("figure", { class: "graph" },
+        el("figcaption", {}, el("strong", {}, c.title)),
+        el("a", { href: c.url, target: "_blank", rel: "noopener", title: "Open full size" },
+          el("img", { src: c.url, alt: c.title, loading: "lazy" })),
+        el("p", { class: "muted small" }, c.note)))),
+      r.harm ? el("h3", {}, "Which genomes hurt (exploratory)") : null,
+      r.harm ? el("p", { class: "muted small" }, `The worst 10 of ${r.harm.genomes} genomes carry ${Math.round(100 * r.harm.share_of_loss_in_worst_10)} % ` +
+        `of the loss against the plain line; without the worst 15, the rest average ${fmt(r.harm.rest_without_worst["15"], 2)}. ` +
+        `The automatic measures barely follow it (Spearman: words ${fmt(r.harm.measures_vs_listeners.wer, 2)}, ` +
+        `voice ${fmt(r.harm.measures_vs_listeners.similarity, 2)}, pace ${fmt(r.harm.measures_vs_listeners.pace, 2)}); genomes a listener flagged ` +
+        `for artifacts average ${fmt(r.harm.flagged.minus_plain, 2)}. ${r.harm.note}`) : null,
+      r.harm ? el("div", { class: "table-wrap" }, el("table", {},
+        el("thead", {}, el("tr", {}, ["Gene type", "Genomes", "Against plain", "Worse / better", "Allowed in guarded"].map((h) => el("th", {}, h)))),
+        el("tbody", {}, r.gene_types.map((t) => el("tr", {}, el("td", {}, t.gene_type), el("td", {}, String(t.genomes)),
+          el("td", {}, (t.minus_plain > 0 ? "+" : "") + fmt(t.minus_plain, 2)), el("td", {}, `${t.worse} / ${t.better}`),
+          el("td", {}, t.in_guarded ? "yes" : "no")))))) : null,
+      r.harm ? el("div", { class: "table-wrap" }, el("table", {},
+        el("thead", {}, el("tr", {}, ["Where the events sit, or genes", "Genomes", "Against plain", "Worse / better"].map((h) => el("th", {}, h)))),
+        el("tbody", {}, [...Object.entries(r.harm.positions), ...Object.entries(r.harm.gene_count).map(([n, v]) => [`${n} gene${n === "1" ? "" : "s"}`, v])]
+          .map(([k, v]) => el("tr", {}, el("td", {}, k), el("td", {}, String(v.genomes)),
+            el("td", {}, (v.minus_plain > 0 ? "+" : "") + fmt(v.minus_plain, 2)), el("td", {}, `${v.worse} / ${v.better}`)))))) : null,
+      s.pilot ? el("p", { class: "muted small" }, `Pilot (mos-diverse-v1, ${s.pilot.genome_scores} genome scores, one listener a pile): ` +
+        `genomes ${fmt(s.pilot.genome_mean, 2)} against the plain line ${fmt(s.pilot.plain_mean, 2)}; ` +
+        `${s.pilot.above_plain} above the plain line, ${s.pilot.same_as_plain} the same, ${s.pilot.below_plain} below.`) : null,
+      el("p", { class: "muted small" }, `Left out: ${Object.entries(s.scores_left_out).map(([k, v]) => `${k} (${v})`).join(", ") || "nothing"}.`));
+  } catch (error) { box.replaceChildren(el("p", { class: "muted" }, error.message)); }
+}
+
 async function loadGraphs() {
+  loadStudy();
   const box = $("graphs");
   box.replaceChildren(el("p", { class: "muted" }, "Loading…"));
   try {

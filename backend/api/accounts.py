@@ -31,13 +31,18 @@ How passwords are kept:
     - after MAX_FAILURES wrong passwords in a row the account is locked for
       LOCK_MINUTES; logging in successfully resets the count
 
-Registering (POST /register on the website): anyone who reaches the site may ask
-for a listener account with a username, display name, email and their own
-password. The account is made pending: it cannot log in until the host approves
-it (`account approve`), because only members of the group may use the API
-(LIMITATIONS.md, Ethics). REGISTRATION=off in .env turns registering off. The
-email is not checked by sending a message yet (there is no mail service); it is
-for the host to know who asked, and to reach them.
+Registering (POST /register on the website): anyone who reaches the site may make
+a member account with a username, display name, email and their own password, and
+log in at once. A member may speak and render lines, measure them in the Lab, upload
+their own voice and ask the chatbot, within the per-minute limits in the user
+agreement (server.py, per_minute). A member does not rate: ratings are the study's
+data, so only listeners the host chose rate (`account role NAME listener`), and a
+stranger cannot add scores to the results. REGISTRATION=off in .env turns
+registering off. The email is not checked by sending a message yet (there is no mail
+service); it is for the host to know who registered, and to reach them.
+
+Accounts registered before 23 Nov 2026 were made pending and still need
+`account approve` (or `account role`) once.
 
 A login opens a session: a random token that the client sends as
 "Authorization: Bearer <token>". Only its SHA-256 hash is stored
@@ -73,7 +78,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from backend import model, storage
+from backend import storage
 
 SCHEMA_VERSION = 2          # 2: email and pending
 ACCOUNTS_PATH = storage.LEGACY["accounts"]    # the old files, read only by `storage migrate`
@@ -82,6 +87,7 @@ SESSIONS_PATH = storage.LEGACY["sessions"]
 # What each role may do. The API checks permissions, never role names, so a new
 # role is one line here.
 ROLES = {
+    "member": {"speak"},                                    # registered on the website: speak, render, upload, ask
     "listener": {"rate", "speak"},                          # rate genomes as themself; speak and render lines
     "researcher": {"rate", "speak", "search", "name"},      # also make speech, start searches, name genomes
     "admin": {"rate", "speak", "search", "name", "rate_for_others", "remove_renders"},   # also delete renders
@@ -324,10 +330,10 @@ class RegistrationRefused(Exception):
 
 
 def register(username, display_name, email, password, path=None, agreement=None):
-    """A pending listener account asked for on the website: the person's own password, an email required.
+    """A member account made on the website: the person's own password, an email required.
 
-    Returns the Account. It cannot log in until the host approves it. A username, display name or email
-    already in use gets one and the same answer, so registering does not tell whose email is here.
+    Returns the Account, which may log in at once. A username, display name or email already in use gets one
+    and the same answer, so registering does not tell whose email is here.
     """
     if not email:
         raise RegistrationRefused("An email is required.")
@@ -340,7 +346,7 @@ def register(username, display_name, email, password, path=None, agreement=None)
         raise RegistrationRefused(problem)
     try:
         with storage.connect(path, write=True):          # the account and its accepted agreement, or neither
-            account, _ = new_account(username, display_name, "listener", password, path, email=email, pending=True)
+            account, _ = new_account(username, display_name, "member", password, path, email=email)
             if agreement:
                 accept_agreement(account.username, agreement, how="register", path=path)
     except ValueError:

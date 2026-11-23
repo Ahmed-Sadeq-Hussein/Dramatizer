@@ -25,6 +25,9 @@ every listener's scores, so it is for researchers and admins, not for listeners 
     piles.json              which listener was given which pile, by display name (sealed piles left out)
     genomes.json            what each scored genome does and its markup (GET /evidence/scores)
     charts/                 the six questions' charts (JPEG) and charts.json with their claims and notes
+    mos_study/              the listening studies from ASSIGNED piles only (mos_study.py): summary.json (the
+                            Report evaluation's three methods compared, totals only, and the pilot), its charts,
+                            and scores_assigned.csv (the pilot's assigned scores, without login names)
     results.json            the baselines' and Milestone 2's summaries (GET /results)
 
 Never in it, and checked before anything is written out (check() fails the build otherwise): sealed runs
@@ -246,6 +249,8 @@ def build(out_dir=OUT_DIR):
     write("genomes.json", json.dumps(genome_texts(records), ensure_ascii=False, indent=1))
     write("results.json", json.dumps(_strip_paths(results_summaries()), ensure_ascii=False, indent=1))
 
+    study = mos_study_files(staging / "mos_study")
+
     all_runs, rated, log, assignments, accounts = rating_tables()
     sealed_batches = {run.get("batch") for run in all_runs if run.get("sealed") and run.get("batch")}
     runs = runs_data(all_runs, rated, sealed)
@@ -260,7 +265,7 @@ def build(out_dir=OUT_DIR):
               "scores": kept, "rating_history": changes, "runs": len(runs),
               "rated_runs": sum(1 for r in runs.values() if r["ratings"]), "evidence_records": len(records),
               "sealed_runs_left_out": len(sealed)}
-    write("index.html", page(stamps, snapshot, charts))
+    write("index.html", page(stamps, snapshot, charts, study))
     files = {str(p.relative_to(staging)).replace("\\", "/"): {"bytes": p.stat().st_size, "sha256": _sha(p.read_bytes())}
              for p in sorted(staging.rglob("*")) if p.is_file()}
     manifest = {**stamps, "about": "Dramatizer results without audio, for the team only. Never holds sealed runs, "
@@ -278,7 +283,49 @@ def build(out_dir=OUT_DIR):
     return manifest
 
 
-def page(stamps, snapshot, charts):
+def mos_study_files(folder):
+    """The listening studies (assigned piles only) into folder: summary.json, charts, scores_assigned.csv."""
+    from backend.genome import mos_study
+    return mos_study.build(folder)
+
+
+def study_html(study):
+    """The Report evaluation's methods compared, for index.html (totals only)."""
+    e = lambda x: html.escape(str(x))
+    rep = study and study.get("report")
+    if not rep:
+        return '<p class="muted">The Report evaluation is not complete yet.</p>'
+    rows = "".join(f"<tr><td>{e(c['label'])}</td><td>{c['mean']:.2f}</td><td>{c['ci95'][0]:.2f} to {c['ci95'][1]:.2f}</td>"
+                   f"<td>{round(100 * c['share_4_or_more'])} %</td><td>{c['artifact_flags']}</td></tr>"
+                   for c in rep["conditions"].values())
+    pairs = "".join(f"<tr><td>{e(p['a'])} vs {e(p['b'])}</td><td>{p['mean_difference']:+.2f}</td>"
+                    f"<td>{p['ci95'][0]:+.2f} to {p['ci95'][1]:+.2f}</td><td>{p['a_higher']} / {p['tie']} / {p['b_higher']}</td>"
+                    f"<td>{e(p['holm_p'])}</td></tr>" for p in rep["paired"])
+    h = rep.get("harm") or {}
+    types = "".join(f"<tr><td>{e(t['gene_type'])}</td><td>{t['genomes']}</td><td>{t['minus_plain']:+.2f}</td>"
+                    f"<td>{t['worse']} / {t['better']}</td><td>{'yes' if t['in_guarded'] else 'no'}</td></tr>"
+                    for t in rep.get("gene_types", []))
+    where = "".join(f"<tr><td>{e(k)}</td><td>{v['genomes']}</td><td>{v['minus_plain']:+.2f}</td><td>{v['worse']} / {v['better']}</td></tr>"
+                    for k, v in {**h.get("positions", {}), **{f"{n} gene(s)": v for n, v in h.get("gene_count", {}).items()}}.items())
+    harm_html = (f"<h3>Which genomes hurt (exploratory)</h3><p>The worst 10 of {h.get('genomes')} genomes carry "
+                 f"{round(100 * (h.get('share_of_loss_in_worst_10') or 0))} % of the loss against the plain line; without the worst "
+                 f"15 the rest average {(h.get('rest_without_worst') or {}).get('15', 0):+.2f}.</p>"
+                 f"<table><tr><td><b>Gene type</b></td><td><b>Genomes</b></td><td><b>vs plain</b></td><td><b>Worse / better</b></td>"
+                 f"<td><b>Allowed in guarded</b></td></tr>{types}</table><p></p>"
+                 f"<table><tr><td><b>Where the events sit / genes</b></td><td><b>Genomes</b></td><td><b>vs plain</b></td>"
+                 f"<td><b>Worse / better</b></td></tr>{where}</table>") if h else ""
+    figs = "".join(f'<figure><img src="mos_study/{e(c["file"])}" alt="{e(c["title"])}"><figcaption><b>{e(c["title"])}</b>'
+                   f'<br><span class="muted">{e(c["note"])}</span></figcaption></figure>' for c in study.get("charts", []))
+    return (f"<p>{rep['scores']} scores of {rep['items']} items on {rep['voices']} test voices, from the piles each "
+            f"listener was assigned only ({', '.join(e(x) for x in rep['listeners'])}).</p>"
+            f"<table><tr><td><b>Method</b></td><td><b>Mean</b></td><td><b>95 % interval</b></td><td><b>Scored 4+</b></td>"
+            f"<td><b>Artifact flags</b></td></tr>{rows}</table>"
+            f"<p></p><table><tr><td><b>Pair</b></td><td><b>Mean difference</b></td><td><b>95 % interval</b></td>"
+            f"<td><b>First higher / tie / second higher</b></td><td><b>p (Holm)</b></td></tr>{pairs}</table>"
+            f"{harm_html}<div class=\"grid\">{figs}</div>")
+
+
+def page(stamps, snapshot, charts, study=None):
     """index.html: one self-contained page (no scripts), light and dark."""
     e = lambda x: html.escape(str(x))
     status = {}
@@ -301,7 +348,8 @@ def page(stamps, snapshot, charts):
     caveats = "".join(f"<li>{e(c)}</li>" for c in snapshot.get("caveats", []))
     links = "".join(f'<li><a href="{f}">{f}</a></li>' for f in
                     ("manifest.json", "snapshot.json", "scores.csv", "rating_history.csv", "runs.json", "piles.json",
-                     "genomes.json", "evidence_records.jsonl", "charts/charts.json", "results.json"))
+                     "genomes.json", "evidence_records.jsonl", "charts/charts.json", "results.json",
+                     "mos_study/summary.json", "mos_study/scores_assigned.csv"))
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dramatizer results</title>
@@ -318,12 +366,13 @@ a {{ color:inherit; }}
 </style></head><body>
 <h1>Dramatizer results</h1>
 <p class="muted">Read-only copy for the team. It is as new as the last publish; the stamps below say which data it holds.
-Sealed runs (the Report evaluation) are not in it.</p>
+The Report evaluation's runs stay sealed: only its totals per method are here.</p>
 <h2>Stamps</h2><table>{rows}</table>
 <h2>Evidence snapshot</h2>
 <p>{e(cov.get("genomes_rated", "?"))} rated genomes; {e(per_genome)}.</p>
 <p>Voices by status:</p><ul>{voices}</ul>
 <p>Caveats:</p><ul>{caveats}</ul>
+<h2>Listening study: the three methods (assigned piles only)</h2>{study_html(study)}
 <h2>The six questions</h2><div class="grid">{''.join(chart_html)}</div>
 <h2>Files</h2><ul>{links}</ul>
 </body></html>

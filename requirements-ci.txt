@@ -1,0 +1,25 @@
+# requirements-ci.txt | What the tests need on a machine with no GPU, no models and no voice data:
+# GitHub Actions (.github/workflows/ci.yml) installs only this, not requirements.txt, which pulls PyTorch
+# with CUDA and other heavy packages (several GB) that no test loads.
+#
+# The versions are the ones in requirements.txt and the host's environment, so the tests run against
+# the same code as the host. Change a version in both files together.
+#
+#   python -m pip install -r requirements-ci.txt
+#   python main_backend.py test
+
+python-dotenv==1.2.4        # settings
+flask==3.1.3                # the API (backend/api/server.py)
+cryptography==50.0.2        # the API's certificate
+numpy==1.26.4               # measurements, genomes, the Lab
+scipy==1.15.3               # statistics (Wilcoxon, Spearman) in the studies and the Lab
+soundfile==0.12.1           # reading and writing audio in the tests
+librosa==0.10.2             # audio_io (imported at the top of several modules)
+pyarrow==18.1.0             # the VCTK parquet reader (imported at the top of Voice_Importer)
+jiwer==4.0.0                # word error rate
+matplotlib==3.7.5           # the evidence charts and the listening study's charts
+networkx==3.1               # the voice map's clusters
+huggingface_hub==0.36.2     # publish_results' upload (mocked in the tests: nothing is sent)
+
+# Not here on purpose: torch, torchaudio, Resemblyzer, Whisper, CosyVoice. Tests that need them say
+# "skipped: needs ..." and run on the host with the full requirements.txt.

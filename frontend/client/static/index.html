@@ -39,7 +39,8 @@
   </form>
   <form id="register-form" class="stack card" hidden>
     <h2>Register</h2>
-    <p class="muted small">Ask for a listener account. The host approves it before you can log in.</p>
+    <p class="muted small">Make an account and log in at once. You can render lines (5 a minute), ask questions
+      (10 a minute), measure in the Lab and upload your own voice. Rating is for listeners the team invites.</p>
     <label>Username <input id="reg-user" autocomplete="username" autocapitalize="none" spellcheck="false"
       pattern="[a-z0-9._\-]{2,32}" title="2 to 32 lower-case letters, digits, or . _ -" required></label>
     <label>Name shown with your ratings <input id="reg-name" autocomplete="name" maxlength="40" required></label>
@@ -462,7 +463,10 @@
 
   <!-- Graphs: the six questions' charts, as last made -->
   <section class="tab" id="tab-graphs" hidden>
-    <p class="intro">The six genome questions as charts, from the latest time they were made on the host. Click a chart for full size.</p>
+    <p class="intro">The listening study first (the methods compared, from the piles each listener was assigned only),
+      then the six genome questions as charts, from the latest time they were made on the host. Click a chart for full size.</p>
+    <div id="mos-study"></div>
+    <h3>The six genome questions</h3>
     <div id="graphs"></div>
   </section>
 </main>

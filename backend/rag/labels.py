@@ -19,7 +19,6 @@ keeps the corpus fingerprint, so a refresh can tell when a label may be out of d
 (refresh.py). The labels file holds record IDs only, no scores, so it can be committed.
 """
 import argparse
-import json
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path

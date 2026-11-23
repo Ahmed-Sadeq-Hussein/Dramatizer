@@ -26,7 +26,6 @@ import subprocess
 import sys
 import threading
 import time
-from pathlib import Path
 
 from backend import model
 
@@ -94,12 +93,14 @@ class Assistant:
                 self.state = "off"
                 return
             LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-            log = open(LOG_PATH, "a", encoding="utf-8")
             env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUNBUFFERED": "1"}
-            self.process = subprocess.Popen(command, cwd=str(CHATBOT.parent), stdin=subprocess.PIPE,
-                                            stdout=subprocess.PIPE, stderr=log, text=True, encoding="utf-8",
-                                            bufsize=1, env=env,
-                                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            # The worker writes to its own copy of the log's handle; this one is closed at once, so the log is
+            # not held open here (on Windows an open file cannot be deleted or moved)
+            with open(LOG_PATH, "a", encoding="utf-8") as log:
+                self.process = subprocess.Popen(command, cwd=str(CHATBOT.parent), stdin=subprocess.PIPE,
+                                                stdout=subprocess.PIPE, stderr=log, text=True, encoding="utf-8",
+                                                bufsize=1, env=env,
+                                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             self.state, self.problem, self.started = "starting", None, time.time()
             threading.Thread(target=self._read, args=(self.process,), daemon=True).start()
 
@@ -148,6 +149,15 @@ class Assistant:
         with self._lock:
             if self.process and self.process.poll() is None:
                 self.process.terminate()
+                try:
+                    self.process.wait(timeout=10)          # so its log and pipes are let go before this returns
+                except subprocess.TimeoutExpired:
+                    self.process.kill()
+            if self.process and self.process.stdin:
+                try:
+                    self.process.stdin.close()             # stdout ends on its own; its reader thread closes it
+                except OSError:
+                    pass
             self.state = "off"
 
 

@@ -75,7 +75,7 @@ def bars(ax, names, values, expected, title, benchmark=None, limit=None, better=
 
 
 def legend(fig, axes):
-    handles, labels = {}, {}
+    handles = {}
     for ax in axes:
         for h, l in zip(*ax.get_legend_handles_labels()):
             handles.setdefault(l, h)

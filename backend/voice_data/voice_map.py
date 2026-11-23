@@ -538,7 +538,8 @@ def build(pick=None, dedupe=False, out_dir=OUT_DIR):
         "pick": None,
     }
     for i, v in enumerate(result["voices"]):
-        s = np.array(way1[i]); s[i] = -np.inf
+        s = np.array(way1[i])
+        s[i] = -np.inf
         v["nearest"] = [voices[j]["voice"] for j in np.argsort(-s)[:3]]
     fam = ways["way1"]["clusterings"]
     if dedupe:

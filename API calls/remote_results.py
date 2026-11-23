@@ -165,6 +165,8 @@ class RemoteSite:
             return ABOUT
         if route == "manifest":
             return {k: v for k, v in self.manifest().items() if k != "files"}
+        if route == "evidence/mos-study":
+            return self.read_json("mos_study/summary.json")
         if not route.startswith("evidence/"):
             raise ApiError(f"{route}: {LIVE_ONLY}")
         records, index, genomes, snapshot = self.evidence()

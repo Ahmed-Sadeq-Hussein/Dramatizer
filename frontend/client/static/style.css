@@ -98,6 +98,13 @@ body[data-mode="listen"] #voice-list .item-head button { display: none; }   /* l
 body:not([data-mode="generate"]) #chosen { display: none; }                          /* the chosen voice plays no part in rating */
 .foot { max-width: 900px; margin: 0 auto; padding: 24px 16px 40px; text-align: center; font-size: 0.9em; }
 .foot a { color: var(--accent); }
+.contact { margin: 0 auto 14px; color: var(--muted); }
+.contact summary { display: inline-block; cursor: pointer; color: var(--accent); border: 1px solid var(--rule);
+                   border-radius: 999px; padding: 3px 14px; list-style: none; }
+.contact summary::-webkit-details-marker { display: none; }
+.contact summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.contact[open] summary { background: var(--surface); }
+.contact ul { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; overflow-wrap: anywhere; }
 .tabs { display: flex; gap: 4px; max-width: 900px; margin: 0 auto; padding: 0 16px; border-bottom: 1px solid var(--rule); overflow-x: auto; }
 .tabs button, .views button { background: transparent; color: var(--muted); border-radius: 6px 6px 0 0; padding: 8px 12px; white-space: nowrap; }
 .tabs button.on { color: var(--ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); }

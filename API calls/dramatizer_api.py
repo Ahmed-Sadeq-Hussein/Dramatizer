@@ -46,12 +46,13 @@ class Api:
             raise SystemExit("Give the host's certificate fingerprint (--fingerprint AB:CD:..., 64 hex digits). "
                              "The host prints it with: python main_backend.py api --fingerprint")
         self.token = None
+        self.timeout = 60          # seconds per request (deploy/smoke.py waits longer for the chatbot)
 
     def _connect(self):
         context = ssl.create_default_context()
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE          # checked by fingerprint below instead
-        conn = http.client.HTTPSConnection(self.host, self.port, context=context, timeout=60)
+        conn = http.client.HTTPSConnection(self.host, self.port, context=context, timeout=self.timeout)
         conn.connect()
         seen = hashlib.sha256(conn.sock.getpeercert(binary_form=True)).hexdigest()
         if seen != self.fingerprint:

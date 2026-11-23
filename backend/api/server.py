@@ -13,7 +13,8 @@ Safe to put behind a tunnel because:
     - it speaks HTTPS with its own certificate (history/api/); the client pins its fingerprint,
       so a tunnel or network in between cannot read or change the traffic
     - it can only do what is listed below: no commands, no file paths from outside, voices by id
-    - the GPU work waits in one queue, one job at a time, at most 3 waiting per person
+    - the GPU work waits in one queue, one job at a time, at most 3 waiting per person and MAX_QUEUE in all
+      (then 503 + Retry-After); a job not started within MAX_WAIT, or a render whose page was closed, is dropped
     - only validation voices are offered to everyone; final test speakers never are. A custom voice
       (CUSTOM_VOICES, someone's own recorded voice) is offered only to its owner's account (the
       account whose username is the voice's name) and to admins; its renders are listed only to them
@@ -29,7 +30,7 @@ Safe to put behind a tunnel because:
       bodies are capped at 64 KB (an uploaded voice: 12 MB), and the server does not say what software it runs
 
 The website is served here too, for phones and browsers without the client app
-(python main_backend.py tunnel gives it a public https:// address through Cloudflare):
+(python main_backend.py tunnel puts it on https://app.dramatizer.dev through Cloudflare):
 
     GET  /, /static/<file>                        the same page as the client app (frontend/client/static)
     GET  /connection                              who is logged in by this browser's cookie, if anyone
@@ -59,7 +60,8 @@ The API, all under /api/v1 (JSON in and out, audio as WAV):
                                                   (dataset=Custom voices: the custom voices this account may use)
     GET  /voices/audio?dataset=&clip_id=          a clip's recording
     POST /speak   {dataset, clip_id, text, seed?} queue a line spoken in that voice -> {job}
-    GET  /jobs/<id>                               a job's state, place in the queue and result
+    GET  /jobs/<id>                               a job's state, place in the queue, expected wait and result
+    DELETE /jobs/<id>                             cancel your own job while it is still queued
     GET  /jobs/<id>/audio                         the spoken line, when a speak job is done
     GET  /genome/searches                         every genome search, newest first
     POST /genome/searches {dataset, clip_id, text, genes?, seed?}   queue a random genome search -> {job, run}
@@ -139,6 +141,7 @@ import atexit
 import hashlib
 import json
 import math
+import os
 import queue
 import re
 import ssl
@@ -157,7 +160,7 @@ from flask import Flask, g, jsonify, request, send_file, send_from_directory
 from werkzeug.exceptions import HTTPException
 from werkzeug.serving import WSGIRequestHandler
 
-from backend import model, safe_files
+from backend import model, release_info, safe_files
 from backend import evidence_views as views
 from backend.api import accounts, agreement, keys
 from backend.voice_data import uploaded_voices
@@ -165,6 +168,9 @@ from backend.voice_data import uploaded_voices
 API = "/api/v1"
 VERSION = 1
 PORT = int(model.setting("API_PORT", "5005"))
+# 127.0.0.1: only this computer (and the tunnel, which connects from here). Inside a container it must be 0.0.0.0
+# (deploy/container.env); `docker run -p 127.0.0.1:5005:5005` then keeps it to this computer just the same.
+HOST = model.setting("API_HOST", "127.0.0.1")
 API_DIR = model.PROJECT_DIR / "history" / "api"
 CERT_PATH, KEY_PATH = API_DIR / "api_cert.pem", API_DIR / "api_key.pem"
 ACCESS_LOG = API_DIR / "access.log"
@@ -176,6 +182,14 @@ DATASETS = ("VCTK", "CREMA-D", "LibriTTS-R")
 PAGE_SIZE = 50
 MAX_TEXT = 300
 MAX_WAITING = 3          # jobs per person, queued or running
+# Limits for everyone together (Milestone 4, step 6). One GPU does one job at a time, so a long queue only means
+# long waits: past MAX_QUEUE a new job is refused at once (503 + Retry-After) instead of waiting for ages.
+# 12 is a first guess; the load runs (step 7) measure the real number.
+MAX_QUEUE = int(model.setting("MAX_QUEUE", "12"))                 # jobs queued or running, all people together
+MAX_WAIT = int(model.setting("MAX_WAIT_SECONDS", "600"))          # not started by then: dropped, the slot freed
+ABANDONED = 120          # a render or Lab job whose page stopped asking about it this long ago is dropped
+FOLLOWED = ("speak", "lab")   # their pages ask every 1-2 s; genome searches are started and left to run
+TYPICAL_SECONDS = {"speak": 30, "lab": 20, "genome": 900}         # until the server has timed some of its own
 # Every account but the admins' (user agreement, section 4): one GPU is shared by everyone
 RENDERS_PER_MINUTE, QUESTIONS_PER_MINUTE = 5, 10
 PER_MINUTE = {"render": RENDERS_PER_MINUTE, "question": QUESTIONS_PER_MINUTE}
@@ -487,14 +501,81 @@ waiting = queue.Queue()
 jobs_lock = threading.RLock()     # re-entrant: /me holds it while job_json asks place_in_queue, which takes it too
 
 
-def queue_job(kind, owner, work, about):
+took = defaultdict(lambda: deque(maxlen=20))     # kind -> seconds the last jobs of that kind took
+
+
+def seconds_per(kind):
+    """How long a job of this kind takes: the median of the last 20, or a first guess."""
+    times = sorted(took[kind])
+    return times[len(times) // 2] if times else TYPICAL_SECONDS.get(kind, 60)
+
+
+def now_text():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def drop(job, status, why):
+    job.update(status=status, error=why, finished=now_text())
+
+
+def expire():
+    """Drop the queued jobs that waited too long, or that nobody is waiting for any more. Their slots free at once;
+    the worker skips them when it reaches them."""
+    now = time.time()
     with jobs_lock:
-        mine = [j for j in jobs.values() if j["owner"] == owner and j["status"] in ("queued", "running")]
-        if len(mine) >= MAX_WAITING:
+        for job in jobs.values():
+            if job["status"] != "queued":
+                continue
+            if now - job["_queued"] > MAX_WAIT:
+                drop(job, "expired", f"Not started within {MAX_WAIT // 60} minutes: the queue was too long. "
+                                     "Try again later.")
+            elif job["kind"] in FOLLOWED and now - job["_asked"] > ABANDONED:
+                drop(job, "cancelled", "Dropped before it started: its page was closed.")
+
+
+def wait_seconds(job_id=None):
+    """About how long until this queued job starts (no id: until a job sent now would start)."""
+    now = time.time()
+    with jobs_lock:
+        running = [j for j in jobs.values() if j["status"] == "running"]
+        queued = sorted((j for j in jobs.values() if j["status"] == "queued"), key=lambda j: j["_queued"])
+        ids = [j["id"] for j in queued]
+        ahead = queued[:ids.index(job_id)] if job_id in ids else queued
+        left = sum(max(5, seconds_per(j["kind"]) - (now - j["_started"])) for j in running)
+        return round(left + sum(seconds_per(j["kind"]) for j in ahead))
+
+
+def until_a_slot():
+    """About how long until the full queue has room again: the running job ends, or the oldest queued job is
+    dropped for waiting too long, whichever comes first."""
+    now = time.time()
+    with jobs_lock:
+        ends = [max(5, seconds_per(j["kind"]) - (now - j["_started"]))
+                for j in jobs.values() if j["status"] == "running"]
+        ends += [max(5, MAX_WAIT - (now - j["_queued"])) for j in jobs.values() if j["status"] == "queued"]
+    return round(min(ends)) if ends else 5
+
+
+def in_words(seconds):
+    return f"{seconds} s" if seconds < 90 else f"{round(seconds / 60)} min"
+
+
+def queue_job(kind, owner, work, about):
+    expire()
+    with jobs_lock:
+        active = [j for j in jobs.values() if j["status"] in ("queued", "running")]
+        if sum(j["owner"] == owner for j in active) >= MAX_WAITING:
             raise Refused(f"You already have {MAX_WAITING} jobs waiting: let one finish first.", 429)
+        if len(active) >= MAX_QUEUE:
+            wait = until_a_slot()
+            full = Refused(f"The host is busy: {len(active)} jobs are already waiting. Try again in about "
+                           f"{in_words(wait)}.", 503)
+            full.retry_after = wait
+            raise full
+        now = time.time()
         job = {"id": uuid.uuid4().hex, "kind": kind, "owner": owner, "status": "queued", "about": about,
-               "created": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "started": None, "finished": None,
-               "result": None, "error": None}
+               "created": now_text(), "started": None, "finished": None, "result": None, "error": None,
+               "_queued": now, "_asked": now, "_started": None}
         jobs[job["id"]] = job
     waiting.put((job["id"], work))
     return job
@@ -510,20 +591,26 @@ def place_in_queue(job_id):
 def worker():
     while True:
         job_id, work = waiting.get()
-        job = jobs[job_id]
-        job.update(status="running", started=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        expire()
+        with jobs_lock:
+            job = jobs[job_id]
+            if job["status"] != "queued":        # cancelled, or dropped for waiting too long
+                continue
+            job.update(status="running", started=now_text(), _started=time.time())
         try:
             job["result"] = work()
             job["status"] = "done"
+            took[job["kind"]].append(time.time() - job["_started"])
         except Exception as error:
             traceback.print_exc()
             job.update(status="failed", error=f"{type(error).__name__}: {error}")
-        job["finished"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        job["finished"] = now_text()
 
 
 def job_json(job):
-    shown = {k: v for k, v in job.items() if k != "result"}
+    shown = {k: v for k, v in job.items() if k != "result" and not k.startswith("_")}
     shown["place_in_queue"] = place_in_queue(job["id"]) if job["status"] == "queued" else 0
+    shown["expected_start_s"] = wait_seconds(job["id"]) if job["status"] == "queued" else 0
     result = job.get("result") or {}
     if job["kind"] == "speak" and job["status"] == "done":
         shown["audio"] = f"{API}/jobs/{job['id']}/audio"
@@ -541,7 +628,57 @@ def job_json(job):
 
 @app.get(f"{API}/health")
 def health():
+    """Is the process alive? Nothing more (/ready says whether it can do the work)."""
     return jsonify(ok=True, version=VERSION)
+
+
+STARTED = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+_preload = {"state": "off", "problem": None}     # the voice model loading at start-up (PRELOAD_VOICE_MODEL)
+
+
+def config_values():
+    return {key: os.environ.get(key, "") for key in release_info.CONFIG_KEYS}
+
+
+@app.get(f"{API}/version")
+def version():
+    """
+    What this process really runs (Milestone 4, step 3), with no key, like /health: its commit, the voice pack and
+    model revisions it reads, the models it has loaded so far, and a hash of its settings. Never a path or a secret.
+    deploy/smoke.py compares it with the release.json the candidate was released from.
+    """
+    loaded = [key for key in ("voice", "recogniser", "speaker", "quality", "denoiser") if model.is_loaded(key)]
+    return jsonify(api_version=VERSION, started=STARTED, **release_info.describe(config_values(), loaded))
+
+
+@app.get(f"{API}/ready")
+def ready():
+    """
+    May this process receive traffic? 200 only when the voice model is loaded and the voices are read; otherwise
+    503 with what is missing. The chatbot is reported but not required: the records answer until it is ready.
+    """
+    from backend.api.assistant import ASSISTANT
+
+    voices = _library["clips"]
+    count = sum(len(d["clips"]) for d in voices.values()) if voices else 0
+    voice_model = ("loaded" if model.is_loaded("voice") else _preload["state"] if _preload["state"] != "off"
+                   else "not loaded")
+    checks = {"voice_model": voice_model + (f": {_preload['problem']}" if voice_model == "failed" else ""),
+              "voices": f"{count} read" if count else "not read",
+              "chatbot": ASSISTANT.status()["state"]}
+    missing = [name for name, ok in (("voice_model", voice_model == "loaded"), ("voices", count > 0)) if not ok]
+    return jsonify(ready=not missing, missing=missing, checks=checks), 503 if missing else 200
+
+
+def preload_voice_model():
+    """Load CosyVoice at start-up, so the first render does not wait for it and /ready can say 200."""
+    _preload["state"] = "loading"
+    try:
+        model.voice_model()
+        _preload["state"] = "loaded"
+    except Exception as error:          # the server keeps running; /ready says why it is not ready
+        traceback.print_exc()
+        _preload.update(state="failed", problem=f"{type(error).__name__}: {error}")
 
 
 @app.post(f"{API}/login")
@@ -639,6 +776,7 @@ def change_password():
 @app.get(f"{API}/me")
 @needs_key
 def me():
+    expire()
     with jobs_lock:
         mine = [job_json(j) for j in jobs.values() if j["owner"] == g.user]
         busy = sum(j["status"] in ("queued", "running") for j in jobs.values())
@@ -827,7 +965,25 @@ def job_state(job_id):
     job = jobs.get(job_id) if JOB_ID.match(job_id) else None
     if job is None:
         raise Refused("No such job (jobs are forgotten when the server restarts).", 404)
+    job["_asked"] = time.time()          # someone is still waiting for it (see ABANDONED)
+    expire()
     return jsonify(job=job_json(job))
+
+
+@app.delete(f"{API}/jobs/<job_id>")
+@needs_key
+def cancel_job(job_id):
+    """Take your own job out of the queue. A running job cannot be stopped: the GPU finishes it."""
+    with jobs_lock:
+        job = jobs.get(job_id) if JOB_ID.match(job_id) else None
+        if job is None or job["owner"] != g.user:
+            raise Refused("No such job.", 404)
+        if job["status"] == "running":
+            raise Refused("It is already running and cannot be stopped; it ends on its own.", 409)
+        if job["status"] != "queued":
+            raise Refused(f"It is already {job['status']}.", 409)
+        drop(job, "cancelled", "Cancelled by you.")
+        return jsonify(job=job_json(job))
 
 
 @app.get(f"{API}/jobs/<job_id>/audio")
@@ -2357,6 +2513,8 @@ def main(port=PORT):
     context = tls_context()
     threading.Thread(target=worker, name="gpu jobs", daemon=True).start()
     threading.Thread(target=library, name="read voices", daemon=True).start()
+    if model.setting("PRELOAD_VOICE_MODEL", "1").lower() not in ("0", "no", "false", "off"):
+        threading.Thread(target=preload_voice_model, name="load the voice model", daemon=True).start()
     print(f"""
 Dramatizer API on https://127.0.0.1:{port}{API}
   Certificate fingerprint (give it to the people you share with; their client checks it):
@@ -2370,7 +2528,7 @@ Dramatizer API on https://127.0.0.1:{port}{API}
     atexit.register(ASSISTANT.stop)
     if ASSISTANT._optional("CHATBOT_PRELOAD").strip().lower() not in ("0", "no", "false", "off"):
         ASSISTANT.start()          # load the model now, so the first question does not wait for it (it calls back later)
-    app.run(host="127.0.0.1", port=port, threaded=True, ssl_context=context, request_handler=ClosesIdleConnections)
+    app.run(host=HOST, port=port, threaded=True, ssl_context=context, request_handler=ClosesIdleConnections)
 
 
 if __name__ == "__main__":

@@ -485,14 +485,39 @@ $("speak-form").addEventListener("submit", async (e) => {
   } catch (error) { toast(error.message, true); }
 });
 
+// "about 40 s" / "about 3 min": the server's guess of when a queued job starts (expected_start_s)
+function aboutWait(seconds) {
+  return seconds < 90 ? `about ${Math.max(5, Math.round(seconds))} s` : `about ${Math.round(seconds / 60)} min`;
+}
+
+// A queued job: its place, the expected wait, and a button to take it out of the queue (DELETE /jobs/<id>)
+function queuedText(job) {
+  return `Waiting: number ${job.place_in_queue} in the queue, ${aboutWait(job.expected_start_s)} to go`;
+}
+
+function cancelButton(id) {
+  return el("button", { type: "button", class: "small", onclick: async (e) => {
+    e.currentTarget.disabled = true;      // the next poll shows "Cancelled by you." and removes the button
+    try { await call(`/jobs/${id}`, { method: "DELETE" }); } catch (error) { toast(error.message, true); }
+  } }, "Cancel");
+}
+
 function followJob(id, card) {
   const progress = card.querySelector(".progress");
+  let cancel = null;
   const tick = async () => {
     try {
       const { job } = await call(`/jobs/${id}`);
-      if (job.status === "queued") progress.textContent = `Waiting: number ${job.place_in_queue} in the queue`;
+      if (job.status !== "queued" && cancel) { cancel.remove(); cancel = null; }
+      if (job.status === "queued") {
+        progress.textContent = queuedText(job);
+        if (!cancel) { cancel = cancelButton(id); progress.after(cancel); }
+      }
       else if (job.status === "running") progress.textContent = "Speaking on the host… (the first one loads the model, about a minute)";
-      else if (job.status === "failed") { progress.textContent = "Failed: " + job.error; return; }
+      else if (["failed", "cancelled", "expired"].includes(job.status)) {
+        progress.textContent = (job.status === "failed" ? "Failed: " : "") + job.error;
+        return;
+      }
       else if (job.status === "done") {
         progress.textContent = `Done in ${job.seconds} s`;
         card.append(el("audio", { controls: true, src: job.audio }),

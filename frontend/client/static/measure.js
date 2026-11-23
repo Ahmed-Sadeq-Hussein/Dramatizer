@@ -142,9 +142,13 @@ const Measure = (() => {
     const tick = async () => {
       try {
         const { job } = await call(`/jobs/${id}`);
-        if (job.status === "queued") $("lab-progress").textContent = `Waiting: number ${job.place_in_queue} in the queue`;
+        if (job.status === "queued") $("lab-progress").textContent = queuedText(job);     // app.js
         else if (job.status === "running") $("lab-progress").textContent = "Measuring on the host… (the first time loads Whisper, the speaker encoder and SQUIM)";
-        else if (job.status === "failed") { $("lab-progress").textContent = "Failed: " + job.error; $("lab-run").disabled = false; return; }
+        else if (["failed", "cancelled", "expired"].includes(job.status)) {
+          $("lab-progress").textContent = (job.status === "failed" ? "Failed: " : "") + job.error;
+          $("lab-run").disabled = false;
+          return;
+        }
         else if (job.status === "done") {
           $("lab-progress").textContent = `Measured in ${job.lab.seconds} s`;
           $("lab-run").disabled = false;

@@ -13,21 +13,35 @@ their browser. The client talks to the host's **API** through a playit.gg tunnel
  └───────────────────────────┘               └──────────────────────────────────┘
 ```
 
-## On a phone, or without installing anything: the Cloudflare address
+## On a phone, or without installing anything: https://app.dramatizer.dev
 
-The host's API also serves the website itself. Through a Cloudflare tunnel it gets a public
-`https://` address with a trusted certificate, so anyone can open it on a phone or computer and log
-in with their account. There's no client to install, no fingerprint to check and no "Not secure" warning.
+The host's API also serves the website itself. Through a Cloudflare tunnel it is on our own domain,
+**https://app.dramatizer.dev**, with a trusted certificate, so anyone can open it on a phone or computer and
+log in with their account. There's no client to install, no fingerprint to check and no "Not secure" warning.
+The address never changes: bookmark it, put it in the paper.
 
 The host, each time:
 
-1. Start the API in one window: `python main_backend.py api`
+1. Start the site in one window: `python main_backend.py api` (or the offline site, `Dramatizer offline.bat`)
 2. Start the tunnel in another window: `python main_backend.py tunnel`
-3. It prints an address like `https://some-words.trycloudflare.com`. Send that to the people who
-   rate. It changes every time the tunnel starts.
+3. It prints `The website is open at: https://app.dramatizer.dev`. Until the tunnel runs, the address shows a
+   Cloudflare error page, and the same happens when this PC is off.
 
-Once, before the first time: install Cloudflare's tunnel program with
-`winget install --id Cloudflare.cloudflared`, then open a new window. No Cloudflare account is needed.
+Once, already done on the host's PC (23 Nov 2026), in this order:
+
+1. Install Cloudflare's tunnel program: `winget install --id Cloudflare.cloudflared`, then open a new window.
+2. Link this PC to the Cloudflare account that owns dramatizer.dev: `cloudflared tunnel login`, pick the domain,
+   Authorize. This saves `C:\Users\<you>\.cloudflared\cert.pem`.
+3. `python main_backend.py tunnel --setup app.dramatizer.dev --port 5105` makes the tunnel `dramatizer`, points the
+   name at it in Cloudflare's DNS, and writes `.cloudflared\config.yml`. The port is the site's: **5105** for
+   the offline site, **5005** for `main_backend.py api`. To switch, run `--setup` again with the other port; the
+   tunnel is kept.
+
+`.cloudflared\` holds the account's login certificate and the tunnel's credentials (`<id>.json`): secrets. They
+never go in the repository; on a new host PC, run the three steps again instead of copying them.
+
+If the fixed address ever breaks, `python main_backend.py tunnel --quick` still gives a random
+`https://some-words.trycloudflare.com` address (no account needed), which changes every time.
 
 Everyone else: open the address, log in with the username and password from the host, and use the
 mode buttons at the top. Logging in keeps a secure cookie (12 hours, or until you log out).

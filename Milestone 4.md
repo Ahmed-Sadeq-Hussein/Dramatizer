@@ -16,7 +16,7 @@ Azure Container Apps' CPU plan does not have. The lecture asks each group to exp
 | Model runtime | Ollama on CPU | CosyVoice 3 + Gemma 4 (transformers, 4-bit) on the GPU | Voice cloning cannot run usefully on a CPU |
 | Image | Docker | Docker, with the NVIDIA runtime | Same |
 | Workflow | GitHub Actions | GitHub Actions | Same |
-| Hosting, revisions, traffic | Azure Container Apps | The GPU computer, Docker, a small proxy, the playit tunnel | The GPU is here |
+| Hosting, revisions, traffic | Azure Container Apps | The GPU computer, Docker, a small proxy, a Cloudflare tunnel on https://app.dramatizer.dev (and playit for the pinned clients) | The GPU is here |
 | Data and model store | Blob Storage | Private Hugging Face datasets + a model folder pinned by revision | The team already uses Hugging Face |
 
 Size: **S** a few hours, **M** a day or two, **L** most of a week. **GPU** means it goes on `Compute.txt` first.
@@ -144,7 +144,16 @@ Rules:
 Check: open a pull request with a test broken on purpose. It gets a red check and no image. Save the run's link
 in `reports/milestone4/01-ci/`.
 
-**Status (23 Nov 2026): written, checked locally, not yet run on GitHub.**
+**Status (23 Nov 2026): done, green on GitHub** (CI run #3, commit e177638; Audit runs #2 and #3).
+- Validated on GitHub: lint and 277 tests in 24 files on Linux (7 skips: torch and Resemblyzer); the token is
+  `contents: read`; Audit is skipped when no requirements file changes, and its manual button works; a lint
+  error (run #1), a failing test (run #2) and a vulnerable package (Audit #1) each turned the run red.
+- Fixed on GitHub: ruff 0.17 turns on many more rules by default, so `ruff.toml` now lists them; pyarrow 23.0.1;
+  pillow and filelock are accepted in `audit.yml` with the reason (their fixes need Python 3.11); actions on
+  Node 24; `search.list_runs` gave runs with the same start time in a different order on Linux.
+- Not yet done: the pull request with a test broken on purpose, saved in `reports/milestone4/01-ci/`.
+
+*Earlier status, before the first run on GitHub:*
 - `.github/workflows/ci.yml`: one job; installs `requirements-ci.txt` (no PyTorch, no models), then
   `ruff check .` (rules in `ruff.toml`) and `python main_backend.py test`. Skips runs that only change documents.
 - `.github/workflows/audit.yml`: `pip-audit -r requirements-ci.txt` weekly and when a requirements file changes.
@@ -205,6 +214,24 @@ for debugging and stays Windows-only.
 Check: `docker run --gpus all ...` starts the site from the image, a line renders, and the image holds no
 secret.
 
+**Status (23 Nov 2026): written, not yet built** (Docker's engine does not run on this computer yet: WSL 2 is
+not installed).
+- `docker/base.Dockerfile`: CUDA 12.1.1 + cuDNN 8 runtime (pinned by digest), Python 3.10, `requirements.txt`
+  without deepspeed and TensorRT (CosyVoice only uses them when asked), CosyVoice at commit `074ca6d` with its
+  Matcha-TTS submodule. Two stages, so the compilers stay out of the image.
+- `docker/app.Dockerfile`: the code on the base, by digest; runs as user 10001, the code belongs to root;
+  `history/` (database, accounts, keys, certificate, logs) is the volume `dramatizer-state`.
+- `.dockerignore` is an allow list: only `backend/`, `frontend/client/`, `API calls/`, `main_backend.py`,
+  `requirements.txt` and `docker/`, and even there no `.env*`, keys, databases, audio, weights or logs.
+- `deploy/container.env`: the paths inside the container, no secrets. `API_HOST` is new (default `127.0.0.1`,
+  `0.0.0.0` in the container, published as `-p 127.0.0.1:5005:5005`).
+- CI job `image` (after `tests`, on `main` only): builds the app image on the base named in
+  `deploy/base-image.txt`, fails if `/app` holds a secret or data file, pushes to ghcr.io and writes the digest
+  in the run's summary. Only this job has `packages: write`. It does nothing until that file exists.
+- Left for later: the chatbot (Gemma 4) needs its own Python 3.11 environment with newer torch and transformers,
+  so it is off in the container (`CHATBOT_PYTHON=`); the voice pack (problem 1) and the model store (problem 2)
+  are mounted as the full library and the current model folders until they exist.
+
 ### Step 3: the release record and `/version` (S)
 
 `deploy/release.json` is written by the workflow for each candidate:
@@ -229,6 +256,18 @@ into the image as a build argument), the pack's revision from `/voices/pack.json
 
 Check: the smoke test (step 4) compares the two field by field.
 
+**Status (23 Nov 2026): the code is done and tested; no real release record yet** (that needs the image digest).
+- `backend/release_info.py`: the fields both sides use: commit (`GIT_COMMIT` in the image, git's HEAD on the
+  host), the voice pack's revision from `pack.json`, each model's revision from `models.json` (both `None` until
+  problems 1 and 2 are done), and `config_sha256` over a fixed list of settings that are never secret.
+- `GET /api/v1/version` (no key): those fields, plus the models loaded so far and the start time.
+- `deploy/release.py <name> --image … --base … --env deploy/container.env --voice-pack … --models …` writes
+  `deploy/release.json`. Images must be named by digest. Host paths are read, never written into it.
+- Checked live on a second copy of the API (port 5107): a matching record gave no differences, a wrong pack
+  revision was caught as `voice_pack`, one changed setting as `config_sha256`, and `/version` held no path.
+- Known limit: on the host, `commit` is HEAD even when files are changed and not committed. In the image it is
+  exact.
+
 ### Step 4: health, readiness and the checks that gate a release (M)
 
 - `GET /health`: is the process alive? It stays as it is today and only says `ok`.
@@ -248,12 +287,25 @@ Check: the smoke test (step 4) compares the two field by field.
 - **The blocked release (required evidence):** release a candidate whose `release.json` names the wrong voice
   pack revision. Check 2 fails, the script exits 1 and the switch never happens. Save the output.
 
+**Status (23 Nov 2026): the code is done and tested; not yet run against a real candidate.**
+- `GET /api/v1/ready`: 200 only with CosyVoice loaded and the voices read, else 503 and `missing`. The chatbot is
+  reported, not required. `PRELOAD_VOICE_MODEL` (default on) loads CosyVoice at start-up; a failed load is shown.
+- `deploy/smoke.py <address>`: the five checks above. A failed check skips the ones that need it, writes
+  `reports/milestone4/04-checks/<release>.json`, and exits 1. The certificate is checked by fingerprint, and the
+  password is read from a file and never printed.
+- `deploy/test_release.py` (13 tests), including the blocked release (a wrong voice pack revision fails
+  `version` and blocks), a bad render (WER 0.4, or a failed job), an answer with no number, and no password file.
+- Checked live on port 5107: `/ready` answered 503, voice model not loaded, 176 voices read.
+- Still to do: the `smoke-test` account (`python main_backend.py account add smoke-test --name "Smoke test"
+  --role listener`, its password saved to `D:/Dramatizer secrets/smoke-test.txt`), then a real run.
+
 ### Step 5: release and rollback (M)
 
 One GPU cannot hold two full copies. The computer uses about 5 GB with Gemma, and some of Gemma is already
 offloaded to the CPU. So both versions cannot run fully loaded at once. The plan:
 
-1. **A fixed front door.** Caddy (or nginx) listens on 5105, where the playit tunnel points, and forwards to
+1. **A fixed front door.** Caddy (or nginx) listens on 5105, where the playit tunnel and the Cloudflare tunnel
+   (`app.dramatizer.dev`, set up 23 Nov 2026 to 127.0.0.1:5105) point, and forwards to
    whichever version is live: **blue** on 5106 or **green** on 5107. The proxy keeps the **same TLS
    certificate** as today, because clients check its fingerprint (`SHARING.md`). A new certificate would break
    every client.
@@ -288,6 +340,21 @@ on the whole queue, so 20 people × 3 jobs means 60 renders in a row.
 3. Cancel: a job whose owner cancels it, or whose page has stopped asking for it for 2 minutes, is dropped
    before it starts.
 4. A test floods the queue and checks the fast refusals.
+
+**Status (23 Nov 2026): done in the code, tested; not yet on the running site** (needs an API restart).
+- `server.py`: `MAX_QUEUE` (setting, default 12, queued and running together) refuses with `503` and
+  `Retry-After` (seconds until the running job should end, or the oldest queued job expires). The per-person
+  limit (3, `429`) is checked first.
+- `MAX_WAIT_SECONDS` (default 600): a job not started by then becomes `expired` and frees its slot at once.
+- A render or Lab job whose page stopped asking about it for 2 minutes becomes `cancelled` before it starts.
+  Genome searches are exempt: they are started and left to run, and nobody polls them.
+- `DELETE /api/v1/jobs/<id>`: the owner takes a queued job out (someone else's job answers 404; a running one 409,
+  because the GPU finishes what it started). The page shows a Cancel button while a job waits.
+- Each queued job now has `expected_start_s`, from the median time of the last 20 jobs of each kind (a first
+  guess until then), and the page says "number 3 in the queue, about 75 s to go".
+- `backend/api/test_queue.py` (9 tests): 200 refusals after a full queue take well under a second; the 503 carries
+  `Retry-After`; expiry frees a slot; abandoned renders go but searches stay; the worker skips dropped jobs; only
+  the owner can cancel; the wait estimate.
 
 ### Step 7: measure under load (M, GPU)
 

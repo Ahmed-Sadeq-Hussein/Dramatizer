@@ -1,0 +1,48 @@
+# .dockerignore | What `docker build` may see. An ALLOW list: everything is left out, then only the code is let
+# back in, so a new secret or data folder can never slip into an image by being forgotten here.
+# Milestone 4, step 2. CI checks the built image for leaks as well (.github/workflows/ci.yml, job "image").
+
+# 1. Nothing
+*
+
+# 2. The code the server runs, and the files the images are built from
+!backend/
+!frontend/client/
+!API calls/
+!main_backend.py
+!requirements.txt
+!docker/
+
+# 3. Never, even inside the folders above
+**/__pycache__
+**/*.pyc
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.crt
+**/*.p12
+**/*.db
+**/*.db-*
+**/*secret*
+**/*credentials*
+**/*token*.txt
+**/passwords_to_hand_out.txt
+**/test_users.txt
+**/.dramatizer_client.json
+**/*.wav
+**/*.mp3
+**/*.flac
+**/*.ogg
+**/*.m4a
+**/*.aac
+**/*.opus
+**/*.parquet
+**/*.zip
+**/*.tar
+**/*.tar.gz
+**/*.pt
+**/*.pth
+**/*.safetensors
+**/*.onnx
+**/*.log

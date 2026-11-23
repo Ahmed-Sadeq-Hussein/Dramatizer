@@ -43,3 +43,57 @@ jobs:
         run: ruff check .
       - name: Tests
         run: python main_backend.py test
+
+  # Milestone 4, step 2: the app image (docker/app.Dockerfile), only after the tests pass and only on main.
+  # It is built on dramatizer-base, which is built by hand on the GPU computer (it is 8-10 GB) and whose digest
+  # is written in deploy/base-image.txt. Until that file exists this job only says so.
+  image:
+    needs: tests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write           # push to ghcr.io; only this job has it
+    env:
+      IMAGE: ghcr.io/ahmed-sadeq-hussein/dramatizer
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803       # v6.1.0
+        with:
+          persist-credentials: false
+      - name: Which base image
+        id: base
+        run: |
+          if [ ! -s deploy/base-image.txt ]; then
+            echo "No deploy/base-image.txt yet: build and push dramatizer-base first (docker/base.Dockerfile)." >> "$GITHUB_STEP_SUMMARY"
+            echo "ref=" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          ref=$(grep -v '^#' deploy/base-image.txt | head -n1 | tr -d '[:space:]')
+          case "$ref" in *@sha256:*) ;; *) echo "deploy/base-image.txt must name the base by digest (…@sha256:…)"; exit 1;; esac
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+      - name: Make room (the base image is large)
+        if: steps.base.outputs.ref != ''
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+      - name: Log in to ghcr.io
+        if: steps.base.outputs.ref != ''
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Build
+        if: steps.base.outputs.ref != ''
+        run: |
+          docker build -f docker/app.Dockerfile \
+            --build-arg BASE_IMAGE="${{ steps.base.outputs.ref }}" --build-arg GIT_COMMIT="${{ github.sha }}" \
+            -t "$IMAGE:${{ github.sha }}" .
+      - name: No secrets or data in the image
+        if: steps.base.outputs.ref != ''
+        run: |
+          found=$(docker run --rm --entrypoint sh "$IMAGE:${{ github.sha }}" -c \
+            'find /app \( -name ".env*" -o -name "*.pem" -o -name "*.key" -o -name "*.db" -o -name "*.wav" \
+               -o -name "*.parquet" -o -name "*secret*" -o -name "test_users.txt" -o -name "passwords_to_hand_out.txt" \) -print')
+          if [ -n "$found" ]; then echo "Found in the image:"; echo "$found"; exit 1; fi
+          echo "Nothing secret or private in /app."
+      - name: Push, and record the digest
+        if: steps.base.outputs.ref != ''
+        run: |
+          docker push "$IMAGE:${{ github.sha }}"
+          digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE:${{ github.sha }}")
+          echo "Image: \`$digest\`  (base: \`${{ steps.base.outputs.ref }}\`)" >> "$GITHUB_STEP_SUMMARY"

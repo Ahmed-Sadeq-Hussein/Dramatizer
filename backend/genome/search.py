@@ -172,7 +172,9 @@ def save_run(run_dir, run):
 def list_runs(runs_dir=None):
     """Every run, newest first: [(folder, run dict)]. Folders without a readable run.json are skipped."""
     runs = []
-    for path in Path(runs_dir or RUNS_DIR).glob("*/run.json"):
+    # sorted(): glob order is alphabetical on Windows but arbitrary on Linux, and runs started in the same second
+    # tie on "created"; sorting by folder first keeps that tie in the same order everywhere (CI runs on Linux)
+    for path in sorted(Path(runs_dir or RUNS_DIR).glob("*/run.json")):
         try:
             runs.append((path.parent, load_run(path)))
         except (OSError, ValueError):

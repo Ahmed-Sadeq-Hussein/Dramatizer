@@ -97,10 +97,10 @@ class Slots:
         tmp.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
         os.replace(tmp, self.state_file)                     # the front door never reads half a file
 
-    def run(self, slot, image):
+    def run(self, slot, image, env_file):
         a = self.args
         cmd = ["run", "-d", "--name", self.name(slot), "--gpus", "all",
-               "--env-file", str(ROOT / "deploy" / "container.env"),
+               "--env-file", str(env_file),
                "-p", f"127.0.0.1:{self.ports[slot]}:5005",
                "-v", f"{a.volume}:/app/history",
                "-v", f"{a.output}:/output",
@@ -137,8 +137,12 @@ def release(args):
     if exists(candidate["container"]):
         docker("rm", "-f", candidate["container"])
         log.step("removed the slot's old container", container=candidate["container"])
-    slots.run(slot, args.image)
-    log.step("started the candidate", container=candidate["container"])
+    # The candidate keeps the settings it was checked with: a copy of its env file, by release name
+    frozen = slots.state_file.parent / "releases" / f"{args.name}.env"
+    frozen.parent.mkdir(parents=True, exist_ok=True)
+    frozen.write_text(Path(args.env).read_text(encoding="utf-8"), encoding="utf-8")
+    slots.run(slot, args.image, frozen)
+    log.step("started the candidate", container=candidate["container"], env=frozen.name)
 
     smoke = subprocess.run([sys.executable, str(ROOT / "deploy" / "smoke.py"), f"https://127.0.0.1:{candidate['port']}",
                             "--release", args.release, "--fingerprint", args.fingerprint,
@@ -210,6 +214,8 @@ def main(argv=None):
     rel.add_argument("image")
     rel.add_argument("--release", default=str(ROOT / "deploy" / "release.json"))
     rel.add_argument("--name", help="default: the release.json's name")
+    rel.add_argument("--env", default=str(ROOT / "deploy" / "container.env"),
+                     help="the settings to start it with (the same file release.py hashed)")
     sub.add_parser("rollback")
     sub.add_parser("status")
     args = parser.parse_args(argv)

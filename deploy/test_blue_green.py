@@ -66,7 +66,8 @@ class BlueGreenTest(unittest.TestCase):
         return argparse.Namespace(prefix="t", state=str(self.dir / "state.json"), blue_port=5106, green_port=5107,
                                   volume="vol", output="out", models="models", voice_pack="pack", secrets_env="",
                                   fingerprint="f" * 64, password_file="pw", image=f"img:{name}",
-                                  release="release.json", name=name)
+                                  release="release.json", name=name,
+                                  env=str(ROOT / "deploy" / "container.env"))
 
     def state(self):
         return json.loads((self.dir / "state.json").read_text())

@@ -1,0 +1,44 @@
+{
+  "action": "release",
+  "release": "v1",
+  "started": "2026-11-24T16:27:24",
+  "steps": [
+    {
+      "at": "2026-11-24T16:27:25",
+      "seconds": 0.2,
+      "step": "candidate",
+      "slot": "blue",
+      "port": 5106,
+      "container": "staging-blue",
+      "image": "sha256:2c858151e1dc76d2a9f9a85ee3e646b94c24601906e50c2a1705043f8c93d4e6",
+      "image_id": "sha256:2c858151e1dc76d2a9f9a85ee3e646b94c24601906e50c2a1705043f8c93d4e6",
+      "release": "v1",
+      "live_before": null
+    },
+    {
+      "at": "2026-11-24T16:27:26",
+      "seconds": 2.0,
+      "step": "started the candidate",
+      "container": "staging-blue",
+      "env": "v1.env"
+    },
+    {
+      "at": "2026-11-24T16:29:06",
+      "seconds": 101.9,
+      "step": "smoke test",
+      "exit": 1,
+      "output": [
+        "BLOCKED: v1 (written to reports\\milestone4\\04-checks\\v1.json)"
+      ]
+    },
+    {
+      "at": "2026-11-24T16:29:10",
+      "seconds": 106.0,
+      "step": "BLOCKED: stopped the candidate; the front door did not move",
+      "live": null
+    }
+  ],
+  "result": "blocked",
+  "finished": "2026-11-24T16:29:10",
+  "seconds": 106.0
+}

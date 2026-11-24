@@ -1,0 +1,57 @@
+{
+  "action": "release",
+  "release": "v3",
+  "started": "2026-11-24T16:35:24",
+  "steps": [
+    {
+      "at": "2026-11-24T16:35:24",
+      "seconds": 0.2,
+      "step": "candidate",
+      "slot": "green",
+      "port": 5107,
+      "container": "staging-green",
+      "image": "sha256:b093b6d7326d3bfaac100e8dd1aef1e29f008486dbd7f33b476935f25fdb68e2",
+      "image_id": "sha256:b093b6d7326d3bfaac100e8dd1aef1e29f008486dbd7f33b476935f25fdb68e2",
+      "release": "v3",
+      "live_before": "v2"
+    },
+    {
+      "at": "2026-11-24T16:35:24",
+      "seconds": 0.6,
+      "step": "removed the slot's old container",
+      "container": "staging-green"
+    },
+    {
+      "at": "2026-11-24T16:35:26",
+      "seconds": 2.0,
+      "step": "started the candidate",
+      "container": "staging-green",
+      "env": "v3.env"
+    },
+    {
+      "at": "2026-11-24T16:37:25",
+      "seconds": 120.6,
+      "step": "smoke test",
+      "exit": 0,
+      "output": [
+        "ALLOWED: v3 (written to reports\\milestone4\\04-checks\\v3.json)"
+      ]
+    },
+    {
+      "at": "2026-11-24T16:37:25",
+      "seconds": 120.6,
+      "step": "switched the front door",
+      "live": "v3",
+      "port": 5107
+    },
+    {
+      "at": "2026-11-24T16:37:29",
+      "seconds": 124.8,
+      "step": "stopped the old version (kept for a rollback)",
+      "container": "staging-blue"
+    }
+  ],
+  "result": "released",
+  "finished": "2026-11-24T16:37:29",
+  "seconds": 124.8
+}

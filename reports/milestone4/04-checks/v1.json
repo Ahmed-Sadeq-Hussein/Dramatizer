@@ -1,0 +1,49 @@
+{
+  "release": "v1",
+  "address": "https://127.0.0.1:5106",
+  "checked": "2026-11-24T16:29:05",
+  "allowed": false,
+  "checks": [
+    {
+      "check": "ready",
+      "result": "pass",
+      "seconds": 76.2,
+      "detail": {
+        "voice_model": "loaded",
+        "voices": "176 read",
+        "chatbot": "off"
+      }
+    },
+    {
+      "check": "version",
+      "result": "pass",
+      "seconds": 0.0,
+      "detail": {
+        "commit": "885cda7154a3f0637ab337652eb5b6a77e5c670e",
+        "config_sha256": "50c0dac0accd15a9799350e50125c7ae6302501656af906e7d1c7729da201e2d"
+      }
+    },
+    {
+      "check": "login",
+      "result": "pass",
+      "seconds": 0.2,
+      "detail": "smoke-test"
+    },
+    {
+      "check": "render",
+      "result": "pass",
+      "seconds": 22.4,
+      "detail": {
+        "render_seconds": 8.3,
+        "audio_seconds": 5.4,
+        "wer": 0.0
+      }
+    },
+    {
+      "check": "chatbot",
+      "result": "FAIL",
+      "seconds": 0.1,
+      "detail": "SystemExit: POST assistant/ask: 500 Something went wrong on the server; it is in the server's log."
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "release": "v3-wrong-pack",
+  "address": "https://127.0.0.1:5107",
+  "checked": "2026-11-24T16:35:11",
+  "allowed": false,
+  "checks": [
+    {
+      "check": "ready",
+      "result": "pass",
+      "seconds": 72.6,
+      "detail": {
+        "voice_model": "loaded",
+        "voices": "176 read",
+        "chatbot": "off"
+      }
+    },
+    {
+      "check": "version",
+      "result": "FAIL",
+      "seconds": 0.1,
+      "detail": {
+        "voice_pack": {
+          "release.json": {
+            "revision": "0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c",
+            "manifest_sha256": "12613d50116f89a19d859a5e45680f204da11b8bcfd9217b36eddbc68bfac61e"
+          },
+          "running": {
+            "revision": "46a182c41bc13df2754560273a9224d53b6f8e26",
+            "manifest_sha256": "12613d50116f89a19d859a5e45680f204da11b8bcfd9217b36eddbc68bfac61e"
+          }
+        }
+      }
+    },
+    {
+      "check": "login",
+      "result": "pass",
+      "seconds": 0.2,
+      "detail": "smoke-test"
+    },
+    {
+      "check": "render",
+      "result": "pass",
+      "seconds": 114.6,
+      "detail": {
+        "render_seconds": 100.7,
+        "audio_seconds": 5.4,
+        "wer": 0.0
+      }
+    },
+    {
+      "check": "chatbot",
+      "result": "pass",
+      "seconds": 0.1,
+      "detail": {
+        "source": "records",
+        "answer_seconds": 0.1,
+        "has_a_number": true
+      }
+    }
+  ]
+}

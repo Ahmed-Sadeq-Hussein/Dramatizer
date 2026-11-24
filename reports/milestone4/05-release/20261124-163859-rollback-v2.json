@@ -1,0 +1,42 @@
+{
+  "action": "rollback",
+  "release": "v2",
+  "started": "2026-11-24T16:37:35",
+  "steps": [
+    {
+      "at": "2026-11-24T16:37:35",
+      "seconds": 0.2,
+      "step": "rolling back",
+      "from_release": "v3",
+      "to_release": "v2"
+    },
+    {
+      "at": "2026-11-24T16:37:35",
+      "seconds": 0.7,
+      "step": "started the previous version",
+      "container": "staging-blue"
+    },
+    {
+      "at": "2026-11-24T16:38:54",
+      "seconds": 79.6,
+      "step": "ready",
+      "port": 5106
+    },
+    {
+      "at": "2026-11-24T16:38:54",
+      "seconds": 79.6,
+      "step": "switched the front door",
+      "live": "v2",
+      "port": 5106
+    },
+    {
+      "at": "2026-11-24T16:38:59",
+      "seconds": 83.7,
+      "step": "stopped the rolled-back version",
+      "container": "staging-green"
+    }
+  ],
+  "result": "rolled back",
+  "finished": "2026-11-24T16:38:59",
+  "seconds": 83.7
+}

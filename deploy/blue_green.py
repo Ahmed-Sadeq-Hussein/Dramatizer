@@ -99,7 +99,7 @@ class Slots:
 
     def run(self, slot, image, env_file):
         a = self.args
-        cmd = ["run", "-d", "--name", self.name(slot), "--gpus", "all",
+        cmd = ["run", "-d", "--init", "--name", self.name(slot), "--gpus", "all",   # --init: stop reaches the server
                "--env-file", str(env_file),
                "-p", f"127.0.0.1:{self.ports[slot]}:5005",
                "-v", f"{a.volume}:/app/history",
@@ -107,7 +107,7 @@ class Slots:
                "-v", f"{a.models}:/models:ro",
                "-v", f"{a.voice_pack}:/voices:ro"]
         if a.secrets_env and Path(a.secrets_env).is_file():
-            cmd[6:6] = ["--env-file", a.secrets_env]
+            cmd[7:7] = ["--env-file", a.secrets_env]
         docker(*cmd, image)
 
     def wait_ready(self, port):

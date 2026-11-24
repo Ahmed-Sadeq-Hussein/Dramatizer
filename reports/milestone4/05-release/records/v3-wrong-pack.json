@@ -1,0 +1,42 @@
+{
+  "release": "v3-wrong-pack",
+  "commit": "425743a55a8ea5866069ea6b87b5d260b37589cd",
+  "image": "sha256:b093b6d7326d3bfaac100e8dd1aef1e29f008486dbd7f33b476935f25fdb68e2",
+  "base_image": "sha256:471f3bf7ab1e55e4a355085dc7cd11b0bfd6047c15f3e961b34389e506851120",
+  "voice_pack": {
+    "revision": "0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c",
+    "manifest_sha256": "12613d50116f89a19d859a5e45680f204da11b8bcfd9217b36eddbc68bfac61e"
+  },
+  "models": {
+    "Fun-CosyVoice3-0.5B": {
+      "repo": "FunAudioLLM/Fun-CosyVoice3-0.5B-2512",
+      "revision": "29e01c4e8d000f4bcd70751be16fa94bf3d85a18"
+    },
+    "Qwen3-4B": {
+      "repo": "Qwen/Qwen3-4B",
+      "revision": "1cfa9a7208912126459214e8b04321603b3df60c"
+    },
+    "all-MiniLM-L6-v2": {
+      "repo": "sentence-transformers/all-MiniLM-L6-v2",
+      "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+    },
+    "gemma-4-E4B-it": {
+      "repo": "google/gemma-4-E4B-it",
+      "revision": "ee0ef6023621cff504d758262d4e04895a5af4a2"
+    },
+    "squim-objective": {
+      "repo": "https://download.pytorch.org/torchaudio/models/squim_objective_dns2020.pth",
+      "revision": "2c54586fea83fb5eb5394d710038ee89f55cab7011a5bf730bebed4c8777e828"
+    },
+    "wetext": {
+      "repo": "pengzhendong/wetext",
+      "revision": "be8e3ae7260f991239bc34c284ffa6bfba0839e59e9dc6b05e4e213056b91f09"
+    },
+    "whisper-base": {
+      "repo": "https://openaipublic.azureedge.net/main/whisper/models/ed3a0b6b1c0edf879ad9b11b1af5a0e6ab5db9205f891f668f8b0e6c6326e34e/base.pt",
+      "revision": "ed3a0b6b1c0edf879ad9b11b1af5a0e6ab5db9205f891f668f8b0e6c6326e34e"
+    }
+  },
+  "config_sha256": "01e71379d3663cf876991f270c8e58f3883cb5de7ba9063ce0ed03217c0b23fd",
+  "made": "2026-11-24 16:31:57"
+}

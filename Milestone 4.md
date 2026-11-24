@@ -380,6 +380,17 @@ Check: the smoke test (step 4) compares the two field by field.
 - Still to do: the `smoke-test` account (`python main_backend.py account add smoke-test --name "Smoke test"
   --role listener`, its password saved to `D:/Dramatizer secrets/smoke-test.txt`), then a real run.
 
+**Status (24 Nov 2026): run against real containers.** Staging account `smoke-test` (password only in
+`D:/Dramatizer secrets/staging/`). Four candidates, results in `reports/milestone4/04-checks/`:
+- **v1 blocked by a real bug:** on a fresh site with no ratings yet, `/assistant/ask` answered 500
+  (`rag/corpus.build` opened `who_rated_what.csv`, which did not exist). Fixed in 72027de, with a test.
+- **v3-wrong-pack blocked:** its record named voice pack revision `0f1e2d3…`; the container loaded `46a182c…`, so
+  `version` failed (the required blocked release).
+- v2 and v3 passed all five checks: ready in about 75 s, render WER 0.000, the chatbot (off in the container)
+  answered from the records.
+- `smoke.py` now reads the password file as `account add --password-file` writes it (`smoke-test<TAB>password`).
+- `release.py` accepts a local image ID (`sha256:…`) until the images are pushed.
+
 ### Step 5: release and rollback (M)
 
 One GPU cannot hold two full copies. The computer uses about 5 GB with Gemma, and some of Gemma is already
@@ -410,12 +421,27 @@ offloaded to the CPU. So both versions cannot run fully loaded at once. The plan
 
 Check: one release and one rollback done and logged, each with times, in `reports/milestone4/05-release/`.
 
+**Status (24 Nov 2026): one release, one blocked release and one rollback done, on a staging pair.** Log and
+times in `reports/milestone4/05-release/` (README there).
+- `deploy/front_door.py`: a raw TCP forwarder, so TLS passes through and clients keep the API's certificate (both
+  slots share one state volume, so one certificate). It reads the live port from a state file on every new
+  connection: a switch needs no restart. Used instead of Caddy, which would have to hold the key.
+- `deploy/blue_green.py release|rollback|status` (8 tests): starts the candidate in the idle slot with a frozen copy
+  of its env file, runs `smoke.py`, switches only on a pass, stops (keeps) the old one. `deploy/staging.ps1` runs
+  it with the staging pair's settings (volume `dramatizer-state-staging`, ports 5106/5107, front door 5108).
+- Times: a release about 2 minutes, a rollback 80 s (cold start). With two copies on the GPU a smoke render took
+  101 s instead of 7 s. Containers now run with `--init` (the server ignored `docker stop` as PID 1).
+- Correction to the plan above: the job queue is in each server's memory, not the database, so a job still waiting
+  in the old version at the switch is lost. Switch when the queue is empty.
+- Not yet done: the live site still runs outside Docker on port 5005. Moving it behind the front door (port 5105,
+  where the tunnel points) needs the database moved into the volume `dramatizer-state` first.
+
 ### Step 6: limits under load (S)
 
 Today a person can have 3 jobs waiting (429 after that), and the chatbot gives up after 90 s. There is no limit
 on the whole queue, so 20 people × 3 jobs means 60 renders in a row.
 
-1. `MAX_QUEUE = 12` jobs in all. When it is full, refuse at once with `503` and `Retry-After`, and the page says
+1. `MAX_QUEUE = 12` jobs in all (now 4, from step 7). When it is full, refuse at once with `503` and `Retry-After`, and the page says
    how long the wait is. 12 is a first guess; step 7 measures the real number.
 2. `MAX_WAIT = 10 min`: a job not started by then is dropped with a clear message, and its slot is freed.
 3. Cancel: a job whose owner cancels it, or whose page has stopped asking for it for 2 minutes, is dropped

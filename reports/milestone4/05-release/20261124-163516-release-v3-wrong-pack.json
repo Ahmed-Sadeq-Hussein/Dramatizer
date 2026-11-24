@@ -1,0 +1,44 @@
+{
+  "action": "release",
+  "release": "v3-wrong-pack",
+  "started": "2026-11-24T16:32:02",
+  "steps": [
+    {
+      "at": "2026-11-24T16:32:02",
+      "seconds": 0.2,
+      "step": "candidate",
+      "slot": "green",
+      "port": 5107,
+      "container": "staging-green",
+      "image": "sha256:b093b6d7326d3bfaac100e8dd1aef1e29f008486dbd7f33b476935f25fdb68e2",
+      "image_id": "sha256:b093b6d7326d3bfaac100e8dd1aef1e29f008486dbd7f33b476935f25fdb68e2",
+      "release": "v3-wrong-pack",
+      "live_before": "v2"
+    },
+    {
+      "at": "2026-11-24T16:32:03",
+      "seconds": 1.1,
+      "step": "started the candidate",
+      "container": "staging-green",
+      "env": "v3-wrong-pack.env"
+    },
+    {
+      "at": "2026-11-24T16:35:12",
+      "seconds": 189.8,
+      "step": "smoke test",
+      "exit": 1,
+      "output": [
+        "BLOCKED: v3-wrong-pack (written to reports\\milestone4\\04-checks\\v3-wrong-pack.json)"
+      ]
+    },
+    {
+      "at": "2026-11-24T16:35:16",
+      "seconds": 193.9,
+      "step": "BLOCKED: stopped the candidate; the front door did not move",
+      "live": "v2"
+    }
+  ],
+  "result": "blocked",
+  "finished": "2026-11-24T16:35:16",
+  "seconds": 193.9
+}

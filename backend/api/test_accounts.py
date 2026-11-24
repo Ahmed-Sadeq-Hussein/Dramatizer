@@ -502,7 +502,12 @@ class Api(Temporary):
             return {"Authorization": "Bearer " + self.client.post("/api/v1/login", json={
                 "username": name, "password": password}).get_json()["token"]}
 
-        with mock.patch.dict(os.environ, {"VOICES_DIR": str(voices), "CUSTOM_VOICES": "", "UPLOADED_VOICES_DIR": ""}):
+        from backend.voice_data import uploaded_voices
+
+        # The words-match-the-recording check has its own tests (test_uploaded_voices.py); a sine tone has no words
+        with mock.patch.dict(os.environ, {"VOICES_DIR": str(voices), "CUSTOM_VOICES": "", "UPLOADED_VOICES_DIR": ""}), \
+                mock.patch.object(uploaded_voices, "check_script", lambda mono, rate, script: 0.05), \
+                mock.patch.dict(self.server.PER_MINUTE, {"upload": 1000}):
             julius, ana, admin = auth("julius", self.password), auth("ana", other_password), auth("rama", admin_password)
             upload = {"name": "Calm", "script": "I am reading this calmly.", "filename": "me.wav",
                       "audio": recording(4), "consent": True}

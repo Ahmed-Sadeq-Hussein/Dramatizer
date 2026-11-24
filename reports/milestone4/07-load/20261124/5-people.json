@@ -1,0 +1,1290 @@
+{
+ "summary": {
+  "people": 5,
+  "minutes": 10,
+  "renders": {
+   "asked": 41,
+   "done": 41,
+   "per_minute": 4.1,
+   "total_p50": 84.32,
+   "total_p95": 95.09,
+   "wait_p50": 65.94,
+   "wait_p95": 78.79,
+   "work_p50": 17.3,
+   "work_p95": 22.3,
+   "refused_429": 0,
+   "refused_503": 0,
+   "timeouts": 0,
+   "expired": 0,
+   "failed": 0,
+   "deepest_queue": 4
+  },
+  "questions": {
+   "asked": 25,
+   "answered": 25,
+   "p50": 90.09,
+   "p95": 90.15,
+   "refused_429": 0,
+   "timeouts": 0,
+   "sources": {
+    "model": 2,
+    "records": 23
+   }
+  },
+  "logins_failed": 0,
+  "gpu": {
+   "memory_mb_max": 9669.0,
+   "busy_percent_mean": 35.6
+  }
+ },
+ "events": [
+  {
+   "person": 2,
+   "kind": "render",
+   "at": 1795519148.4697454,
+   "status": "done",
+   "total": 9.4,
+   "work": 8.4,
+   "wait": 1.0,
+   "place": 1,
+   "error": null
+  },
+  {
+   "person": 4,
+   "kind": "render",
+   "at": 1795519149.8391953,
+   "status": "done",
+   "total": 15.75,
+   "work": 7.9,
+   "wait": 7.85,
+   "place": 1,
+   "error": null
+  },
+  {
+   "person": 3,
+   "kind": "render",
+   "at": 1795519152.8882065,
+   "status": "done",
+   "total": 23.03,
+   "work": 10.2,
+   "wait": 12.83,
+   "place": 2,
+   "error": null
+  },
+  {
+   "person": 5,
+   "kind": "render",
+   "at": 1795519158.247172,
+   "status": "done",
+   "total": 20.98,
+   "work": 4.2,
+   "wait": 16.78,
+   "place": 2,
+   "error": null
+  },
+  {
+   "person": 1,
+   "kind": "render",
+   "at": 1795519163.4948046,
+   "status": "done",
+   "total": 25.12,
+   "work": 8.9,
+   "wait": 16.22,
+   "place": 3,
+   "error": null
+  },
+  {
+   "person": 2,
+   "kind": "render",
+   "at": 1795519180.9148433,
+   "status": "done",
+   "total": 14.55,
+   "work": 6.5,
+   "wait": 8.05,
+   "place": 1,
+   "error": null
+  },
+  {
+   "person": 3,
+   "kind": "render",
+   "at": 1795519183.863027,
+   "status": "done",
+   "total": 36.38,
+   "work": 24.7,
+   "wait": 11.68,
+   "place": 2,
+   "error": null
+  },
+  {
+   "person": 4,
+   "kind": "render",
+   "at": 1795519188.439446,
+   "status": "done",
+   "total": 48.88,
+   "work": 17.0,
+   "wait": 31.88,
+   "place": 2,
+   "error": null
+  },
+  {
+   "person": 5,
+   "kind": "question",
+   "at": 1795519196.9536536,
+   "status": "done",
+   "total": 40.87,
+   "source": "model"
+  },
+  {
+   "person": 5,
+   "kind": "render",
+   "at": 1795519188.767058,
+   "status": "done",
+   "total": 67.46,
+   "work": 19.5,
+   "wait": 47.96,
+   "place": 3,
+   "error": null
+  },
+  {
+   "person": 1,
+   "kind": "render",
+   "at": 1795519204.1572819,
+   "status": "done",
+   "total": 68.55,
+   "work": 16.5,
+   "wait": 52.05,
+   "place": 3,
+   "error": null
+  },
+  {
+   "person": 4,
+   "kind": "question",
+   "at": 1795519199.2188709,
+   "status": "done",
+   "total": 76.02,
+   "source": "model"
+  },
+  {
+   "person": 2,
+   "kind": "render",
+   "at": 1795519230.4388044,
+   "status": "done",
+   "total": 57.05,
+   "work": 14.8,
+   "wait": 42.25,
+   "place": 3,
+   "error": null
+  },
+  {
+   "person": 3,
+   "kind": "question",
+   "at": 1795519213.8672416,
+   "status": "done",
+   "total": 90.1,
+   "source": "records"
+  },
+  {
+   "person": 2,
+   "kind": "question",
+   "at": 1795519214.4165494,
+   "status": "done",
+   "total": 90.04,
+   "source": "records"
+  },
+  {
+   "person": 3,
+   "kind": "render",
+   "at": 1795519230.963243,
+   "status": "done",
+   "total": 76.49,
+   "work": 20.1,
+   "wait": 56.39,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 4,
+   "kind": "render",
+   "at": 1795519247.238435,
+   "status": "done",
+   "total": 75.35,
+   "work": 14.8,
+   "wait": 60.55,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 5,
+   "kind": "render",
+   "at": 1795519256.2226136,
+   "status": "done",
+   "total": 78.8,
+   "work": 12.3,
+   "wait": 66.5,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 1,
+   "kind": "question",
+   "at": 1795519251.2900727,
+   "status": "done",
+   "total": 90.08,
+   "source": "records"
+  },
+  {
+   "person": 1,
+   "kind": "render",
+   "at": 1795519272.7054853,
+   "status": "done",
+   "total": 79.71,
+   "work": 17.7,
+   "wait": 62.01,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 2,
+   "kind": "render",
+   "at": 1795519287.4872441,
+   "status": "done",
+   "total": 84.32,
+   "work": 19.0,
+   "wait": 65.32,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 3,
+   "kind": "render",
+   "at": 1795519307.453783,
+   "status": "done",
+   "total": 79.53,
+   "work": 15.2,
+   "wait": 64.33,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 4,
+   "kind": "render",
+   "at": 1795519322.592839,
+   "status": "done",
+   "total": 79.49,
+   "work": 15.1,
+   "wait": 64.39,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 5,
+   "kind": "question",
+   "at": 1795519316.9525554,
+   "status": "done",
+   "total": 90.09,
+   "source": "records"
+  },
+  {
+   "person": 4,
+   "kind": "question",
+   "at": 1795519319.227586,
+   "status": "done",
+   "total": 90.05,
+   "source": "records"
+  },
+  {
+   "person": 5,
+   "kind": "render",
+   "at": 1795519335.0188317,
+   "status": "done",
+   "total": 83.11,
+   "work": 16.3,
+   "wait": 66.81,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 3,
+   "kind": "question",
+   "at": 1795519333.8506994,
+   "status": "done",
+   "total": 90.14,
+   "source": "records"
+  },
+  {
+   "person": 2,
+   "kind": "question",
+   "at": 1795519334.4208298,
+   "status": "done",
+   "total": 90.14,
+   "source": "records"
+  },
+  {
+   "person": 1,
+   "kind": "render",
+   "at": 1795519352.4191883,
+   "status": "done",
+   "total": 80.8,
+   "work": 15.1,
+   "wait": 65.7,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 2,
+   "kind": "render",
+   "at": 1795519371.8122206,
+   "status": "done",
+   "total": 80.81,
+   "work": 19.2,
+   "wait": 61.61,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 1,
+   "kind": "question",
+   "at": 1795519371.2815552,
+   "status": "done",
+   "total": 90.13,
+   "source": "records"
+  },
+  {
+   "person": 3,
+   "kind": "render",
+   "at": 1795519386.98594,
+   "status": "done",
+   "total": 84.74,
+   "work": 18.8,
+   "wait": 65.94,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 4,
+   "kind": "render",
+   "at": 1795519402.0790603,
+   "status": "done",
+   "total": 87.08,
+   "work": 17.6,
+   "wait": 69.48,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 5,
+   "kind": "render",
+   "at": 1795519418.1309056,
+   "status": "done",
+   "total": 90.06,
+   "work": 19.8,
+   "wait": 70.26,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 5,
+   "kind": "question",
+   "at": 1795519436.9641328,
+   "status": "done",
+   "total": 90.09,
+   "source": "records"
+  },
+  {
+   "person": 1,
+   "kind": "render",
+   "at": 1795519433.2178462,
+   "status": "done",
+   "total": 95.09,
+   "work": 19.3,
+   "wait": 75.79,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 4,
+   "kind": "question",
+   "at": 1795519439.2161224,
+   "status": "done",
+   "total": 90.03,
+   "source": "records"
+  },
+  {
+   "person": 2,
+   "kind": "render",
+   "at": 1795519452.6189222,
+   "status": "done",
+   "total": 89.74,
+   "work": 14.9,
+   "wait": 74.84,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 3,
+   "kind": "question",
+   "at": 1795519453.852131,
+   "status": "done",
+   "total": 90.08,
+   "source": "records"
+  },
+  {
+   "person": 2,
+   "kind": "question",
+   "at": 1795519454.4131851,
+   "status": "done",
+   "total": 90.14,
+   "source": "records"
+  },
+  {
+   "person": 3,
+   "kind": "render",
+   "at": 1795519471.724339,
+   "status": "done",
+   "total": 90.21,
+   "work": 18.7,
+   "wait": 71.51,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 4,
+   "kind": "render",
+   "at": 1795519489.1612341,
+   "status": "done",
+   "total": 90.61,
+   "work": 18.4,
+   "wait": 72.21,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 1,
+   "kind": "question",
+   "at": 1795519491.2854316,
+   "status": "done",
+   "total": 90.1,
+   "source": "records"
+  },
+  {
+   "person": 5,
+   "kind": "render",
+   "at": 1795519508.1893685,
+   "status": "done",
+   "total": 90.42,
+   "work": 18.7,
+   "wait": 71.72,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 1,
+   "kind": "render",
+   "at": 1795519528.3076153,
+   "status": "done",
+   "total": 87.39,
+   "work": 17.1,
+   "wait": 70.29,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 2,
+   "kind": "render",
+   "at": 1795519542.3568754,
+   "status": "done",
+   "total": 93.78,
+   "work": 20.6,
+   "wait": 73.18,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 5,
+   "kind": "question",
+   "at": 1795519556.9537115,
+   "status": "done",
+   "total": 90.08,
+   "source": "records"
+  },
+  {
+   "person": 4,
+   "kind": "question",
+   "at": 1795519559.213679,
+   "status": "done",
+   "total": 90.07,
+   "source": "records"
+  },
+  {
+   "person": 3,
+   "kind": "render",
+   "at": 1795519561.9295938,
+   "status": "done",
+   "total": 97.83,
+   "work": 23.7,
+   "wait": 74.13,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 3,
+   "kind": "question",
+   "at": 1795519573.8554287,
+   "status": "done",
+   "total": 90.1,
+   "source": "records"
+  },
+  {
+   "person": 2,
+   "kind": "question",
+   "at": 1795519574.4178665,
+   "status": "done",
+   "total": 90.09,
+   "source": "records"
+  },
+  {
+   "person": 4,
+   "kind": "render",
+   "at": 1795519579.7729526,
+   "status": "done",
+   "total": 97.18,
+   "work": 17.3,
+   "wait": 79.88,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 5,
+   "kind": "render",
+   "at": 1795519598.6085572,
+   "status": "done",
+   "total": 92.39,
+   "work": 13.2,
+   "wait": 79.19,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 1,
+   "kind": "question",
+   "at": 1795519611.2942579,
+   "status": "done",
+   "total": 90.04,
+   "source": "records"
+  },
+  {
+   "person": 1,
+   "kind": "render",
+   "at": 1795519615.6949084,
+   "status": "done",
+   "total": 94.16,
+   "work": 19.4,
+   "wait": 74.76,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 2,
+   "kind": "render",
+   "at": 1795519636.1409554,
+   "status": "done",
+   "total": 88.89,
+   "work": 15.4,
+   "wait": 73.49,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 3,
+   "kind": "render",
+   "at": 1795519659.7607071,
+   "status": "done",
+   "total": 88.09,
+   "work": 22.3,
+   "wait": 65.79,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 4,
+   "kind": "render",
+   "at": 1795519676.953923,
+   "status": "done",
+   "total": 88.26,
+   "work": 17.4,
+   "wait": 70.86,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 5,
+   "kind": "question",
+   "at": 1795519676.9702232,
+   "status": "done",
+   "total": 90.16,
+   "source": "records"
+  },
+  {
+   "person": 4,
+   "kind": "question",
+   "at": 1795519679.2186782,
+   "status": "done",
+   "total": 90.09,
+   "source": "records"
+  },
+  {
+   "person": 3,
+   "kind": "question",
+   "at": 1795519693.8648896,
+   "status": "done",
+   "total": 90.13,
+   "source": "records"
+  },
+  {
+   "person": 5,
+   "kind": "render",
+   "at": 1795519690.9979062,
+   "status": "done",
+   "total": 93.02,
+   "work": 19.4,
+   "wait": 73.62,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 2,
+   "kind": "question",
+   "at": 1795519694.4237666,
+   "status": "done",
+   "total": 90.08,
+   "source": "records"
+  },
+  {
+   "person": 1,
+   "kind": "render",
+   "at": 1795519709.8587723,
+   "status": "done",
+   "total": 94.11,
+   "work": 19.3,
+   "wait": 74.81,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 2,
+   "kind": "render",
+   "at": 1795519725.033323,
+   "status": "done",
+   "total": 93.49,
+   "work": 14.7,
+   "wait": 78.79,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 1,
+   "kind": "question",
+   "at": 1795519731.288205,
+   "status": "done",
+   "total": 90.15,
+   "source": "records"
+  }
+ ],
+ "gpu": [
+  {
+   "at": 1795519140.6020741,
+   "memory_mb": 9419.0,
+   "busy_percent": 13.0
+  },
+  {
+   "at": 1795519145.6626244,
+   "memory_mb": 9304.0,
+   "busy_percent": 19.0
+  },
+  {
+   "at": 1795519150.718142,
+   "memory_mb": 9654.0,
+   "busy_percent": 33.0
+  },
+  {
+   "at": 1795519155.774334,
+   "memory_mb": 9660.0,
+   "busy_percent": 21.0
+  },
+  {
+   "at": 1795519160.8240805,
+   "memory_mb": 9493.0,
+   "busy_percent": 32.0
+  },
+  {
+   "at": 1795519165.8747966,
+   "memory_mb": 9236.0,
+   "busy_percent": 7.0
+  },
+  {
+   "at": 1795519170.9290226,
+   "memory_mb": 9624.0,
+   "busy_percent": 36.0
+  },
+  {
+   "at": 1795519175.9848156,
+   "memory_mb": 9004.0,
+   "busy_percent": 2.0
+  },
+  {
+   "at": 1795519181.0387125,
+   "memory_mb": 9316.0,
+   "busy_percent": 8.0
+  },
+  {
+   "at": 1795519186.1002095,
+   "memory_mb": 9410.0,
+   "busy_percent": 33.0
+  },
+  {
+   "at": 1795519191.1486506,
+   "memory_mb": 9067.0,
+   "busy_percent": 39.0
+  },
+  {
+   "at": 1795519196.1935852,
+   "memory_mb": 9004.0,
+   "busy_percent": 15.0
+  },
+  {
+   "at": 1795519201.251088,
+   "memory_mb": 9599.0,
+   "busy_percent": 55.0
+  },
+  {
+   "at": 1795519206.3333492,
+   "memory_mb": 9603.0,
+   "busy_percent": 53.0
+  },
+  {
+   "at": 1795519211.4087045,
+   "memory_mb": 9612.0,
+   "busy_percent": 58.0
+  },
+  {
+   "at": 1795519216.470121,
+   "memory_mb": 9669.0,
+   "busy_percent": 84.0
+  },
+  {
+   "at": 1795519221.5339997,
+   "memory_mb": 9624.0,
+   "busy_percent": 18.0
+  },
+  {
+   "at": 1795519226.59669,
+   "memory_mb": 9586.0,
+   "busy_percent": 22.0
+  },
+  {
+   "at": 1795519231.653887,
+   "memory_mb": 9511.0,
+   "busy_percent": 33.0
+  },
+  {
+   "at": 1795519236.7396903,
+   "memory_mb": 9223.0,
+   "busy_percent": 2.0
+  },
+  {
+   "at": 1795519241.7970312,
+   "memory_mb": 9435.0,
+   "busy_percent": 19.0
+  },
+  {
+   "at": 1795519246.9672334,
+   "memory_mb": 9437.0,
+   "busy_percent": 23.0
+  },
+  {
+   "at": 1795519252.021588,
+   "memory_mb": 9486.0,
+   "busy_percent": 49.0
+  },
+  {
+   "at": 1795519257.0712504,
+   "memory_mb": 9381.0,
+   "busy_percent": 33.0
+  },
+  {
+   "at": 1795519262.1242125,
+   "memory_mb": 9491.0,
+   "busy_percent": 21.0
+  },
+  {
+   "at": 1795519267.1863086,
+   "memory_mb": 9537.0,
+   "busy_percent": 23.0
+  },
+  {
+   "at": 1795519272.2480202,
+   "memory_mb": 8971.0,
+   "busy_percent": 99.0
+  },
+  {
+   "at": 1795519277.3090196,
+   "memory_mb": 9316.0,
+   "busy_percent": 22.0
+  },
+  {
+   "at": 1795519282.591717,
+   "memory_mb": 9367.0,
+   "busy_percent": 23.0
+  },
+  {
+   "at": 1795519287.6516304,
+   "memory_mb": 9329.0,
+   "busy_percent": 25.0
+  },
+  {
+   "at": 1795519292.7709773,
+   "memory_mb": 9379.0,
+   "busy_percent": 20.0
+  },
+  {
+   "at": 1795519297.824003,
+   "memory_mb": 9421.0,
+   "busy_percent": 55.0
+  },
+  {
+   "at": 1795519302.8776116,
+   "memory_mb": 9390.0,
+   "busy_percent": 57.0
+  },
+  {
+   "at": 1795519307.9279785,
+   "memory_mb": 9347.0,
+   "busy_percent": 56.0
+  },
+  {
+   "at": 1795519312.9903493,
+   "memory_mb": 9475.0,
+   "busy_percent": 14.0
+  },
+  {
+   "at": 1795519318.0547104,
+   "memory_mb": 9421.0,
+   "busy_percent": 25.0
+  },
+  {
+   "at": 1795519323.1019607,
+   "memory_mb": 9387.0,
+   "busy_percent": 26.0
+  },
+  {
+   "at": 1795519328.1477776,
+   "memory_mb": 9447.0,
+   "busy_percent": 13.0
+  },
+  {
+   "at": 1795519333.1943054,
+   "memory_mb": 9452.0,
+   "busy_percent": 19.0
+  },
+  {
+   "at": 1795519338.2442865,
+   "memory_mb": 9534.0,
+   "busy_percent": 20.0
+  },
+  {
+   "at": 1795519343.3079097,
+   "memory_mb": 9489.0,
+   "busy_percent": 19.0
+  },
+  {
+   "at": 1795519348.532984,
+   "memory_mb": 9493.0,
+   "busy_percent": 16.0
+  },
+  {
+   "at": 1795519353.5799026,
+   "memory_mb": 9395.0,
+   "busy_percent": 35.0
+  },
+  {
+   "at": 1795519358.6303642,
+   "memory_mb": 9423.0,
+   "busy_percent": 47.0
+  },
+  {
+   "at": 1795519363.6919842,
+   "memory_mb": 9423.0,
+   "busy_percent": 32.0
+  },
+  {
+   "at": 1795519368.7475362,
+   "memory_mb": 9423.0,
+   "busy_percent": 69.0
+  },
+  {
+   "at": 1795519373.8062217,
+   "memory_mb": 9473.0,
+   "busy_percent": 20.0
+  },
+  {
+   "at": 1795519378.8509035,
+   "memory_mb": 9373.0,
+   "busy_percent": 22.0
+  },
+  {
+   "at": 1795519383.8951957,
+   "memory_mb": 9425.0,
+   "busy_percent": 20.0
+  },
+  {
+   "at": 1795519388.939581,
+   "memory_mb": 9325.0,
+   "busy_percent": 25.0
+  },
+  {
+   "at": 1795519393.9893632,
+   "memory_mb": 9475.0,
+   "busy_percent": 19.0
+  },
+  {
+   "at": 1795519399.1799233,
+   "memory_mb": 9462.0,
+   "busy_percent": 50.0
+  },
+  {
+   "at": 1795519404.234838,
+   "memory_mb": 9531.0,
+   "busy_percent": 21.0
+  },
+  {
+   "at": 1795519409.2868044,
+   "memory_mb": 9504.0,
+   "busy_percent": 29.0
+  },
+  {
+   "at": 1795519414.339267,
+   "memory_mb": 9508.0,
+   "busy_percent": 22.0
+  },
+  {
+   "at": 1795519419.3938322,
+   "memory_mb": 9471.0,
+   "busy_percent": 23.0
+  },
+  {
+   "at": 1795519424.440608,
+   "memory_mb": 9519.0,
+   "busy_percent": 23.0
+  },
+  {
+   "at": 1795519429.4926813,
+   "memory_mb": 9494.0,
+   "busy_percent": 21.0
+  },
+  {
+   "at": 1795519434.5489976,
+   "memory_mb": 9446.0,
+   "busy_percent": 21.0
+  },
+  {
+   "at": 1795519439.6518326,
+   "memory_mb": 9522.0,
+   "busy_percent": 29.0
+  },
+  {
+   "at": 1795519444.7197638,
+   "memory_mb": 9524.0,
+   "busy_percent": 57.0
+  },
+  {
+   "at": 1795519449.9150288,
+   "memory_mb": 9457.0,
+   "busy_percent": 66.0
+  },
+  {
+   "at": 1795519455.0099916,
+   "memory_mb": 9491.0,
+   "busy_percent": 32.0
+  },
+  {
+   "at": 1795519460.1996713,
+   "memory_mb": 9479.0,
+   "busy_percent": 49.0
+  },
+  {
+   "at": 1795519465.2870932,
+   "memory_mb": 9488.0,
+   "busy_percent": 55.0
+  },
+  {
+   "at": 1795519470.371273,
+   "memory_mb": 9450.0,
+   "busy_percent": 36.0
+  },
+  {
+   "at": 1795519475.4139376,
+   "memory_mb": 9397.0,
+   "busy_percent": 56.0
+  },
+  {
+   "at": 1795519480.4708018,
+   "memory_mb": 9486.0,
+   "busy_percent": 61.0
+  },
+  {
+   "at": 1795519485.521185,
+   "memory_mb": 9416.0,
+   "busy_percent": 28.0
+  },
+  {
+   "at": 1795519490.574411,
+   "memory_mb": 9398.0,
+   "busy_percent": 25.0
+  },
+  {
+   "at": 1795519495.6241152,
+   "memory_mb": 9585.0,
+   "busy_percent": 100.0
+  },
+  {
+   "at": 1795519500.7133577,
+   "memory_mb": 9615.0,
+   "busy_percent": 28.0
+  },
+  {
+   "at": 1795519505.8573074,
+   "memory_mb": 9578.0,
+   "busy_percent": 50.0
+  },
+  {
+   "at": 1795519510.929532,
+   "memory_mb": 9480.0,
+   "busy_percent": 22.0
+  },
+  {
+   "at": 1795519515.9840114,
+   "memory_mb": 9470.0,
+   "busy_percent": 47.0
+  },
+  {
+   "at": 1795519521.03292,
+   "memory_mb": 9476.0,
+   "busy_percent": 22.0
+  },
+  {
+   "at": 1795519526.0867617,
+   "memory_mb": 9518.0,
+   "busy_percent": 69.0
+  },
+  {
+   "at": 1795519531.1540625,
+   "memory_mb": 9496.0,
+   "busy_percent": 16.0
+  },
+  {
+   "at": 1795519536.2228167,
+   "memory_mb": 9483.0,
+   "busy_percent": 20.0
+  },
+  {
+   "at": 1795519541.310838,
+   "memory_mb": 9463.0,
+   "busy_percent": 32.0
+  },
+  {
+   "at": 1795519546.3705325,
+   "memory_mb": 9572.0,
+   "busy_percent": 29.0
+  },
+  {
+   "at": 1795519551.421705,
+   "memory_mb": 9487.0,
+   "busy_percent": 23.0
+  },
+  {
+   "at": 1795519556.486925,
+   "memory_mb": 9508.0,
+   "busy_percent": 98.0
+  },
+  {
+   "at": 1795519561.5426445,
+   "memory_mb": 9233.0,
+   "busy_percent": 3.0
+  },
+  {
+   "at": 1795519566.6050153,
+   "memory_mb": 9426.0,
+   "busy_percent": 21.0
+  },
+  {
+   "at": 1795519571.6593282,
+   "memory_mb": 9474.0,
+   "busy_percent": 25.0
+  },
+  {
+   "at": 1795519576.737968,
+   "memory_mb": 9425.0,
+   "busy_percent": 20.0
+  },
+  {
+   "at": 1795519581.964944,
+   "memory_mb": 9337.0,
+   "busy_percent": 2.0
+  },
+  {
+   "at": 1795519587.018045,
+   "memory_mb": 9468.0,
+   "busy_percent": 57.0
+  },
+  {
+   "at": 1795519592.0742388,
+   "memory_mb": 9469.0,
+   "busy_percent": 26.0
+  },
+  {
+   "at": 1795519597.125693,
+   "memory_mb": 9454.0,
+   "busy_percent": 18.0
+  },
+  {
+   "at": 1795519602.170453,
+   "memory_mb": 9433.0,
+   "busy_percent": 18.0
+  },
+  {
+   "at": 1795519607.3743,
+   "memory_mb": 9306.0,
+   "busy_percent": 18.0
+  },
+  {
+   "at": 1795519612.4513922,
+   "memory_mb": 9548.0,
+   "busy_percent": 53.0
+  },
+  {
+   "at": 1795519617.5225415,
+   "memory_mb": 9619.0,
+   "busy_percent": 60.0
+  },
+  {
+   "at": 1795519622.5847044,
+   "memory_mb": 9497.0,
+   "busy_percent": 55.0
+  },
+  {
+   "at": 1795519627.6376522,
+   "memory_mb": 9396.0,
+   "busy_percent": 33.0
+  },
+  {
+   "at": 1795519632.709578,
+   "memory_mb": 9517.0,
+   "busy_percent": 100.0
+  },
+  {
+   "at": 1795519637.7735267,
+   "memory_mb": 9187.0,
+   "busy_percent": 67.0
+  },
+  {
+   "at": 1795519642.8459427,
+   "memory_mb": 9520.0,
+   "busy_percent": 19.0
+  },
+  {
+   "at": 1795519647.9024372,
+   "memory_mb": 9543.0,
+   "busy_percent": 38.0
+  },
+  {
+   "at": 1795519652.9564257,
+   "memory_mb": 9447.0,
+   "busy_percent": 99.0
+  },
+  {
+   "at": 1795519658.0351398,
+   "memory_mb": 9528.0,
+   "busy_percent": 38.0
+  },
+  {
+   "at": 1795519663.0994346,
+   "memory_mb": 9252.0,
+   "busy_percent": 24.0
+  },
+  {
+   "at": 1795519668.142475,
+   "memory_mb": 9344.0,
+   "busy_percent": 25.0
+  },
+  {
+   "at": 1795519673.18786,
+   "memory_mb": 9411.0,
+   "busy_percent": 29.0
+  },
+  {
+   "at": 1795519678.2555852,
+   "memory_mb": 9488.0,
+   "busy_percent": 21.0
+  },
+  {
+   "at": 1795519683.3537774,
+   "memory_mb": 9441.0,
+   "busy_percent": 16.0
+  },
+  {
+   "at": 1795519688.4123855,
+   "memory_mb": 9646.0,
+   "busy_percent": 14.0
+  },
+  {
+   "at": 1795519693.4664593,
+   "memory_mb": 9512.0,
+   "busy_percent": 100.0
+  },
+  {
+   "at": 1795519698.6384284,
+   "memory_mb": 9347.0,
+   "busy_percent": 28.0
+  },
+  {
+   "at": 1795519703.733593,
+   "memory_mb": 9385.0,
+   "busy_percent": 72.0
+  },
+  {
+   "at": 1795519708.878299,
+   "memory_mb": 9405.0,
+   "busy_percent": 49.0
+  },
+  {
+   "at": 1795519713.9470537,
+   "memory_mb": 9343.0,
+   "busy_percent": 47.0
+  },
+  {
+   "at": 1795519719.004129,
+   "memory_mb": 9332.0,
+   "busy_percent": 22.0
+  },
+  {
+   "at": 1795519724.063114,
+   "memory_mb": 9349.0,
+   "busy_percent": 67.0
+  },
+  {
+   "at": 1795519729.1192105,
+   "memory_mb": 9277.0,
+   "busy_percent": 36.0
+  },
+  {
+   "at": 1795519734.1865888,
+   "memory_mb": 9232.0,
+   "busy_percent": 52.0
+  },
+  {
+   "at": 1795519739.2600455,
+   "memory_mb": 9393.0,
+   "busy_percent": 52.0
+  }
+ ]
+}

@@ -293,7 +293,7 @@ def get_clip(clip):
     script beside it as <clip id>.txt, ready to use as a reference voice. A
     custom voice that is not a wav file is written there the same way.
     """
-    if clip.dataset != "VCTK" and clip.source.suffix.lower() == ".wav":
+    if clip.source.suffix.lower() == ".wav" and clip.row is None:      # a wav file already (also a voice pack's VCTK)
         return clip.source, clip.text
 
     wav = IMPORT_DIR / clip.dataset / clip.speaker / f"{clip.clip_id}.wav"

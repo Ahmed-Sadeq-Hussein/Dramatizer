@@ -1,0 +1,234 @@
+{
+ "summary": {
+  "people": 2,
+  "minutes": 2.0,
+  "renders": {
+   "asked": 5,
+   "done": 5,
+   "per_minute": 2.5,
+   "total_p50": 9.4,
+   "total_p95": 14.61,
+   "wait_p50": 0.5,
+   "wait_p95": 1.0,
+   "work_p50": 8.9,
+   "work_p95": 13.7,
+   "refused_429": 0,
+   "refused_503": 0,
+   "timeouts": 0,
+   "expired": 0,
+   "failed": 0,
+   "deepest_queue": 1
+  },
+  "questions": {
+   "asked": 2,
+   "answered": 2,
+   "p50": 0.03,
+   "p95": 0.04,
+   "refused_429": 0,
+   "timeouts": 0,
+   "sources": {
+    "glossary": 2
+   }
+  },
+  "logins_failed": 0,
+  "gpu": {
+   "memory_mb_max": 9781.0,
+   "busy_percent_mean": 28.3
+  }
+ },
+ "events": [
+  {
+   "person": 2,
+   "kind": "render",
+   "at": 1795518411.7562075,
+   "status": "done",
+   "total": 10.51,
+   "work": 10.1,
+   "wait": 0.41,
+   "place": 1,
+   "error": null
+  },
+  {
+   "person": 1,
+   "kind": "render",
+   "at": 1795518426.7346833,
+   "status": "done",
+   "total": 15.63,
+   "work": 14.6,
+   "wait": 1.03,
+   "place": 1,
+   "error": null
+  },
+  {
+   "person": 2,
+   "kind": "render",
+   "at": 1795518444.2022042,
+   "status": "done",
+   "total": 8.29,
+   "work": 8.0,
+   "wait": 0.29,
+   "place": 1,
+   "error": null
+  },
+  {
+   "person": 1,
+   "kind": "render",
+   "at": 1795518467.3985841,
+   "status": "done",
+   "total": 9.4,
+   "work": 8.9,
+   "wait": 0.5,
+   "place": 1,
+   "error": null
+  },
+  {
+   "person": 2,
+   "kind": "question",
+   "at": 1795518477.7006936,
+   "status": "done",
+   "total": 0.04,
+   "source": "glossary"
+  },
+  {
+   "person": 2,
+   "kind": "render",
+   "at": 1795518493.7141662,
+   "status": "done",
+   "total": 8.36,
+   "work": 7.5,
+   "wait": 0.86,
+   "place": 1,
+   "error": null
+  },
+  {
+   "person": 1,
+   "kind": "question",
+   "at": 1795518514.5326312,
+   "status": "done",
+   "total": 0.02,
+   "source": "glossary"
+  }
+ ],
+ "gpu": [
+  {
+   "at": 1795518403.890493,
+   "memory_mb": 9365.0,
+   "busy_percent": 4.0
+  },
+  {
+   "at": 1795518408.9428866,
+   "memory_mb": 9374.0,
+   "busy_percent": 16.0
+  },
+  {
+   "at": 1795518414.0041504,
+   "memory_mb": 9675.0,
+   "busy_percent": 24.0
+  },
+  {
+   "at": 1795518419.0608664,
+   "memory_mb": 9781.0,
+   "busy_percent": 34.0
+  },
+  {
+   "at": 1795518424.116974,
+   "memory_mb": 9598.0,
+   "busy_percent": 8.0
+  },
+  {
+   "at": 1795518429.1784115,
+   "memory_mb": 9705.0,
+   "busy_percent": 85.0
+  },
+  {
+   "at": 1795518434.2389488,
+   "memory_mb": 9674.0,
+   "busy_percent": 73.0
+  },
+  {
+   "at": 1795518439.2944965,
+   "memory_mb": 9753.0,
+   "busy_percent": 100.0
+  },
+  {
+   "at": 1795518444.3435075,
+   "memory_mb": 9376.0,
+   "busy_percent": 7.0
+  },
+  {
+   "at": 1795518449.3960683,
+   "memory_mb": 9294.0,
+   "busy_percent": 38.0
+  },
+  {
+   "at": 1795518454.4554868,
+   "memory_mb": 9528.0,
+   "busy_percent": 17.0
+  },
+  {
+   "at": 1795518459.5000734,
+   "memory_mb": 9283.0,
+   "busy_percent": 2.0
+  },
+  {
+   "at": 1795518464.5552871,
+   "memory_mb": 9499.0,
+   "busy_percent": 4.0
+  },
+  {
+   "at": 1795518469.611993,
+   "memory_mb": 9378.0,
+   "busy_percent": 17.0
+  },
+  {
+   "at": 1795518474.671431,
+   "memory_mb": 9635.0,
+   "busy_percent": 100.0
+  },
+  {
+   "at": 1795518479.7287977,
+   "memory_mb": 9058.0,
+   "busy_percent": 11.0
+  },
+  {
+   "at": 1795518484.7846746,
+   "memory_mb": 9057.0,
+   "busy_percent": 7.0
+  },
+  {
+   "at": 1795518489.837059,
+   "memory_mb": 9054.0,
+   "busy_percent": 21.0
+  },
+  {
+   "at": 1795518494.8996708,
+   "memory_mb": 9067.0,
+   "busy_percent": 9.0
+  },
+  {
+   "at": 1795518499.9425182,
+   "memory_mb": 9300.0,
+   "busy_percent": 44.0
+  },
+  {
+   "at": 1795518504.9957209,
+   "memory_mb": 9061.0,
+   "busy_percent": 5.0
+  },
+  {
+   "at": 1795518510.0527613,
+   "memory_mb": 9048.0,
+   "busy_percent": 17.0
+  },
+  {
+   "at": 1795518515.1169248,
+   "memory_mb": 9061.0,
+   "busy_percent": 11.0
+  },
+  {
+   "at": 1795518520.1708605,
+   "memory_mb": 9048.0,
+   "busy_percent": 25.0
+  }
+ ]
+}

@@ -1,5 +1,5 @@
 # docker/base.Dockerfile | dramatizer-base: CUDA, Python 3.10, the packages in requirements.txt and CosyVoice's
-# code. About 8-10 GB, so it is built rarely (when requirements.txt or the CosyVoice commit changes), by hand on
+# code. 17.3 GB unpacked (the venv 7.5 GB, CUDA and cuDNN about 8 GB; 44 min to build), so it is built rarely (when requirements.txt or the CosyVoice commit changes), by hand on
 # the GPU computer, and pushed to ghcr.io; the app image (docker/app.Dockerfile) is built on it by its digest.
 #
 #   docker build -f docker/base.Dockerfile -t ghcr.io/ahmed-sadeq-hussein/dramatizer-base:2026-11-23 .

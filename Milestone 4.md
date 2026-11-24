@@ -68,6 +68,25 @@ datasets and openslr.org, see `Voice library.txt`). Today:
 Check: on a computer **without** `D:/Voices library`, the site starts from the pack, lists the 176 voices and
 renders one line.
 
+**Status (24 Nov 2026): done.** Revision **`46a182c41bc13df2754560273a9224d53b6f8e26`** on the private dataset
+`Dramatizer/Serving_Voices`, pulled back into `D:/Dramatizer voice pack/<revision>` and every file checked.
+- `backend/voice_data/voice_pack.py`, command `voice-pack build | check | upload | pull REVISION`. Settings
+  `VOICE_PACK_DIR` (the pack the site reads), `VOICE_PACK_STORE` (default `D:/Dramatizer voice pack`) and
+  `VOICE_PACK_REPO` (default `Dramatizer/Serving_Voices`).
+- Built into `D:/Dramatizer voice pack/build`: 176 voices, 37 minutes, **149 MB** (not 30 MB: the LibriTTS-R clips
+  are about 20 s at 24 kHz). All 176 clips are byte for byte the ones the voice manifest checksummed; 0 test voices.
+- `upload` refuses a public or missing dataset and a pack that fails `check`; the commit hash becomes the
+  `revision` in `pack.json`, which `/version` and `release.json` report. `pull` downloads one revision and checks
+  every file before recording it.
+- `server.library()` reads the pack when `VOICE_PACK_DIR` is set; `get_clip` uses a pack wav as it is (nothing is
+  written to `IMPORT_DIR`); `ratings.reference_path`, `preference` and `search` find a run's reference by clip id
+  in the pack (`voice_pack.reference_of`). Tested with the library path pointing nowhere: 176 voices listed, each
+  clip read from the pack, the saved run's reference found.
+- `deploy/container.env` sets `VOICE_PACK_DIR=/voices`. 15 tests in `backend/voice_data/test_voice_pack.py`.
+- A line rendered from a pack voice (VCTK p225): `D:/Dramatizer 2 renders/pack_check/`.
+- The upload uses the fine-grained token `dramatizer-publish`, with write access to this dataset only.
+- Not yet done: a pull on a second computer (the check above was on this one).
+
 ### Problem 2: the models are large, downloaded from several places, and one is gated
 
 | Model | Where it comes from | Size | Note |
@@ -95,6 +114,43 @@ Gemma's licence also does not let us publish it in an image. Instead:
 
 Check: with the network off, the container starts, loads every model and `/version` lists the same revisions as
 `models.json`.
+
+**Status (24 Nov 2026): done, on the host and in the container with the network off.**
+- `backend/model_store.py`, command `models fetch [--only NAME] | check [--full] | pin NAME`, store
+  `D:/Dramatizer models` (`MODELS_DIR`), laid out as the container mounts it at `/models`.
+- The pins (each local copy matched file for file: LFS files by sha256, small files by their git blob hash):
+
+  | Model | Pinned | Why |
+  |---|---|---|
+  | Fun-CosyVoice3-0.5B-2512 | `29e01c4e8d00` | every render |
+  | gemma-4-E4B-it | `ee0ef6023621` (20 Jul 2026; the 3 Nov commit changed `tokenizer.json`, so the copy here is older) | the chatbot |
+  | Qwen3-4B | `1cfa9a720891` | emphasis scoring |
+  | all-MiniLM-L6-v2 | `1110a243fdf4` (the 6 files `rag/dense.py` loads) | dense retrieval |
+  | Whisper base | sha256 `ed3a0b6b1c0e` (OpenAI's own, in its URL) | WER, upload check |
+  | SQUIM objective | sha256 `2c54586fea83` (torchaudio publishes none: this computer's copy) | quality |
+  | wetext (ModelScope `pengzhendong/wetext`) | 4 files by sha256 (en and zh `tn` tagger and verbalizer; ModelScope commits `887eec2` and `b04bc07` kept) | CosyVoice's text normaliser |
+
+- `fetch` hard-links a matching local copy into the store (32 GB, but no extra disk space: the files are shared
+  with `D:/LLM library` and `D:/Voice cloning`) and downloads anything else at the pin, refusing a file that does
+  not match. It took 3 minutes here, all of it hashing; nothing was downloaded.
+- With `MODELS_DIR` set, the server checks the store at start-up (sizes, seconds) and **refuses to start** if a
+  model is missing or not at its pin. `/version` and `release.json` read the revisions from `models.json`.
+- Checked with every network connection refused and `HF_HUB_OFFLINE=1`: the start-up check passed; Whisper,
+  SQUIM, MiniLM and CosyVoice 3 loaded from the store; Gemma's config and tokenizer loaded in its own environment.
+- **Found by the container (24 Nov): a seventh model nobody had listed.** CosyVoice's text normaliser (wetext,
+  which turns "12" into "twelve") fetches its whole ModelScope repository (236 MB, every language) each time
+  CosyVoice loads. ModelScope now refuses anonymous requests, so in a fresh container the download stalled and
+  CosyVoice went on with **no normaliser** ("no frontend is avaliable"), silently, with `/ready` still 200. The
+  host only worked because its ModelScope cache was filled weeks ago. Now: the 4 files CosyVoice loads are in the
+  store (`cache/wetext`, linked from that cache), each pinned by sha256 (they are not on Hugging Face), and
+  `WETEXT_DIR` makes `model._wetext_from_cache` hand wetext that folder: it never calls ModelScope.
+- **The container check (24 Nov), `docker run --network none`** (no network at all: Hugging Face does not even
+  resolve): the start-up check passed, `/ready` answered 200 about a minute after start, the log says "use wetext
+  frontend" and nothing was downloaded, `/version` lists all 7 models with exactly the revisions in the host's
+  `models.json`, and a line rendered offline with Whisper's WER 0.000 (Whisper too loaded from the store).
+- 13 tests in `backend/test_model_store.py`.
+- Not yet done: switching this computer's `.env` to the store (optional: the store holds the same files; add the
+  lines `models check` prints, now including `WETEXT_DIR`).
 
 ### Problem 3: Hugging Face access (tokens, the gate, outages)
 
@@ -214,8 +270,33 @@ for debugging and stays Windows-only.
 Check: `docker run --gpus all ...` starts the site from the image, a line renders, and the image holds no
 secret.
 
-**Status (23 Nov 2026): written, not yet built** (Docker's engine does not run on this computer yet: WSL 2 is
-not installed).
+**Status (24 Nov 2026): built and checked on this computer; not yet pushed to ghcr.io, and the live site still
+runs outside Docker.** Docker Desktop 29.8.2 on WSL 2, with the NVIDIA runtime: `nvidia-smi` in a CUDA container
+sees the RTX 3080 (driver 621.14).
+
+| | Result |
+|---|---|
+| Base image `dramatizer-base:2026-11-24` | built in 44 min; **17.3 GB** unpacked (the venv 7.5 GB, CUDA + cuDNN about 8 GB, apt 0.4 GB), not the 8-10 GB first guessed |
+| App image `dramatizer:dev` | seconds; 155 files, 9 MB in `/app`; runs as `dramatizer` (uid 10001); no `.env`, key, certificate, database, token, password or audio file in it |
+| Start (mounts as in the table above, test volume `dramatizer-state-test`, not the live `history/`) | `/ready` 200 after 70 s (CosyVoice loaded, 176 voices read, chatbot off); `/version` shows the voice pack and model pins |
+| One line (VCTK p225, seed 7, the smoke test's line) | rendered into `D:/Dramatizer 2 renders`; Whisper's WER **0.000** |
+| Speed, warm, same line, voice and seed | **14.0 s in the container, 13.6 s on the host**: the same. CosyVoice loads in 72 s there (122 s on the host) |
+| Network off (`--network none`) | see problem 2: starts, loads everything, renders |
+
+What the first runs found and what changed:
+- **numba could not cache** (librosa compiles with numba, which writes its cache next to the package in
+  `/opt/venv`, read-only for the server's user): CosyVoice failed to load ("no locator available").
+  `deploy/container.env` now sets `NUMBA_CACHE_DIR=/tmp/numba` and `MPLCONFIGDIR=/tmp/matplotlib`.
+- **CosyVoice's text normaliser came from ModelScope at every load** and was silently missing in a fresh
+  container: now in the model store (problem 2), `WETEXT_DIR=/models/cache/wetext`.
+- onnxruntime-gpu 1.18 is built for CUDA 11, so it logs that it cannot load its CUDA provider (`libcublasLt.so.11`)
+  and runs CosyVoice's two small ONNX models on the CPU. The host does the same (Windows uses the CPU build), so
+  nothing changes; only the log is noisier.
+
+Still to do here: push the base image and record its digest in `deploy/base-image.txt` (CI then builds and pushes
+the app image), move the database into the named volume `dramatizer-state`, and run the site from the image.
+
+As first written (23 Nov):
 - `docker/base.Dockerfile`: CUDA 12.1.1 + cuDNN 8 runtime (pinned by digest), Python 3.10, `requirements.txt`
   without deepspeed and TensorRT (CosyVoice only uses them when asked), CosyVoice at commit `074ca6d` with its
   Matcha-TTS submodule. Two stages, so the compilers stay out of the image.
@@ -229,8 +310,8 @@ not installed).
   `deploy/base-image.txt`, fails if `/app` holds a secret or data file, pushes to ghcr.io and writes the digest
   in the run's summary. Only this job has `packages: write`. It does nothing until that file exists.
 - Left for later: the chatbot (Gemma 4) needs its own Python 3.11 environment with newer torch and transformers,
-  so it is off in the container (`CHATBOT_PYTHON=`); the voice pack (problem 1) and the model store (problem 2)
-  are mounted as the full library and the current model folders until they exist.
+  so it is off in the container (`CHATBOT_PYTHON=`). (The voice pack and the model store now exist and are what
+  the container mounts.)
 
 ### Step 3: the release record and `/version` (S)
 
@@ -373,6 +454,27 @@ on the whole queue, so 20 people × 3 jobs means 60 renders in a row.
   users the site can take, plus 30 % headroom for bursts and slow renders. That number sets `MAX_QUEUE`.
 - Results: a table and one sentence ("the site serves N people rendering at once with p95 under M s") in
   `reports/milestone4/07-load/`.
+
+**Status (24 Nov 2026): measured.** `deploy/load.py` (5 tests in `deploy/test_load.py`), accounts `load-01` to
+`load-20` (passwords only in `D:/Dramatizer secrets/load-users.txt`; agreement accepted for them by the host; disabled
+after the run). Against the API on this computer (port 5005), with Gemma loaded; results in
+`reports/milestone4/07-load/20261124/`.
+
+| People | Renders/min | Render p50 / p95 (s) | Waiting p50 / p95 | GPU work p50 / p95 | 503 | Deepest queue | Chatbot p50 / p95 (s) | Chatbot from the model |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 1.3 | 9.4 / 18.1 | 0.5 / 0.9 | 9.3 / 18.0 | 0 | 1 | 27 / 50 | 5 of 5 |
+| 5 | 4.1 | 84.3 / 95.1 | 65.9 / 78.8 | 17.3 / 22.3 | 0 | 4 | 90 / 90 | 2 of 25 |
+| 20 | 4.6 | 205.5 / 248.7 | 188.6 / 231.6 | 17.4 / 23.7 | 107 | 11 | 90 / 110 | 0 of 95 (63 timed out) |
+
+- **The site serves 2 people rendering at once** with renders done in about 18 s (p95): Little's law with 30 %
+  headroom, from the most the GPU finished when saturated (4.6 renders a minute, one every 13 s).
+- **The GPU is shared:** a render takes 9.3 s alone but 17.3 s while the chatbot answers, and the chatbot, which
+  answers in 27 s alone, hits its 90 s limit under load and falls back to the records. With 20 people, 63 of 95
+  questions timed out at the client's 120 s. The bottleneck is one GPU doing both jobs.
+- **The limits held:** no render failed, expired or timed out; at 20 people the queue filled (11 of 12) and 107
+  requests got a fast 503 instead of waiting. But with `MAX_QUEUE=12`, an accepted render could wait 4 minutes.
+- **MAX_QUEUE:** Little's law gives 2 for 2 people; the 5-person run needed 4 with no refusals but waits of about
+  80 s. Proposed: `MAX_QUEUE=4` (at most about a minute's wait at 13 s a render), down from 12.
 
 ### Step 8: the write-up (S)
 

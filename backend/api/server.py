@@ -192,7 +192,8 @@ FOLLOWED = ("speak", "lab")   # their pages ask every 1-2 s; genome searches are
 TYPICAL_SECONDS = {"speak": 30, "lab": 20, "genome": 900}         # until the server has timed some of its own
 # Every account but the admins' (user agreement, section 4): one GPU is shared by everyone
 RENDERS_PER_MINUTE, QUESTIONS_PER_MINUTE = 5, 10
-PER_MINUTE = {"render": RENDERS_PER_MINUTE, "question": QUESTIONS_PER_MINUTE}
+UPLOADS_PER_MINUTE = 3          # each one is checked by Whisper on the CPU (uploaded_voices.check_script)
+PER_MINUTE = {"render": RENDERS_PER_MINUTE, "question": QUESTIONS_PER_MINUTE, "upload": UPLOADS_PER_MINUTE}
 IDLE_SECONDS = 30
 CLIP_FILE = re.compile(r"^(baseline|genome_\d{2}|[0-9a-f]{12})\.wav$")     # a blind token on the Rate page
 JOB_ID = re.compile(r"^[0-9a-f]{32}$")
@@ -293,7 +294,8 @@ def per_minute(kind, add=False):
             return
         if len(done) >= limit:
             wait = max(1, math.ceil(60 - (now - done[0])))
-            what = f"make {limit} renders" if kind == "render" else f"ask {limit} questions"
+            what = {"render": f"make {limit} renders", "question": f"ask {limit} questions",
+                    "upload": f"upload {limit} voices"}[kind]
             error = Refused(f"You can {what} a minute (see the user agreement). Try again in {wait} s.", 429)
             error.retry_after = wait
             raise error
@@ -427,6 +429,7 @@ def library():
     """
     {dataset: {"clips": [...], "by_id": {...}}} of the validation voices, read once (a few seconds).
     Each voice offers one clip: the one the voice manifest chose for it, its longest neutral clip.
+    With VOICE_PACK_DIR set, the clips come from that voice pack (voice_pack.py), not the 24 GB library.
     A server without the voice library (VOICE_LIBRARY_DIR not set or not there: a test machine, a container
     without the voice pack) has no voices, so a request for one is a 404, not a crash. That is not kept, so the
     library is read once it is there.
@@ -436,10 +439,13 @@ def library():
             from backend.voice_data import split_voice_data
 
             out = {name: {"clips": [], "by_id": {}} for name in DATASETS}
+            from backend.voice_data import voice_pack
+
             try:
                 chosen = set(split_voice_data.voice_clips("validation").items())
-                clips = split_voice_data.read_library()
-            except (KeyError, OSError) as error:
+                pack = voice_pack.folder_in_use()
+                clips = voice_pack.read(pack) if pack else split_voice_data.read_library()
+            except (KeyError, OSError, ValueError, voice_pack.PackError) as error:
                 print(f"No voice library: {error}", flush=True)
                 return out
             for clip in clips:
@@ -849,6 +855,7 @@ def upload_voice():
     import binascii
 
     owner = _own_account()
+    per_minute("upload")
     data = body()
     try:
         audio = base64.b64decode(str(data.get("audio") or ""), validate=True)
@@ -858,8 +865,10 @@ def upload_voice():
         about = uploaded_voices.save(owner, data.get("name"), data.get("script"), audio, data.get("filename"),
                                      consent=data.get("consent") is True)
     except uploaded_voices.UploadRefused as error:
+        per_minute("upload", add=True)          # a refused upload was still listened to: it counts
         raise Refused(str(error))
-    audit("voice uploaded", voice=about["speaker"], seconds=about["seconds"])
+    per_minute("upload", add=True)
+    audit("voice uploaded", voice=about["speaker"], seconds=about["seconds"], script_wer=about.get("script_wer"))
     return jsonify(ok=True, voice={k: about[k] for k in VOICE_FIELDS}), 201
 
 
@@ -2509,6 +2518,9 @@ def tls_context():
 
 
 def main(port=PORT):
+    from backend import model_store
+
+    model_store.check_at_start()          # with MODELS_DIR set: every pinned model there, or no start (Milestone 4)
     people = list(keys.load()["keys"]) + [f"{a.display_name} (login)" for a in accounts.load().values() if not a.disabled]
     context = tls_context()
     threading.Thread(target=worker, name="gpu jobs", daemon=True).start()

@@ -1,0 +1,2590 @@
+{
+ "summary": {
+  "people": 20,
+  "minutes": 10,
+  "renders": {
+   "asked": 153,
+   "done": 46,
+   "per_minute": 4.6,
+   "total_p50": 205.53,
+   "total_p95": 248.69,
+   "wait_p50": 188.63,
+   "wait_p95": 231.56,
+   "work_p50": 17.35,
+   "work_p95": 23.68,
+   "refused_429": 0,
+   "refused_503": 107,
+   "timeouts": 0,
+   "expired": 0,
+   "failed": 0,
+   "deepest_queue": 11
+  },
+  "questions": {
+   "asked": 95,
+   "answered": 32,
+   "p50": 90.1,
+   "p95": 110.16,
+   "refused_429": 0,
+   "timeouts": 63,
+   "sources": {
+    "records": 32
+   }
+  },
+  "logins_failed": 0,
+  "gpu": {
+   "memory_mb_max": 9599.0,
+   "busy_percent_mean": 33.5
+  }
+ },
+ "events": [
+  {
+   "person": 18,
+   "kind": "render",
+   "at": 1795519822.0333776,
+   "status": "done",
+   "total": 15.69,
+   "work": 15.1,
+   "wait": 0.59,
+   "place": 1,
+   "error": null
+  },
+  {
+   "person": 1,
+   "kind": "render",
+   "at": 1795519844.4256027,
+   "status": "http 503",
+   "total": 0.05
+  },
+  {
+   "person": 7,
+   "kind": "render",
+   "at": 1795519844.4426057,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 17,
+   "kind": "render",
+   "at": 1795519845.7614658,
+   "status": "http 503",
+   "total": 0.05
+  },
+  {
+   "person": 16,
+   "kind": "render",
+   "at": 1795519847.5726194,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 10,
+   "kind": "render",
+   "at": 1795519848.7402637,
+   "status": "http 503",
+   "total": 0.05
+  },
+  {
+   "person": 13,
+   "kind": "render",
+   "at": 1795519824.6255736,
+   "status": "done",
+   "total": 25.04,
+   "work": 12.5,
+   "wait": 12.54,
+   "place": 1,
+   "error": null
+  },
+  {
+   "person": 9,
+   "kind": "render",
+   "at": 1795519851.0773187,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 8,
+   "kind": "render",
+   "at": 1795519829.113117,
+   "status": "done",
+   "total": 41.12,
+   "work": 19.6,
+   "wait": 21.52,
+   "place": 2,
+   "error": null
+  },
+  {
+   "person": 13,
+   "kind": "render",
+   "at": 1795519875.219913,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 7,
+   "kind": "render",
+   "at": 1795519878.7469032,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 18,
+   "kind": "render",
+   "at": 1795519881.0057738,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 1,
+   "kind": "render",
+   "at": 1795519885.0930843,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 16,
+   "kind": "render",
+   "at": 1795519886.929264,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 2,
+   "kind": "render",
+   "at": 1795519829.3764274,
+   "status": "done",
+   "total": 58.94,
+   "work": 18.6,
+   "wait": 40.34,
+   "place": 3,
+   "error": null
+  },
+  {
+   "person": 9,
+   "kind": "render",
+   "at": 1795519889.5978696,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 10,
+   "kind": "render",
+   "at": 1795519892.8725586,
+   "status": "http 503",
+   "total": 0.06
+  },
+  {
+   "person": 17,
+   "kind": "render",
+   "at": 1795519893.4671576,
+   "status": "http 503",
+   "total": 0.05
+  },
+  {
+   "person": 4,
+   "kind": "render",
+   "at": 1795519830.6854458,
+   "status": "done",
+   "total": 73.36,
+   "work": 15.7,
+   "wait": 57.66,
+   "place": 4,
+   "error": null
+  },
+  {
+   "person": 13,
+   "kind": "render",
+   "at": 1795519916.2817643,
+   "status": "http 503",
+   "total": 0.06
+  },
+  {
+   "person": 18,
+   "kind": "render",
+   "at": 1795519916.610411,
+   "status": "http 503",
+   "total": 0.09
+  },
+  {
+   "person": 9,
+   "kind": "render",
+   "at": 1795519922.4534538,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 19,
+   "kind": "render",
+   "at": 1795519833.6130404,
+   "status": "done",
+   "total": 91.2,
+   "work": 21.0,
+   "wait": 70.2,
+   "place": 5,
+   "error": null
+  },
+  {
+   "person": 7,
+   "kind": "render",
+   "at": 1795519927.3423693,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 18,
+   "kind": "question",
+   "at": 1795519841.2776582,
+   "status": "done",
+   "total": 90.06,
+   "source": "records"
+  },
+  {
+   "person": 11,
+   "kind": "question",
+   "at": 1795519851.2591634,
+   "status": "done",
+   "total": 90.09,
+   "source": "records"
+  },
+  {
+   "person": 1,
+   "kind": "render",
+   "at": 1795519943.6584337,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 10,
+   "kind": "question",
+   "at": 1795519854.9039605,
+   "status": "done",
+   "total": 90.11,
+   "source": "records"
+  },
+  {
+   "person": 16,
+   "kind": "render",
+   "at": 1795519945.58699,
+   "status": "http 503",
+   "total": 0.17
+  },
+  {
+   "person": 3,
+   "kind": "render",
+   "at": 1795519833.80116,
+   "status": "done",
+   "total": 113.17,
+   "work": 21.5,
+   "wait": 91.67,
+   "place": 6,
+   "error": null
+  },
+  {
+   "person": 10,
+   "kind": "render",
+   "at": 1795519947.011666,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 13,
+   "kind": "render",
+   "at": 1795519947.3357966,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 17,
+   "kind": "render",
+   "at": 1795519950.614852,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 6,
+   "kind": "render",
+   "at": 1795519836.734146,
+   "status": "done",
+   "total": 126.71,
+   "work": 17.2,
+   "wait": 109.51,
+   "place": 7,
+   "error": null
+  },
+  {
+   "person": 6,
+   "kind": "render",
+   "at": 1795519963.4467816,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 18,
+   "kind": "render",
+   "at": 1795519964.2907696,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 5,
+   "kind": "question",
+   "at": 1795519877.8213603,
+   "status": "done",
+   "total": 90.08,
+   "source": "records"
+  },
+  {
+   "person": 4,
+   "kind": "question",
+   "at": 1795519880.071028,
+   "status": "done",
+   "total": 90.09,
+   "source": "records"
+  },
+  {
+   "person": 5,
+   "kind": "render",
+   "at": 1795519839.1102226,
+   "status": "done",
+   "total": 131.18,
+   "work": 6.6,
+   "wait": 124.58,
+   "place": 7,
+   "error": null
+  },
+  {
+   "person": 7,
+   "kind": "render",
+   "at": 1795519974.7583485,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 13,
+   "kind": "question",
+   "at": 1795519884.8895378,
+   "status": "done",
+   "total": 90.06,
+   "source": "records"
+  },
+  {
+   "person": 1,
+   "kind": "render",
+   "at": 1795519975.3629131,
+   "status": "http 503",
+   "total": 0.05
+  },
+  {
+   "person": 8,
+   "kind": "question",
+   "at": 1795519887.5830069,
+   "status": "done",
+   "total": 90.08,
+   "source": "records"
+  },
+  {
+   "person": 20,
+   "kind": "question",
+   "at": 1795519887.8816104,
+   "status": "done",
+   "total": 90.13,
+   "source": "records"
+  },
+  {
+   "person": 14,
+   "kind": "question",
+   "at": 1795519888.900265,
+   "status": "done",
+   "total": 90.12,
+   "source": "records"
+  },
+  {
+   "person": 15,
+   "kind": "question",
+   "at": 1795519893.697723,
+   "status": "done",
+   "total": 90.05,
+   "source": "records"
+  },
+  {
+   "person": 3,
+   "kind": "question",
+   "at": 1795519894.7654028,
+   "status": "done",
+   "total": 90.1,
+   "source": "records"
+  },
+  {
+   "person": 2,
+   "kind": "question",
+   "at": 1795519895.3337996,
+   "status": "done",
+   "total": 90.02,
+   "source": "records"
+  },
+  {
+   "person": 17,
+   "kind": "render",
+   "at": 1795519986.631572,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 14,
+   "kind": "render",
+   "at": 1795519839.9595947,
+   "status": "done",
+   "total": 148.06,
+   "work": 17.7,
+   "wait": 130.36,
+   "place": 8,
+   "error": null
+  },
+  {
+   "person": 13,
+   "kind": "render",
+   "at": 1795519990.3360488,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 9,
+   "kind": "question",
+   "at": 1795519900.5506473,
+   "status": "done",
+   "total": 90.15,
+   "source": "records"
+  },
+  {
+   "person": 10,
+   "kind": "render",
+   "at": 1795519996.3401246,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 6,
+   "kind": "render",
+   "at": 1795519997.0955458,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 19,
+   "kind": "question",
+   "at": 1795519910.4693298,
+   "status": "done",
+   "total": 90.08,
+   "source": "records"
+  },
+  {
+   "person": 20,
+   "kind": "render",
+   "at": 1795519841.6526895,
+   "status": "done",
+   "total": 162.65,
+   "work": 16.4,
+   "wait": 146.25,
+   "place": 9,
+   "error": null
+  },
+  {
+   "person": 16,
+   "kind": "render",
+   "at": 1795520005.2623014,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 18,
+   "kind": "render",
+   "at": 1795520005.538304,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 7,
+   "kind": "render",
+   "at": 1795520008.951602,
+   "status": "http 503",
+   "total": 0.08
+  },
+  {
+   "person": 12,
+   "kind": "render",
+   "at": 1795519842.1520786,
+   "status": "done",
+   "total": 177.61,
+   "work": 15.0,
+   "wait": 162.61,
+   "place": 10,
+   "error": null
+  },
+  {
+   "person": 12,
+   "kind": "render",
+   "at": 1795520019.7610283,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 1,
+   "kind": "question",
+   "at": 1795519932.215417,
+   "status": "done",
+   "total": 90.09,
+   "source": "records"
+  },
+  {
+   "person": 13,
+   "kind": "render",
+   "at": 1795520026.343996,
+   "status": "http 503",
+   "total": 0.06
+  },
+  {
+   "person": 17,
+   "kind": "render",
+   "at": 1795520030.0427136,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 17,
+   "kind": "question",
+   "at": 1795519943.003885,
+   "status": "done",
+   "total": 90.12,
+   "source": "records"
+  },
+  {
+   "person": 16,
+   "kind": "render",
+   "at": 1795520035.6754708,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 11,
+   "kind": "render",
+   "at": 1795519843.5144315,
+   "status": "done",
+   "total": 192.56,
+   "work": 16.9,
+   "wait": 175.66,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 6,
+   "kind": "question",
+   "at": 1795519947.1804266,
+   "status": "done",
+   "total": 90.06,
+   "source": "records"
+  },
+  {
+   "person": 16,
+   "kind": "question",
+   "at": 1795519948.4986627,
+   "status": "done",
+   "total": 90.1,
+   "source": "records"
+  },
+  {
+   "person": 7,
+   "kind": "render",
+   "at": 1795520039.1010947,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 12,
+   "kind": "question",
+   "at": 1795519949.9109516,
+   "status": "done",
+   "total": 90.1,
+   "source": "records"
+  },
+  {
+   "person": 10,
+   "kind": "render",
+   "at": 1795520049.8564079,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 18,
+   "kind": "question",
+   "at": 1795519961.2762108,
+   "status": "done",
+   "total": 90.03,
+   "source": "records"
+  },
+  {
+   "person": 6,
+   "kind": "render",
+   "at": 1795520053.5051572,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 18,
+   "kind": "render",
+   "at": 1795520057.8419082,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 12,
+   "kind": "render",
+   "at": 1795520058.2972963,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 15,
+   "kind": "render",
+   "at": 1795519850.626574,
+   "status": "done",
+   "total": 209.08,
+   "work": 23.7,
+   "wait": 185.38,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 13,
+   "kind": "render",
+   "at": 1795520063.8491333,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 8,
+   "kind": "render",
+   "at": 1795519870.2301161,
+   "status": "done",
+   "total": 205.6,
+   "work": 15.3,
+   "wait": 190.3,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 16,
+   "kind": "render",
+   "at": 1795520076.5195246,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 17,
+   "kind": "render",
+   "at": 1795520080.8842123,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 7,
+   "kind": "question",
+   "at": 1795519964.2597697,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 10,
+   "kind": "render",
+   "at": 1795520085.2532177,
+   "status": "http 503",
+   "total": 0.06
+  },
+  {
+   "person": 11,
+   "kind": "question",
+   "at": 1795519971.2606063,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 2,
+   "kind": "render",
+   "at": 1795519888.3133464,
+   "status": "done",
+   "total": 203.59,
+   "work": 16.8,
+   "wait": 186.79,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 7,
+   "kind": "render",
+   "at": 1795520092.8754115,
+   "status": "http 503",
+   "total": 0.13
+  },
+  {
+   "person": 12,
+   "kind": "render",
+   "at": 1795520093.747019,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 10,
+   "kind": "question",
+   "at": 1795519974.8981304,
+   "status": "timeout",
+   "total": 120.01
+  },
+  {
+   "person": 6,
+   "kind": "render",
+   "at": 1795520106.2450469,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 18,
+   "kind": "render",
+   "at": 1795520108.1618755,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 4,
+   "kind": "render",
+   "at": 1795519904.0440345,
+   "status": "done",
+   "total": 204.92,
+   "work": 16.9,
+   "wait": 188.02,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 16,
+   "kind": "render",
+   "at": 1795520113.465357,
+   "status": "http 503",
+   "total": 0.07
+  },
+  {
+   "person": 5,
+   "kind": "question",
+   "at": 1795519997.8261902,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 4,
+   "kind": "question",
+   "at": 1795520000.0611463,
+   "status": "timeout",
+   "total": 120.05
+  },
+  {
+   "person": 10,
+   "kind": "render",
+   "at": 1795520123.3550313,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 13,
+   "kind": "render",
+   "at": 1795520123.512678,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 13,
+   "kind": "question",
+   "at": 1795520004.8896067,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 19,
+   "kind": "render",
+   "at": 1795519924.8135161,
+   "status": "done",
+   "total": 201.26,
+   "work": 16.6,
+   "wait": 184.66,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 8,
+   "kind": "question",
+   "at": 1795520007.5879648,
+   "status": "timeout",
+   "total": 120.01
+  },
+  {
+   "person": 20,
+   "kind": "question",
+   "at": 1795520007.8867612,
+   "status": "timeout",
+   "total": 120.04
+  },
+  {
+   "person": 17,
+   "kind": "render",
+   "at": 1795520128.9090433,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 14,
+   "kind": "question",
+   "at": 1795520008.9199753,
+   "status": "timeout",
+   "total": 120.09
+  },
+  {
+   "person": 7,
+   "kind": "render",
+   "at": 1795520130.8073149,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 15,
+   "kind": "question",
+   "at": 1795520013.6950517,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 3,
+   "kind": "question",
+   "at": 1795520014.7787576,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 2,
+   "kind": "question",
+   "at": 1795520015.3253362,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 9,
+   "kind": "question",
+   "at": 1795520020.555832,
+   "status": "timeout",
+   "total": 120.04
+  },
+  {
+   "person": 3,
+   "kind": "render",
+   "at": 1795519946.9761496,
+   "status": "done",
+   "total": 196.28,
+   "work": 17.9,
+   "wait": 178.38,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 12,
+   "kind": "render",
+   "at": 1795520148.5524623,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 19,
+   "kind": "question",
+   "at": 1795520030.4793403,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 16,
+   "kind": "render",
+   "at": 1795520154.4859588,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 9,
+   "kind": "render",
+   "at": 1795519963.3412726,
+   "status": "done",
+   "total": 194.39,
+   "work": 14.4,
+   "wait": 179.99,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 18,
+   "kind": "render",
+   "at": 1795520159.9381907,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 6,
+   "kind": "render",
+   "at": 1795520160.2659402,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 10,
+   "kind": "render",
+   "at": 1795520163.7856617,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 17,
+   "kind": "render",
+   "at": 1795520164.5014815,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 1,
+   "kind": "question",
+   "at": 1795520052.216637,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 5,
+   "kind": "render",
+   "at": 1795519970.2892618,
+   "status": "done",
+   "total": 205.14,
+   "work": 17.1,
+   "wait": 188.04,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 12,
+   "kind": "question",
+   "at": 1795520069.9132166,
+   "status": "done",
+   "total": 108.15,
+   "source": "records"
+  },
+  {
+   "person": 6,
+   "kind": "question",
+   "at": 1795520067.1812298,
+   "status": "done",
+   "total": 110.88,
+   "source": "records"
+  },
+  {
+   "person": 17,
+   "kind": "question",
+   "at": 1795520063.0119119,
+   "status": "done",
+   "total": 115.06,
+   "source": "records"
+  },
+  {
+   "person": 7,
+   "kind": "question",
+   "at": 1795520084.2864032,
+   "status": "done",
+   "total": 93.78,
+   "source": "records"
+  },
+  {
+   "person": 18,
+   "kind": "question",
+   "at": 1795520081.2719717,
+   "status": "done",
+   "total": 96.8,
+   "source": "records"
+  },
+  {
+   "person": 16,
+   "kind": "question",
+   "at": 1795520068.5030096,
+   "status": "done",
+   "total": 109.57,
+   "source": "records"
+  },
+  {
+   "person": 11,
+   "kind": "question",
+   "at": 1795520091.285116,
+   "status": "done",
+   "total": 90.02,
+   "source": "records"
+  },
+  {
+   "person": 13,
+   "kind": "render",
+   "at": 1795520182.9551735,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 10,
+   "kind": "question",
+   "at": 1795520094.9096394,
+   "status": "done",
+   "total": 90.11,
+   "source": "records"
+  },
+  {
+   "person": 12,
+   "kind": "render",
+   "at": 1795520185.1195204,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 7,
+   "kind": "render",
+   "at": 1795520185.5623856,
+   "status": "http 503",
+   "total": 0.1
+  },
+  {
+   "person": 18,
+   "kind": "render",
+   "at": 1795520193.869407,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 14,
+   "kind": "render",
+   "at": 1795519988.0213475,
+   "status": "done",
+   "total": 207.01,
+   "work": 19.7,
+   "wait": 187.31,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 6,
+   "kind": "render",
+   "at": 1795520203.478105,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 10,
+   "kind": "render",
+   "at": 1795520204.1245193,
+   "status": "http 503",
+   "total": 0.05
+  },
+  {
+   "person": 5,
+   "kind": "question",
+   "at": 1795520117.8515153,
+   "status": "done",
+   "total": 90.18,
+   "source": "records"
+  },
+  {
+   "person": 20,
+   "kind": "render",
+   "at": 1795520004.3027856,
+   "status": "done",
+   "total": 205.38,
+   "work": 14.8,
+   "wait": 190.58,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 16,
+   "kind": "render",
+   "at": 1795520209.9956632,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 4,
+   "kind": "question",
+   "at": 1795520120.1072338,
+   "status": "done",
+   "total": 90.03,
+   "source": "records"
+  },
+  {
+   "person": 13,
+   "kind": "question",
+   "at": 1795520124.9178,
+   "status": "done",
+   "total": 90.11,
+   "source": "records"
+  },
+  {
+   "person": 8,
+   "kind": "question",
+   "at": 1795520127.6020522,
+   "status": "done",
+   "total": 90.08,
+   "source": "records"
+  },
+  {
+   "person": 7,
+   "kind": "render",
+   "at": 1795520218.6443639,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 17,
+   "kind": "render",
+   "at": 1795520220.272969,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 13,
+   "kind": "render",
+   "at": 1795520227.6037998,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 1,
+   "kind": "render",
+   "at": 1795520019.2723072,
+   "status": "done",
+   "total": 209.88,
+   "work": 19.0,
+   "wait": 190.88,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 12,
+   "kind": "render",
+   "at": 1795520235.0440266,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 16,
+   "kind": "render",
+   "at": 1795520245.1100235,
+   "status": "http 503",
+   "total": 0.15
+  },
+  {
+   "person": 11,
+   "kind": "render",
+   "at": 1795520036.0699067,
+   "status": "done",
+   "total": 211.47,
+   "work": 19.4,
+   "wait": 192.07,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 20,
+   "kind": "question",
+   "at": 1795520127.9259126,
+   "status": "timeout",
+   "total": 120.04
+  },
+  {
+   "person": 14,
+   "kind": "question",
+   "at": 1795520129.0145557,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 6,
+   "kind": "render",
+   "at": 1795520249.7558026,
+   "status": "http 503",
+   "total": 0.07
+  },
+  {
+   "person": 7,
+   "kind": "render",
+   "at": 1795520250.606273,
+   "status": "http 503",
+   "total": 0.05
+  },
+  {
+   "person": 10,
+   "kind": "render",
+   "at": 1795520250.8379717,
+   "status": "http 503",
+   "total": 0.12
+  },
+  {
+   "person": 18,
+   "kind": "render",
+   "at": 1795520252.0402207,
+   "status": "http 503",
+   "total": 0.06
+  },
+  {
+   "person": 15,
+   "kind": "question",
+   "at": 1795520133.7133458,
+   "status": "timeout",
+   "total": 120.04
+  },
+  {
+   "person": 3,
+   "kind": "question",
+   "at": 1795520134.8049695,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 2,
+   "kind": "question",
+   "at": 1795520135.3542836,
+   "status": "timeout",
+   "total": 120.08
+  },
+  {
+   "person": 9,
+   "kind": "question",
+   "at": 1795520140.6002827,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 17,
+   "kind": "render",
+   "at": 1795520264.4059627,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 15,
+   "kind": "render",
+   "at": 1795520059.7015998,
+   "status": "done",
+   "total": 205.17,
+   "work": 17.2,
+   "wait": 187.97,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 19,
+   "kind": "question",
+   "at": 1795520150.50074,
+   "status": "timeout",
+   "total": 120.13
+  },
+  {
+   "person": 13,
+   "kind": "render",
+   "at": 1795520278.9751346,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 8,
+   "kind": "render",
+   "at": 1795520075.8350835,
+   "status": "done",
+   "total": 206.18,
+   "work": 16.6,
+   "wait": 189.58,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 8,
+   "kind": "render",
+   "at": 1795520282.0179172,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 6,
+   "kind": "render",
+   "at": 1795520287.7524676,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 12,
+   "kind": "render",
+   "at": 1795520287.7976203,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 1,
+   "kind": "question",
+   "at": 1795520172.2490118,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 16,
+   "kind": "render",
+   "at": 1795520295.8665087,
+   "status": "http 503",
+   "total": 0.05
+  },
+  {
+   "person": 2,
+   "kind": "render",
+   "at": 1795520091.9019063,
+   "status": "done",
+   "total": 206.25,
+   "work": 16.6,
+   "wait": 189.65,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 17,
+   "kind": "render",
+   "at": 1795520299.9683683,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 17,
+   "kind": "question",
+   "at": 1795520183.0016863,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 18,
+   "kind": "render",
+   "at": 1795520306.4626815,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 6,
+   "kind": "question",
+   "at": 1795520187.1792357,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 7,
+   "kind": "render",
+   "at": 1795520308.08148,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 16,
+   "kind": "question",
+   "at": 1795520188.495025,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 12,
+   "kind": "question",
+   "at": 1795520189.9114304,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 4,
+   "kind": "render",
+   "at": 1795520108.9647884,
+   "status": "done",
+   "total": 204.03,
+   "work": 14.8,
+   "wait": 189.23,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 13,
+   "kind": "render",
+   "at": 1795520314.3965101,
+   "status": "http 503",
+   "total": 0.05
+  },
+  {
+   "person": 18,
+   "kind": "question",
+   "at": 1795520201.2646985,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 8,
+   "kind": "render",
+   "at": 1795520323.4557889,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 7,
+   "kind": "question",
+   "at": 1795520204.2622814,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 11,
+   "kind": "question",
+   "at": 1795520211.2534313,
+   "status": "timeout",
+   "total": 120.01
+  },
+  {
+   "person": 19,
+   "kind": "render",
+   "at": 1795520126.0731716,
+   "status": "done",
+   "total": 207.84,
+   "work": 20.8,
+   "wait": 187.04,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 10,
+   "kind": "question",
+   "at": 1795520214.9026957,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 12,
+   "kind": "render",
+   "at": 1795520335.5023234,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 6,
+   "kind": "render",
+   "at": 1795520337.8641932,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 17,
+   "kind": "render",
+   "at": 1795520338.6717517,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 18,
+   "kind": "render",
+   "at": 1795520339.9557698,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 16,
+   "kind": "render",
+   "at": 1795520346.2560902,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 3,
+   "kind": "render",
+   "at": 1795520143.2591357,
+   "status": "done",
+   "total": 205.47,
+   "work": 14.5,
+   "wait": 190.97,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 7,
+   "kind": "render",
+   "at": 1795520351.8407502,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 5,
+   "kind": "question",
+   "at": 1795520237.8224347,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 4,
+   "kind": "question",
+   "at": 1795520240.0605423,
+   "status": "timeout",
+   "total": 120.04
+  },
+  {
+   "person": 8,
+   "kind": "render",
+   "at": 1795520360.2680676,
+   "status": "http 503",
+   "total": 0.24
+  },
+  {
+   "person": 13,
+   "kind": "question",
+   "at": 1795520244.8953059,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 8,
+   "kind": "question",
+   "at": 1795520247.5896745,
+   "status": "timeout",
+   "total": 120.04
+  },
+  {
+   "person": 20,
+   "kind": "question",
+   "at": 1795520247.9631321,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 9,
+   "kind": "render",
+   "at": 1795520157.7278557,
+   "status": "done",
+   "total": 210.96,
+   "work": 19.8,
+   "wait": 191.16,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 14,
+   "kind": "question",
+   "at": 1795520249.0394826,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 13,
+   "kind": "render",
+   "at": 1795520373.5381415,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 15,
+   "kind": "question",
+   "at": 1795520253.7493834,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 3,
+   "kind": "question",
+   "at": 1795520254.8228917,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 18,
+   "kind": "render",
+   "at": 1795520375.3047895,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 2,
+   "kind": "question",
+   "at": 1795520255.429926,
+   "status": "timeout",
+   "total": 120.05
+  },
+  {
+   "person": 12,
+   "kind": "render",
+   "at": 1795520375.567019,
+   "status": "http 503",
+   "total": 0.08
+  },
+  {
+   "person": 9,
+   "kind": "question",
+   "at": 1795520260.6346276,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 16,
+   "kind": "render",
+   "at": 1795520382.2275698,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 6,
+   "kind": "render",
+   "at": 1795520388.70267,
+   "status": "http 503",
+   "total": 0.05
+  },
+  {
+   "person": 5,
+   "kind": "render",
+   "at": 1795520175.432537,
+   "status": "done",
+   "total": 214.12,
+   "work": 21.6,
+   "wait": 192.52,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 19,
+   "kind": "question",
+   "at": 1795520270.6315782,
+   "status": "timeout",
+   "total": 120.07
+  },
+  {
+   "person": 17,
+   "kind": "render",
+   "at": 1795520394.9292924,
+   "status": "http 503",
+   "total": 0.04
+  },
+  {
+   "person": 7,
+   "kind": "render",
+   "at": 1795520399.070682,
+   "status": "http 503",
+   "total": 0.02
+  },
+  {
+   "person": 14,
+   "kind": "render",
+   "at": 1795520195.0286567,
+   "status": "done",
+   "total": 214.34,
+   "work": 19.6,
+   "wait": 194.74,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 12,
+   "kind": "render",
+   "at": 1795520410.8471692,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 13,
+   "kind": "render",
+   "at": 1795520411.1573398,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 1,
+   "kind": "question",
+   "at": 1795520292.2720952,
+   "status": "timeout",
+   "total": 120.04
+  },
+  {
+   "person": 8,
+   "kind": "render",
+   "at": 1795520412.7400718,
+   "status": "http 503",
+   "total": 0.03
+  },
+  {
+   "person": 18,
+   "kind": "render",
+   "at": 1795520413.975642,
+   "status": "http 503",
+   "total": 0.19
+  },
+  {
+   "person": 17,
+   "kind": "question",
+   "at": 1795520303.0315647,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 6,
+   "kind": "question",
+   "at": 1795520307.213223,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 16,
+   "kind": "question",
+   "at": 1795520308.5152264,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 12,
+   "kind": "question",
+   "at": 1795520309.9471815,
+   "status": "timeout",
+   "total": 120.05
+  },
+  {
+   "person": 20,
+   "kind": "render",
+   "at": 1795520209.681968,
+   "status": "done",
+   "total": 220.54,
+   "work": 20.9,
+   "wait": 199.64,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 18,
+   "kind": "question",
+   "at": 1795520321.2896676,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 7,
+   "kind": "question",
+   "at": 1795520324.2822268,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 1,
+   "kind": "render",
+   "at": 1795520229.1535904,
+   "status": "done",
+   "total": 218.76,
+   "work": 17.5,
+   "wait": 201.26,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 11,
+   "kind": "question",
+   "at": 1795520331.264578,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 10,
+   "kind": "question",
+   "at": 1795520334.9198313,
+   "status": "timeout",
+   "total": 120.16
+  },
+  {
+   "person": 11,
+   "kind": "render",
+   "at": 1795520247.5439339,
+   "status": "done",
+   "total": 224.7,
+   "work": 24.6,
+   "wait": 200.1,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 5,
+   "kind": "question",
+   "at": 1795520357.8392093,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 4,
+   "kind": "question",
+   "at": 1795520360.0979276,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 13,
+   "kind": "question",
+   "at": 1795520364.9118226,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 8,
+   "kind": "question",
+   "at": 1795520367.6313992,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 20,
+   "kind": "question",
+   "at": 1795520367.9900954,
+   "status": "timeout",
+   "total": 120.03
+  },
+  {
+   "person": 14,
+   "kind": "question",
+   "at": 1795520369.0658407,
+   "status": "timeout",
+   "total": 120.09
+  },
+  {
+   "person": 15,
+   "kind": "question",
+   "at": 1795520373.7704344,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 3,
+   "kind": "question",
+   "at": 1795520374.84104,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 2,
+   "kind": "question",
+   "at": 1795520375.4752626,
+   "status": "timeout",
+   "total": 120.04
+  },
+  {
+   "person": 15,
+   "kind": "render",
+   "at": 1795520264.8745277,
+   "status": "done",
+   "total": 235.64,
+   "work": 27.7,
+   "wait": 207.94,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 9,
+   "kind": "question",
+   "at": 1795520380.667062,
+   "status": "timeout",
+   "total": 120.05
+  },
+  {
+   "person": 19,
+   "kind": "question",
+   "at": 1795520390.697077,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 10,
+   "kind": "render",
+   "at": 1795520281.4550638,
+   "status": "done",
+   "total": 235.67,
+   "work": 16.9,
+   "wait": 218.77,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 1,
+   "kind": "question",
+   "at": 1795520412.307927,
+   "status": "timeout",
+   "total": 120.02
+  },
+  {
+   "person": 2,
+   "kind": "render",
+   "at": 1795520298.1559913,
+   "status": "done",
+   "total": 239.6,
+   "work": 21.3,
+   "wait": 218.3,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 4,
+   "kind": "render",
+   "at": 1795520312.9948196,
+   "status": "done",
+   "total": 248.78,
+   "work": 23.6,
+   "wait": 225.18,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 19,
+   "kind": "render",
+   "at": 1795520333.9120922,
+   "status": "done",
+   "total": 248.41,
+   "work": 20.3,
+   "wait": 228.11,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 3,
+   "kind": "render",
+   "at": 1795520348.7288368,
+   "status": "done",
+   "total": 252.81,
+   "work": 19.1,
+   "wait": 233.71,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 9,
+   "kind": "render",
+   "at": 1795520368.6923501,
+   "status": "done",
+   "total": 254.04,
+   "work": 21.2,
+   "wait": 232.84,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 5,
+   "kind": "render",
+   "at": 1795520389.5488036,
+   "status": "done",
+   "total": 247.7,
+   "work": 15.1,
+   "wait": 232.6,
+   "place": 11,
+   "error": null
+  },
+  {
+   "person": 14,
+   "kind": "render",
+   "at": 1795520409.365195,
+   "status": "done",
+   "total": 241.43,
+   "work": 13.0,
+   "wait": 228.43,
+   "place": 11,
+   "error": null
+  }
+ ],
+ "gpu": [
+  {
+   "at": 1795519821.4926946,
+   "memory_mb": 9384.0,
+   "busy_percent": 22.0
+  },
+  {
+   "at": 1795519826.5634594,
+   "memory_mb": 9517.0,
+   "busy_percent": 21.0
+  },
+  {
+   "at": 1795519831.6199539,
+   "memory_mb": 9490.0,
+   "busy_percent": 100.0
+  },
+  {
+   "at": 1795519836.7006636,
+   "memory_mb": 9439.0,
+   "busy_percent": 30.0
+  },
+  {
+   "at": 1795519841.7651293,
+   "memory_mb": 9459.0,
+   "busy_percent": 53.0
+  },
+  {
+   "at": 1795519846.8266714,
+   "memory_mb": 9461.0,
+   "busy_percent": 34.0
+  },
+  {
+   "at": 1795519851.896391,
+   "memory_mb": 9427.0,
+   "busy_percent": 16.0
+  },
+  {
+   "at": 1795519856.9562664,
+   "memory_mb": 9365.0,
+   "busy_percent": 20.0
+  },
+  {
+   "at": 1795519862.027612,
+   "memory_mb": 9431.0,
+   "busy_percent": 23.0
+  },
+  {
+   "at": 1795519867.1261487,
+   "memory_mb": 9486.0,
+   "busy_percent": 58.0
+  },
+  {
+   "at": 1795519872.1929314,
+   "memory_mb": 9468.0,
+   "busy_percent": 19.0
+  },
+  {
+   "at": 1795519877.2528067,
+   "memory_mb": 9462.0,
+   "busy_percent": 100.0
+  },
+  {
+   "at": 1795519882.318871,
+   "memory_mb": 9462.0,
+   "busy_percent": 20.0
+  },
+  {
+   "at": 1795519887.390405,
+   "memory_mb": 9462.0,
+   "busy_percent": 38.0
+  },
+  {
+   "at": 1795519892.4566658,
+   "memory_mb": 9398.0,
+   "busy_percent": 45.0
+  },
+  {
+   "at": 1795519897.5183911,
+   "memory_mb": 9382.0,
+   "busy_percent": 47.0
+  },
+  {
+   "at": 1795519902.5737445,
+   "memory_mb": 9424.0,
+   "busy_percent": 93.0
+  },
+  {
+   "at": 1795519907.7746232,
+   "memory_mb": 9456.0,
+   "busy_percent": 26.0
+  },
+  {
+   "at": 1795519912.8368988,
+   "memory_mb": 9511.0,
+   "busy_percent": 24.0
+  },
+  {
+   "at": 1795519917.9061067,
+   "memory_mb": 9599.0,
+   "busy_percent": 32.0
+  },
+  {
+   "at": 1795519922.9683933,
+   "memory_mb": 9545.0,
+   "busy_percent": 41.0
+  },
+  {
+   "at": 1795519928.120327,
+   "memory_mb": 9487.0,
+   "busy_percent": 45.0
+  },
+  {
+   "at": 1795519933.186825,
+   "memory_mb": 9451.0,
+   "busy_percent": 41.0
+  },
+  {
+   "at": 1795519938.2529984,
+   "memory_mb": 9483.0,
+   "busy_percent": 21.0
+  },
+  {
+   "at": 1795519943.322684,
+   "memory_mb": 9508.0,
+   "busy_percent": 94.0
+  },
+  {
+   "at": 1795519948.3804517,
+   "memory_mb": 9372.0,
+   "busy_percent": 18.0
+  },
+  {
+   "at": 1795519953.4463391,
+   "memory_mb": 9382.0,
+   "busy_percent": 28.0
+  },
+  {
+   "at": 1795519958.4997652,
+   "memory_mb": 9410.0,
+   "busy_percent": 18.0
+  },
+  {
+   "at": 1795519963.5748131,
+   "memory_mb": 9130.0,
+   "busy_percent": 0.0
+  },
+  {
+   "at": 1795519968.633836,
+   "memory_mb": 9440.0,
+   "busy_percent": 57.0
+  },
+  {
+   "at": 1795519973.7020066,
+   "memory_mb": 9372.0,
+   "busy_percent": 24.0
+  },
+  {
+   "at": 1795519978.7633302,
+   "memory_mb": 9348.0,
+   "busy_percent": 40.0
+  },
+  {
+   "at": 1795519983.841103,
+   "memory_mb": 9342.0,
+   "busy_percent": 46.0
+  },
+  {
+   "at": 1795519988.9012473,
+   "memory_mb": 9358.0,
+   "busy_percent": 0.0
+  },
+  {
+   "at": 1795519993.9637792,
+   "memory_mb": 9390.0,
+   "busy_percent": 26.0
+  },
+  {
+   "at": 1795519999.025654,
+   "memory_mb": 9358.0,
+   "busy_percent": 28.0
+  },
+  {
+   "at": 1795520004.0828261,
+   "memory_mb": 9268.0,
+   "busy_percent": 0.0
+  },
+  {
+   "at": 1795520009.3222888,
+   "memory_mb": 9417.0,
+   "busy_percent": 11.0
+  },
+  {
+   "at": 1795520014.39882,
+   "memory_mb": 9425.0,
+   "busy_percent": 52.0
+  },
+  {
+   "at": 1795520019.4616394,
+   "memory_mb": 9406.0,
+   "busy_percent": 45.0
+  },
+  {
+   "at": 1795520024.5271938,
+   "memory_mb": 9430.0,
+   "busy_percent": 19.0
+  },
+  {
+   "at": 1795520029.5802996,
+   "memory_mb": 9462.0,
+   "busy_percent": 18.0
+  },
+  {
+   "at": 1795520034.6389198,
+   "memory_mb": 9450.0,
+   "busy_percent": 16.0
+  },
+  {
+   "at": 1795520039.69167,
+   "memory_mb": 9446.0,
+   "busy_percent": 18.0
+  },
+  {
+   "at": 1795520044.7561526,
+   "memory_mb": 9342.0,
+   "busy_percent": 20.0
+  },
+  {
+   "at": 1795520049.8164082,
+   "memory_mb": 9342.0,
+   "busy_percent": 55.0
+  },
+  {
+   "at": 1795520054.8688984,
+   "memory_mb": 9320.0,
+   "busy_percent": 19.0
+  },
+  {
+   "at": 1795520059.9260762,
+   "memory_mb": 9235.0,
+   "busy_percent": 0.0
+  },
+  {
+   "at": 1795520064.9764125,
+   "memory_mb": 9349.0,
+   "busy_percent": 33.0
+  },
+  {
+   "at": 1795520070.1020365,
+   "memory_mb": 9425.0,
+   "busy_percent": 58.0
+  },
+  {
+   "at": 1795520075.1631052,
+   "memory_mb": 9363.0,
+   "busy_percent": 13.0
+  },
+  {
+   "at": 1795520080.2157915,
+   "memory_mb": 9442.0,
+   "busy_percent": 20.0
+  },
+  {
+   "at": 1795520085.278732,
+   "memory_mb": 9402.0,
+   "busy_percent": 17.0
+  },
+  {
+   "at": 1795520090.330553,
+   "memory_mb": 9436.0,
+   "busy_percent": 92.0
+  },
+  {
+   "at": 1795520095.445131,
+   "memory_mb": 9380.0,
+   "busy_percent": 58.0
+  },
+  {
+   "at": 1795520100.506855,
+   "memory_mb": 9371.0,
+   "busy_percent": 44.0
+  },
+  {
+   "at": 1795520105.5688949,
+   "memory_mb": 9362.0,
+   "busy_percent": 41.0
+  },
+  {
+   "at": 1795520110.6327717,
+   "memory_mb": 9385.0,
+   "busy_percent": 42.0
+  },
+  {
+   "at": 1795520115.7606468,
+   "memory_mb": 9389.0,
+   "busy_percent": 36.0
+  },
+  {
+   "at": 1795520120.8250897,
+   "memory_mb": 9411.0,
+   "busy_percent": 42.0
+  },
+  {
+   "at": 1795520125.893147,
+   "memory_mb": 9283.0,
+   "busy_percent": 0.0
+  },
+  {
+   "at": 1795520130.9549782,
+   "memory_mb": 9455.0,
+   "busy_percent": 21.0
+  },
+  {
+   "at": 1795520136.1555526,
+   "memory_mb": 9455.0,
+   "busy_percent": 43.0
+  },
+  {
+   "at": 1795520141.1992266,
+   "memory_mb": 9527.0,
+   "busy_percent": 17.0
+  },
+  {
+   "at": 1795520146.266625,
+   "memory_mb": 9419.0,
+   "busy_percent": 21.0
+  },
+  {
+   "at": 1795520151.3069944,
+   "memory_mb": 9421.0,
+   "busy_percent": 21.0
+  },
+  {
+   "at": 1795520156.3598373,
+   "memory_mb": 9399.0,
+   "busy_percent": 24.0
+  },
+  {
+   "at": 1795520161.4271245,
+   "memory_mb": 9399.0,
+   "busy_percent": 14.0
+  },
+  {
+   "at": 1795520166.4871976,
+   "memory_mb": 9409.0,
+   "busy_percent": 16.0
+  },
+  {
+   "at": 1795520171.5543668,
+   "memory_mb": 9411.0,
+   "busy_percent": 51.0
+  },
+  {
+   "at": 1795520176.610749,
+   "memory_mb": 9385.0,
+   "busy_percent": 33.0
+  },
+  {
+   "at": 1795520181.6681805,
+   "memory_mb": 9423.0,
+   "busy_percent": 17.0
+  },
+  {
+   "at": 1795520186.809977,
+   "memory_mb": 9385.0,
+   "busy_percent": 17.0
+  },
+  {
+   "at": 1795520191.8605068,
+   "memory_mb": 9387.0,
+   "busy_percent": 62.0
+  },
+  {
+   "at": 1795520196.90591,
+   "memory_mb": 9329.0,
+   "busy_percent": 22.0
+  },
+  {
+   "at": 1795520201.9670575,
+   "memory_mb": 9335.0,
+   "busy_percent": 13.0
+  },
+  {
+   "at": 1795520207.1064153,
+   "memory_mb": 9363.0,
+   "busy_percent": 97.0
+  },
+  {
+   "at": 1795520212.1704607,
+   "memory_mb": 9385.0,
+   "busy_percent": 14.0
+  },
+  {
+   "at": 1795520217.2286975,
+   "memory_mb": 9439.0,
+   "busy_percent": 18.0
+  },
+  {
+   "at": 1795520222.3281853,
+   "memory_mb": 9431.0,
+   "busy_percent": 18.0
+  },
+  {
+   "at": 1795520227.4740348,
+   "memory_mb": 9369.0,
+   "busy_percent": 25.0
+  },
+  {
+   "at": 1795520232.6516378,
+   "memory_mb": 9466.0,
+   "busy_percent": 48.0
+  },
+  {
+   "at": 1795520237.7298677,
+   "memory_mb": 9485.0,
+   "busy_percent": 35.0
+  },
+  {
+   "at": 1795520242.775737,
+   "memory_mb": 9417.0,
+   "busy_percent": 22.0
+  },
+  {
+   "at": 1795520247.833392,
+   "memory_mb": 9149.0,
+   "busy_percent": 0.0
+  },
+  {
+   "at": 1795520252.8949108,
+   "memory_mb": 9461.0,
+   "busy_percent": 42.0
+  },
+  {
+   "at": 1795520257.9619434,
+   "memory_mb": 9442.0,
+   "busy_percent": 17.0
+  },
+  {
+   "at": 1795520263.0036945,
+   "memory_mb": 9468.0,
+   "busy_percent": 18.0
+  },
+  {
+   "at": 1795520268.0443795,
+   "memory_mb": 9478.0,
+   "busy_percent": 17.0
+  },
+  {
+   "at": 1795520273.260889,
+   "memory_mb": 9476.0,
+   "busy_percent": 18.0
+  },
+  {
+   "at": 1795520278.346349,
+   "memory_mb": 9440.0,
+   "busy_percent": 47.0
+  },
+  {
+   "at": 1795520283.4050968,
+   "memory_mb": 9423.0,
+   "busy_percent": 39.0
+  },
+  {
+   "at": 1795520288.4694188,
+   "memory_mb": 9423.0,
+   "busy_percent": 18.0
+  },
+  {
+   "at": 1795520293.7183263,
+   "memory_mb": 9423.0,
+   "busy_percent": 18.0
+  },
+  {
+   "at": 1795520298.7783334,
+   "memory_mb": 9395.0,
+   "busy_percent": 52.0
+  },
+  {
+   "at": 1795520303.924505,
+   "memory_mb": 9437.0,
+   "busy_percent": 13.0
+  },
+  {
+   "at": 1795520308.975531,
+   "memory_mb": 9439.0,
+   "busy_percent": 100.0
+  },
+  {
+   "at": 1795520314.1044602,
+   "memory_mb": 9401.0,
+   "busy_percent": 15.0
+  },
+  {
+   "at": 1795520319.1673276,
+   "memory_mb": 9505.0,
+   "busy_percent": 52.0
+  },
+  {
+   "at": 1795520324.2287126,
+   "memory_mb": 9511.0,
+   "busy_percent": 22.0
+  },
+  {
+   "at": 1795520329.3477209,
+   "memory_mb": 9557.0,
+   "busy_percent": 21.0
+  },
+  {
+   "at": 1795520334.409323,
+   "memory_mb": 9379.0,
+   "busy_percent": 16.0
+  },
+  {
+   "at": 1795520339.5287552,
+   "memory_mb": 9429.0,
+   "busy_percent": 99.0
+  },
+  {
+   "at": 1795520344.6422663,
+   "memory_mb": 9468.0,
+   "busy_percent": 17.0
+  },
+  {
+   "at": 1795520349.7166948,
+   "memory_mb": 9555.0,
+   "busy_percent": 44.0
+  },
+  {
+   "at": 1795520354.8254523,
+   "memory_mb": 9596.0,
+   "busy_percent": 21.0
+  },
+  {
+   "at": 1795520359.9300466,
+   "memory_mb": 9570.0,
+   "busy_percent": 24.0
+  },
+  {
+   "at": 1795520365.0245762,
+   "memory_mb": 9559.0,
+   "busy_percent": 60.0
+  },
+  {
+   "at": 1795520370.0811458,
+   "memory_mb": 9581.0,
+   "busy_percent": 37.0
+  },
+  {
+   "at": 1795520375.159286,
+   "memory_mb": 9542.0,
+   "busy_percent": 63.0
+  },
+  {
+   "at": 1795520380.4313807,
+   "memory_mb": 9516.0,
+   "busy_percent": 24.0
+  },
+  {
+   "at": 1795520385.5945294,
+   "memory_mb": 9440.0,
+   "busy_percent": 34.0
+  },
+  {
+   "at": 1795520390.7839298,
+   "memory_mb": 9391.0,
+   "busy_percent": 46.0
+  },
+  {
+   "at": 1795520395.8490634,
+   "memory_mb": 9418.0,
+   "busy_percent": 50.0
+  },
+  {
+   "at": 1795520400.9137347,
+   "memory_mb": 9430.0,
+   "busy_percent": 37.0
+  },
+  {
+   "at": 1795520405.9698112,
+   "memory_mb": 9386.0,
+   "busy_percent": 14.0
+  },
+  {
+   "at": 1795520411.0435998,
+   "memory_mb": 9434.0,
+   "busy_percent": 26.0
+  },
+  {
+   "at": 1795520416.2000923,
+   "memory_mb": 9398.0,
+   "busy_percent": 21.0
+  },
+  {
+   "at": 1795520421.2716815,
+   "memory_mb": 9414.0,
+   "busy_percent": 55.0
+  }
+ ]
+}

@@ -51,6 +51,10 @@ COMMANDS = {
         "split": ("Make the voice manifest: each voice's longest clip and its validation/test split (once)", "backend.voice_data.split_voice_data"),
         "voice-similarity": ("Every voice against every other (Resemblyzer heatmap, GPU) and the closest voice with a "
                              "genome: build | heatmap | closest FILE.wav | check", "backend.voice_data.voice_similarity"),
+        "models": ("The model store: every model pinned by revision in MODELS_DIR: fetch | check [--full] | pin NAME",
+                   "backend.model_store"),
+        "voice-pack": ("The serving voice pack (the 176 validation voices, ~150 MB): build | check | upload | pull REVISION",
+                       "backend.voice_data.voice_pack"),
         "voice-map": ("3D map and clusters of the validation voices by similarity; --pick N for a spread-out choice",
                       "backend.voice_data.voice_map"),
     },
@@ -126,7 +130,7 @@ COMMANDS = {
 # The tests that need no models or GPU, run as they are run by hand, with the
 # package each needs beyond requirements.txt (None: nothing more). The MCP read
 # calls are tested with a stand-in API, so they need neither the server nor "mcp".
-TESTS = [("backend/evaluation/test_checks.py", None), ("backend/metrics/test_calibrate_words.py", None), ("backend/metrics/test_lab.py", None), ("backend/speech/test_pacing.py", None), ("backend/evaluation/test_sanity_all_genes.py", None), ("backend/voice_data/test_voice_map.py", None), ("backend/voice_data/test_voice_similarity.py", None), ("backend/genome/test_explore.py", None), ("backend/genome/test_editor.py", None), ("backend/genome/test_guidance_and_report.py", None), ("backend/genome/test_evidence_charts.py", None), ("backend/genome/test_evidence_snapshot.py", None), ("backend/genome/test_report_eval.py", None), ("backend/genome/test_mos_study.py", None), ("backend/api/test_accounts.py", None), ("backend/api/test_queue.py", None), ("backend/api/test_assistant.py", None), ("API calls/test_chatbot.py", None), ("API calls/test_remote_results.py", None), ("API calls/test_chart_captions.py", None), ("backend/rag/test_rag.py", None), ("backend/test_storage.py", None), ("backend/test_glossary.py", None), ("backend/test_publish_results.py", None), ("backend/mcp_server/test_read_calls.py", None), ("deploy/test_release.py", None)]
+TESTS = [("backend/evaluation/test_checks.py", None), ("backend/metrics/test_calibrate_words.py", None), ("backend/metrics/test_lab.py", None), ("backend/speech/test_pacing.py", None), ("backend/evaluation/test_sanity_all_genes.py", None), ("backend/voice_data/test_voice_map.py", None), ("backend/voice_data/test_voice_similarity.py", None), ("backend/voice_data/test_uploaded_voices.py", None), ("backend/voice_data/test_voice_pack.py", None), ("backend/test_model_store.py", None), ("backend/genome/test_explore.py", None), ("backend/genome/test_editor.py", None), ("backend/genome/test_guidance_and_report.py", None), ("backend/genome/test_evidence_charts.py", None), ("backend/genome/test_evidence_snapshot.py", None), ("backend/genome/test_report_eval.py", None), ("backend/genome/test_mos_study.py", None), ("backend/api/test_accounts.py", None), ("backend/api/test_queue.py", None), ("backend/api/test_assistant.py", None), ("API calls/test_chatbot.py", None), ("API calls/test_remote_results.py", None), ("API calls/test_chart_captions.py", None), ("backend/rag/test_rag.py", None), ("backend/test_storage.py", None), ("backend/test_glossary.py", None), ("backend/test_publish_results.py", None), ("backend/mcp_server/test_read_calls.py", None), ("deploy/test_release.py", None), ("deploy/test_load.py", None)]
 
 
 def all_commands():

@@ -205,8 +205,11 @@ def blind_order(run_id, rater, clips):
 
 
 def reference_path(run):
-    """The voice's original recording that the run was cloned from, if it is on this PC."""
-    path = run.get("reference_audio")
+    """The voice's original recording that the run was cloned from, if it is on this PC (in the voice pack when
+    one is in use, found by clip id)."""
+    from backend.voice_data.voice_pack import reference_of
+
+    path = reference_of(run)
     return Path(path) if path and Path(path).is_file() else None
 
 

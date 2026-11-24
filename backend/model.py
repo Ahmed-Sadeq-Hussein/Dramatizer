@@ -128,6 +128,10 @@ def _wetext_from_cache():
     of that request (403), so each load spent about a minute retrying and then went
     on with no normaliser at all. Once the files are on this PC, use them as they are;
     the first time, they are still downloaded.
+
+    With WETEXT_DIR set (the model store's cache/wetext, pinned file by file), that
+    folder is used and nothing is ever downloaded: the container starts with the
+    network off (Milestone 4, problem 2).
     """
     try:
         import wetext.wetext as wetext
@@ -137,8 +141,11 @@ def _wetext_from_cache():
     download = wetext.snapshot_download
     if getattr(download, "from_cache", False):
         return
+    pinned = setting("WETEXT_DIR", "")
 
     def from_cache(model_id, *args, **kwargs):
+        if pinned:
+            return pinned
         try:
             folder = download(model_id, *args, local_files_only=True, **kwargs)
             if all((Path(folder) / lang / "tn" / "tagger.fst").is_file() for lang in ("en", "zh")):

@@ -81,7 +81,9 @@ class Session:
 
 def _resolve_reference(run, indexes):
     """Find the original reference clip when a run was exported from another PC."""
-    path = Path(run["reference_audio"])
+    from backend.voice_data.voice_pack import reference_of
+
+    path = Path(reference_of(run))
     if path.is_file():
         return str(path.resolve())
 

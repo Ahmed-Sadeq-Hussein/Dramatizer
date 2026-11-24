@@ -388,7 +388,9 @@ def run_search(run_dir, render=render_plan, judge=judge_with_sanity, lock=None, 
     run.update(status="running", error=None)
     save_run(run_dir, run)
     lock = lock or nullcontext()
-    reference_audio = run["reference_audio"]
+    from backend.voice_data.voice_pack import reference_of
+
+    reference_audio = reference_of(run)      # by clip id in the voice pack when one is in use
 
     def saved():
         save_run(run_dir, run)

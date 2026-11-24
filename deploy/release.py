@@ -52,8 +52,10 @@ def main(argv=None):
     parser.add_argument("--out", default=str(OUT))
     args = parser.parse_args(argv)
     for digest in (args.image, args.base):
-        if digest and "@sha256:" not in digest:
-            raise SystemExit(f"Name images by digest (…@sha256:…), never by a tag: {digest}")
+        # A registry digest (…@sha256:…), or before the image is pushed, its local ID (sha256:…): both name exactly
+        # one image's content, which a tag does not
+        if digest and "@sha256:" not in digest and not digest.startswith("sha256:"):
+            raise SystemExit(f"Name images by digest (…@sha256:…) or local ID (sha256:…), never by a tag: {digest}")
     release = make(args.name, args.env, args.image, args.base, args.voice_pack, args.models, args.commit)
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(release, indent=2) + "\n", encoding="utf-8")

@@ -22,12 +22,20 @@ Where they are kept (outside the repository, like every voice):
 A voice has an ID and a name. The ID ("speaker" in about.json: the account and the name it was uploaded
 under) is fixed: renders made with it, who may hear them, and its folder all go by it. The name is only what
 the page shows, and its owner may change it.
+
+The words must match the recording (check_script): Whisper listens to it, and the word error rate of the
+typed words against what it heard must be at most MAX_WER (UPLOAD_MAX_WER, default 0.35). That stops text that
+has nothing to do with the recording (spam, or a script for another clip), which would also clone badly:
+CosyVoice uses the words to line up the voice. 0.35 lets through Whisper's own slips on accents, names and
+home microphones (it gets 5-15 % of words wrong on good recordings), and refuses unrelated text, which scores
+close to 1. Whisper runs on the CPU, one upload at a time, so it never competes with the GPU's jobs.
 """
 import io
 import json
 import os
 import re
 import shutil
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -49,6 +57,50 @@ FOLDER = re.compile(r"^[a-z0-9-]{1,24}$")
 
 class UploadRefused(Exception):
     """An upload or removal that cannot be done. The message is safe to show."""
+
+
+def max_wer():
+    """UPLOAD_MAX_WER: the most of the typed words that may differ from what Whisper heard (off: no check)."""
+    value = os.environ.get("UPLOAD_MAX_WER", "0.35").strip().lower()
+    return None if value in ("off", "none", "") else float(value)
+
+
+_whisper = {"model": None}
+_whisper_lock = threading.Lock()
+
+
+def heard_in(mono, rate):
+    """What Whisper (WER_MODEL's size, on the CPU) hears in a recording, any language."""
+    import librosa
+
+    with _whisper_lock:
+        if _whisper["model"] is None:
+            import whisper
+
+            size = os.environ.get("WER_MODEL", "whisper-base").lower().partition("-")[2] or "base"
+            _whisper["model"] = whisper.load_model(size, device="cpu")
+        audio = librosa.resample(np.asarray(mono, dtype="float32"), orig_sr=rate, target_sr=16000)
+        return _whisper["model"].transcribe(audio, fp16=False)["text"].strip()
+
+
+def check_script(mono, rate, script, hear=heard_in):
+    """The word error rate of the typed words against what was heard; UploadRefused when it is above max_wer()."""
+    from backend.metrics.WER import wer_of
+
+    limit = max_wer()
+    if limit is None:
+        return None
+    try:
+        heard = hear(mono, rate)
+    except Exception:
+        raise UploadRefused("The words could not be checked against the recording just now. Try again later.")
+    wer = wer_of(script, heard)
+    if wer > limit:
+        shown = heard if len(heard) <= 200 else heard[:200] + "..."
+        raise UploadRefused(f"The words you typed do not match the recording: {min(wer, 1):.0%} of them differ, and at "
+                            f"most {limit:.0%} may. The recording sounds like: \"{shown or '(nothing)'}\". "
+                            "Type exactly what is said in it, or record it again.")
+    return round(wer, 3)
 
 
 def root():
@@ -137,8 +189,10 @@ def _decode(data, filename):
     return mono, rate, seconds
 
 
-def save(owner, name, script, data, filename, consent=True, base=None, now=None):
-    """Keep an uploaded voice for `owner`. Returns its about record; raises UploadRefused with the reason."""
+def save(owner, name, script, data, filename, consent=True, base=None, now=None, check=True):
+    """Keep an uploaded voice for `owner`. Returns its about record; raises UploadRefused with the reason.
+    check: True compares the words with the recording (check_script), a function (mono, rate, script) does it
+    instead, False does not (for tools run by the host)."""
     if consent is not True:
         raise UploadRefused("Confirm that this is your own voice, or that the speaker has allowed you to upload it.")
     name = " ".join(str(name or "").split())
@@ -160,6 +214,7 @@ def save(owner, name, script, data, filename, consent=True, base=None, now=None)
     if any(v["speaker"].lower() == speaker_of(owner, name).lower() for v in voices(None, base)):
         raise UploadRefused("That voice name cannot be used: choose another.")
     mono, rate, seconds = _decode(data, filename)
+    script_wer = (check_script if check is True else check)(mono, rate, script) if check else None
 
     target = folder / slug
     work = folder / f".{slug}.uploading"
@@ -171,6 +226,7 @@ def save(owner, name, script, data, filename, consent=True, base=None, now=None)
         about = {"owner": owner, "name": name, "speaker": speaker_of(owner, name),
                  "uploaded": (now or datetime.now()).strftime("%Y-%m-%d %H:%M:%S"),
                  "seconds": round(seconds, 1), "original_format": Path(filename).suffix.lower()[1:],
+                 "script_wer": script_wer,
                  "consent": "The uploader confirmed this is their own voice or that the speaker allowed it."}
         (work / "about.json").write_text(json.dumps(about, indent=2, ensure_ascii=False), encoding="utf-8")
         work.rename(target)                 # the voice appears whole, or not at all

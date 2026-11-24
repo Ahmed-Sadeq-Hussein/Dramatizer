@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dramatizer</title>
 <link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="/static/logo.svg" type="image/svg+xml">
 </head>
 <body>
 <header class="top">
-  <div class="brand">Dramatizer <span class="tag">client</span></div>
+  <div class="brand"><img class="logo" src="/static/logo.svg" alt="" width="28" height="28"> Dramatizer <span class="tag">client</span></div>
   <div class="who">
     <div class="conn" id="conn">Connecting…</div>
     <details class="account" id="account" hidden>
@@ -159,8 +160,21 @@
       <ul class="list" id="my-voice-list"></ul>
       <form id="upload-form" class="stack">
         <label>Voice name <input id="up-name" maxlength="24" pattern="[A-Za-z0-9][A-Za-z0-9 \-]{0,23}" placeholder="e.g. Calm" required></label>
-        <label>Recording <input type="file" id="up-file" accept=".wav,.mp3,.flac,.ogg,audio/*" required></label>
+        <fieldset class="recorder" id="recorder">
+          <legend>Record in the browser, or choose a file below</legend>
+          <p class="muted small">Read a line aloud in a quiet room, 5 to 30 seconds. For example:
+            <q id="rec-suggest">The old lighthouse keeper climbed the stairs every evening, to light the lamp before the ships came in.</q>
+            <button type="button" class="small quiet" id="rec-use-line">Use this line as the words</button></p>
+          <div class="row">
+            <button type="button" id="rec-start">● Record</button>
+            <button type="button" id="rec-stop" class="quiet" disabled>■ Stop</button>
+            <span class="muted small" id="rec-status" role="status"></span>
+          </div>
+          <audio id="rec-play" controls hidden></audio>
+        </fieldset>
+        <label>Or a file <input type="file" id="up-file" accept=".wav,.mp3,.flac,.ogg,audio/*"></label>
         <label>The words spoken in the recording <textarea id="up-script" rows="2" maxlength="500" required></textarea></label>
+        <p class="muted small">They are checked against the recording: if too many words differ from what it says, the voice is not kept.</p>
         <label class="check"><input type="checkbox" id="up-consent" required> This is my own voice, or the speaker has allowed me to upload it</label>
         <p class="muted small" id="up-limits"></p>
         <div class="row"><button type="submit" data-needs="speak">Upload voice</button></div>

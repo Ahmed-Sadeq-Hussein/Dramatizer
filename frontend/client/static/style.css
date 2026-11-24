@@ -27,7 +27,13 @@ audio { width: 100%; height: 34px; }
 
 .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px;
        max-width: 900px; margin: 0 auto; }
-.brand { font-weight: 700; font-size: 1.1rem; }
+.brand { font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+.brand .logo { width: 28px; height: 28px; flex: none; }
+.recorder { border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; margin: 0; display: grid; gap: 8px; min-width: 0; }
+.recorder legend { font-size: 0.85rem; color: var(--muted); padding: 0 4px; }
+.recorder q { color: var(--ink); }
+.recorder audio { width: 100%; }
+#rec-start:not(:disabled) { background: var(--bad); color: var(--accent-ink); }
 .tag { font-size: 0.75rem; font-weight: 600; color: var(--muted); border: 1px solid var(--rule); border-radius: 999px; padding: 1px 8px; }
 .conn { font-size: 0.85rem; color: var(--muted); text-align: right; }
 .conn.ok::before { content: "● "; color: var(--fine); }

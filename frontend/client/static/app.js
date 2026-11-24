@@ -402,21 +402,112 @@ const asBase64 = (file) => new Promise((resolve, reject) => {
   reader.readAsDataURL(file);
 });
 
+// --- Recording a voice in the browser -------------------------------------------------------------------
+// The browser records in its own format (webm or mp4); the host reads wav, so the recording is decoded here and
+// written as a 16-bit mono wav at 24 kHz (30 s is about 1.4 MB). It is then uploaded like a chosen file.
+const REC_MAX_SECONDS = 30;
+const rec = { stream: null, recorder: null, chunks: [], timer: null, started: 0, wav: null, url: null };
+
+function wavFrom(samples, rate) {
+  const data = new DataView(new ArrayBuffer(44 + samples.length * 2));
+  const text = (at, s) => [...s].forEach((c, i) => data.setUint8(at + i, c.charCodeAt(0)));
+  text(0, "RIFF"); data.setUint32(4, 36 + samples.length * 2, true); text(8, "WAVE");
+  text(12, "fmt "); data.setUint32(16, 16, true); data.setUint16(20, 1, true); data.setUint16(22, 1, true);
+  data.setUint32(24, rate, true); data.setUint32(28, rate * 2, true); data.setUint16(32, 2, true); data.setUint16(34, 16, true);
+  text(36, "data"); data.setUint32(40, samples.length * 2, true);
+  samples.forEach((x, i) => data.setInt16(44 + i * 2, Math.max(-1, Math.min(1, x)) * 0x7fff, true));
+  return new Blob([data], { type: "audio/wav" });
+}
+
+async function toWav(blob) {
+  const decoded = await new AudioContext().decodeAudioData(await blob.arrayBuffer());
+  const rate = 24000;
+  const offline = new OfflineAudioContext(1, Math.ceil(decoded.duration * rate), rate);   // mono, resampled
+  const source = offline.createBufferSource();
+  source.buffer = decoded;
+  source.connect(offline.destination);
+  source.start();
+  return wavFrom((await offline.startRendering()).getChannelData(0), rate);
+}
+
+function recStatus(text) { $("rec-status").textContent = text; }
+
+async function startRecording() {
+  if (!navigator.mediaDevices || !window.MediaRecorder) {
+    return toast("This browser cannot record here. Choose a file instead.", true);
+  }
+  try {
+    rec.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false } });
+  } catch (error) {
+    return toast("The microphone could not be used: allow it for this site, then try again.", true);
+  }
+  rec.chunks = [];
+  rec.recorder = new MediaRecorder(rec.stream);
+  rec.recorder.ondataavailable = (e) => { if (e.data.size) rec.chunks.push(e.data); };
+  rec.recorder.onstop = finishRecording;
+  rec.recorder.start();
+  rec.started = Date.now();
+  $("rec-start").disabled = true;
+  $("rec-stop").disabled = false;
+  rec.timer = setInterval(() => {
+    const seconds = (Date.now() - rec.started) / 1000;
+    recStatus(`Recording… ${seconds.toFixed(0)} s (stops by itself at ${REC_MAX_SECONDS} s)`);
+    if (seconds >= REC_MAX_SECONDS) stopRecording();
+  }, 250);
+}
+
+function stopRecording() {
+  clearInterval(rec.timer);
+  if (rec.recorder && rec.recorder.state !== "inactive") rec.recorder.stop();
+  if (rec.stream) rec.stream.getTracks().forEach((track) => track.stop());       // the browser's mic light goes off
+  $("rec-stop").disabled = true;
+}
+
+async function finishRecording() {
+  $("rec-start").disabled = false;
+  recStatus("Preparing the recording…");
+  try {
+    rec.wav = await toWav(new Blob(rec.chunks, { type: rec.recorder.mimeType }));
+    if (rec.url) URL.revokeObjectURL(rec.url);
+    rec.url = URL.createObjectURL(rec.wav);
+    $("rec-play").src = rec.url;
+    $("rec-play").hidden = false;
+    const seconds = (rec.wav.size - 44) / 2 / 24000;
+    recStatus(seconds < 3 ? `Only ${seconds.toFixed(1)} s: record at least 3 s.` :
+      `Recorded ${seconds.toFixed(1)} s. Listen to it, then upload it below (or record again).`);
+    $("up-file").value = "";
+  } catch (error) {
+    rec.wav = null;
+    recStatus("The recording could not be read. Try again, or choose a file.");
+  }
+}
+
+$("rec-start").addEventListener("click", startRecording);
+$("rec-stop").addEventListener("click", stopRecording);
+$("rec-use-line").addEventListener("click", () => { $("up-script").value = $("rec-suggest").textContent.trim(); });
+$("up-file").addEventListener("change", () => {          // a chosen file replaces the recording
+  if ($("up-file").files[0]) { rec.wav = null; $("rec-play").hidden = true; recStatus(""); }
+});
+
 $("upload-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const file = $("up-file").files[0];
-  if (!file) return;
+  const file = rec.wav ? new File([rec.wav], "recording.wav", { type: "audio/wav" }) : $("up-file").files[0];
+  if (!file) return toast("Record your voice, or choose a file.", true);
   if (file.size > 8 * 1024 * 1024) return toast("The file is larger than 8 MB.", true);
   const button = $("upload-form").querySelector("button[type=submit]");
   button.disabled = true;
+  button.textContent = "Checking the words…";
   try {
     const { voice } = await call("/me/voices", { body: { name: $("up-name").value.trim(), script: $("up-script").value.trim(),
       filename: file.name, audio: await asBase64(file), consent: $("up-consent").checked } });
     $("upload-form").reset();
+    rec.wav = null;
+    $("rec-play").hidden = true;
+    recStatus("");
     toast(`Uploaded ${voice.name}: it is under Dataset: Custom voices, for you only.`);
     loadDatasets();
   } catch (error) { toast(error.message, true); }
-  finally { button.disabled = !can("speak"); }
+  finally { button.disabled = !can("speak"); button.textContent = "Upload voice"; }
 });
 
 async function loadVoices(page) {

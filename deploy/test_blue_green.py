@@ -74,7 +74,7 @@ class BlueGreenTest(unittest.TestCase):
 
     def test_first_release_goes_live_in_blue(self):
         self.assertEqual(blue_green.release(self.args("v1")), 0)
-        self.assertEqual(self.state()["live"]["slot"], "blue")
+        self.assertEqual(self.state()["live"]["slot"], "green")   # BROKEN ON PURPOSE (Milestone 4 CI evidence)
         self.assertEqual(front_door.live_port(self.dir / "state.json"), 5106)
 
     def test_second_release_switches_to_green_and_keeps_the_old_one_stopped(self):

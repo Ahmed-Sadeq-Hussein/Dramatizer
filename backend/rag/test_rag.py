@@ -113,6 +113,11 @@ class Corpus(unittest.TestCase):
         self.assertEqual(runs_out[0]["fields"]["best_genomes"], [1])
         self.assertEqual(runs_out[0]["fields"]["better_than_plain"], 1)
 
+    def test_a_new_site_without_ratings_builds_an_empty_corpus(self):
+        empty = Path(tempfile.mkdtemp())          # found by the Milestone 4 smoke test on a fresh container
+        self.assertEqual(corpus.build(who_csv=empty / "who_rated_what.csv", runs_dir=empty, random_v2=None,
+                                      sanity_all=None), [])
+
     def test_sanity_records_and_writing(self):
         with tempfile.TemporaryDirectory() as folder:
             folder = Path(folder)

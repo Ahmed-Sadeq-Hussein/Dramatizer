@@ -181,8 +181,10 @@ def sanity_records(folder=RANDOM_V2):
 def build(who_csv=None, runs_dir=None, random_v2=RANDOM_V2, sanity_all=SANITY_ALL):
     """Every record, in a fixed order (by kind, then ID), so the same inputs give the same corpus."""
     who_csv = Path(who_csv or ratings.who_path())
-    with open(who_csv, encoding="utf-8-sig") as f:
-        rows = list(csv.DictReader(f))
+    rows = []
+    if who_csv.is_file():               # a new site (a fresh container's state) has no ratings yet: no clip records
+        with open(who_csv, encoding="utf-8-sig") as f:
+            rows = list(csv.DictReader(f))
     runs = {run["id"]: run for _, run in search.list_runs(runs_dir)}
     clips = clip_records(rows, runs)
     records = clips + run_records(clips, runs)

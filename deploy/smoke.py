@@ -104,7 +104,7 @@ class Smoke:
     def login(self):
         if not self.password_file.is_file():
             return False, f"no password file for the smoke account ({self.password_file.name})"
-        password = self.password_file.read_text(encoding="utf-8").strip()
+        password = read_password(self.password_file)
         self.api.token = self.api.json("POST", "login", {"username": "smoke-test", "password": password})["token"]
         return True, "smoke-test"
 
@@ -145,6 +145,17 @@ class Smoke:
         self.run("render", self.render, needs=("ready", "login"))
         self.run("chatbot", self.chatbot, needs=("ready", "login"))
         return all(r["result"] == "pass" for r in self.results)
+
+
+def read_password(path, username="smoke-test"):
+    """The smoke account's password: the file's only text, or its "smoke-test<TAB>password" line, as
+    `account add --password-file` writes it."""
+    text = Path(path).read_text(encoding="utf-8").strip()
+    for line in text.splitlines():
+        name, tab, password = line.partition("\t")
+        if tab and name.strip() == username:
+            return password.strip()
+    return text
 
 
 def _whisper_wer(path, text):

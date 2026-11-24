@@ -184,8 +184,8 @@ MAX_TEXT = 300
 MAX_WAITING = 3          # jobs per person, queued or running
 # Limits for everyone together (Milestone 4, step 6). One GPU does one job at a time, so a long queue only means
 # long waits: past MAX_QUEUE a new job is refused at once (503 + Retry-After) instead of waiting for ages.
-# 12 is a first guess; the load runs (step 7) measure the real number.
-MAX_QUEUE = int(model.setting("MAX_QUEUE", "12"))                 # jobs queued or running, all people together
+# 4 from the load runs (step 7): about a minute's wait at 13 s a render (12, the first guess, let one wait 4 min).
+MAX_QUEUE = int(model.setting("MAX_QUEUE", "4"))                  # jobs queued or running, all people together
 MAX_WAIT = int(model.setting("MAX_WAIT_SECONDS", "600"))          # not started by then: dropped, the slot freed
 ABANDONED = 120          # a render or Lab job whose page stopped asking about it this long ago is dropped
 FOLLOWED = ("speak", "lab")   # their pages ask every 1-2 s; genome searches are started and left to run

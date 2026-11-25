@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dramatizer</title>
 <link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/stack.css">
 <link rel="icon" href="/static/logo.svg" type="image/svg+xml">
 </head>
 <body>
@@ -80,6 +81,7 @@
   <button type="button" data-mode="ask" aria-pressed="false">Ask</button>
   <button type="button" data-mode="measure" aria-pressed="false">Lab</button>
   <button type="button" data-mode="research" aria-pressed="false" hidden>Research</button>
+  <button type="button" data-mode="stack" aria-pressed="false">Stack</button>
   <span class="mode-note" id="mode-note"></span>
 </nav>
 
@@ -101,6 +103,7 @@
   <button role="tab" data-tab="graphs">Graphs</button>
   <button role="tab" data-tab="ask">Ask the Dramatizer</button>
   <button role="tab" data-tab="measure">Lab</button>
+  <button role="tab" data-tab="stack">Stack</button>
 </nav>
 
 <main>
@@ -134,6 +137,10 @@
       <button type="button" class="home-card" data-go="research" id="home-research" hidden>
         <strong>Research</strong>
         <span>Genome searches, their rankings, and the measured results.</span>
+      </button>
+      <button type="button" class="home-card" data-go="stack">
+        <strong>Stack</strong>
+        <span>What the Dramatizer is built from, layer by layer, and where it reaches its limits.</span>
       </button>
     </div>
 
@@ -482,6 +489,11 @@
     <div id="mos-study"></div>
     <h3>The six genome questions</h3>
     <div id="graphs"></div>
+  </section>
+
+  <!-- Stack: the same <article> as /static/stack.html, loaded when the tab first opens -->
+  <section class="tab" id="tab-stack" hidden>
+    <div id="stack-root"><p class="muted">Loading…</p></div>
   </section>
 </main>
 </div>

@@ -296,6 +296,12 @@ What the first runs found and what changed:
 Still to do here: push the base image and record its digest in `deploy/base-image.txt` (CI then builds and pushes
 the app image), move the database into the named volume `dramatizer-state`, and run the site from the image.
 
+**Update (24 Nov 2026, evening):** the live site now runs from the image (step 5), with its state in
+`dramatizer-state`. The base image `dramatizer-base:2026-11-24-llm` adds the chatbot's Python 3.11 environment
+(`/opt/llm`, `docker/requirements-llm.txt`; 26.5 GB), so the chatbot runs in the container. Still to do: push
+the base image to ghcr.io (this needs `docker login ghcr.io` with a `write:packages` token) and record its digest
+in `deploy/base-image.txt`.
+
 As first written (23 Nov):
 - `docker/base.Dockerfile`: CUDA 12.1.1 + cuDNN 8 runtime (pinned by digest), Python 3.10, `requirements.txt`
   without deepspeed and TensorRT (CosyVoice only uses them when asked), CosyVoice at commit `074ca6d` with its
@@ -436,6 +442,19 @@ times in `reports/milestone4/05-release/` (README there).
 - Not yet done: the live site still runs outside Docker on port 5005. Moving it behind the front door (port 5105,
   where the tunnel points) needs the database moved into the volume `dramatizer-state` first.
 
+**Status (24 Nov 2026, evening): done on the live site.** The state was moved into the volume `dramatizer-state`
+(`deploy/move_state.py`: row counts equal, eval data and password lists left out, same certificate). The front door
+now listens on 5005 and 5105, and `deploy/live.ps1` releases with `--free-gpu`, because CosyVoice and Gemma together
+fill the GPU. Log in `reports/milestone4/README.md` (section "The live site"):
+- **v5, first try, blocked**: the settings hash in the record differed from the container's, because `VOICES_DIR`
+  was set outside the env file the record was made from. Fixed in 734b92e: `release.py` and `blue_green.py` both
+  read `deploy/container.env` and then `deploy/live.env`.
+- **v5 released** (99 s); **v6 released** (105 s, the site paused while v5 was stopped); **rolled back to v5**
+  (77 s). After each switch, `/version` through 5005 and 5105 showed the expected commit.
+- The chatbot runs in the container (Python 3.11 environment `/opt/llm` in the base image). It loads after
+  CosyVoice, not at the same time (that blocked v4-staging: `/ready` took over 300 s), and was ready 66 s after the
+  site.
+
 ### Step 6: limits under load (S)
 
 Today a person can have 3 jobs waiting (429 after that), and the chatbot gives up after 90 s. There is no limit
@@ -462,6 +481,8 @@ on the whole queue, so 20 people × 3 jobs means 60 renders in a row.
 - `backend/api/test_queue.py` (9 tests): 200 refusals after a full queue take well under a second; the 503 carries
   `Retry-After`; expiry frees a slot; abandoned renders go but searches stay; the worker skips dropped jobs; only
   the owner can cancel; the wait estimate.
+- **On the running site since 24 Nov 2026**: the live containers run with `MAX_QUEUE=4` (`deploy/container.env`,
+  from step 7's measurements).
 
 ### Step 7: measure under load (M, GPU)
 

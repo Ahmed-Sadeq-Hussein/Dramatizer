@@ -35,7 +35,13 @@ def config_sha256(values):
 
 
 def read_env_file(path):
-    """KEY=VALUE lines of an env file (as docker run --env-file reads them: no quotes, # starts a comment line)."""
+    """KEY=VALUE lines of an env file (as docker run --env-file reads them: no quotes, # starts a comment line).
+    A list of files is read in order, a later file's value winning, as with several --env-file options."""
+    if isinstance(path, (list, tuple)):
+        values = {}
+        for one in path:
+            values.update(read_env_file(one))
+        return values
     values = {}
     for line in Path(path).read_text(encoding="utf-8").splitlines():
         line = line.strip()

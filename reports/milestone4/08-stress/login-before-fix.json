@@ -1,0 +1,33 @@
+{
+  "part": "login",
+  "when": "2026-11-25 14:29:43",
+  "rows": [
+    {
+      "concurrent": 1,
+      "requests": 46,
+      "errors": 0,
+      "per_second": 4.5,
+      "p50_ms": 156.3,
+      "p95_ms": 173.4,
+      "max_ms": 177.3
+    },
+    {
+      "concurrent": 4,
+      "requests": 67,
+      "errors": 0,
+      "per_second": 6.5,
+      "p50_ms": 265.5,
+      "p95_ms": 1170.6,
+      "max_ms": 1381.6
+    },
+    {
+      "concurrent": 16,
+      "requests": 82,
+      "errors": 0,
+      "per_second": 7.1,
+      "p50_ms": 795.1,
+      "p95_ms": 3485.9,
+      "max_ms": 4378.5
+    }
+  ]
+}

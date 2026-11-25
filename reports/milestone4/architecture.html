@@ -1,0 +1,332 @@
+<title>Dramatizer Serving Architecture</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; two wide diagrams (serving path, release path) that scroll sideways on phones,
+   then a component register. Ink-on-paper with a deep teal accent; live = green, blocked = red. */
+:root {
+  --bg: #f5f7f8;
+  --panel: #ffffff;
+  --ink: #15212b;
+  --muted: #566573;
+  --line: #c9d3da;
+  --accent: #0c6b78;
+  --accent-soft: #e1f0f2;
+  --live: #1f7a3f;
+  --live-soft: #e3f3e8;
+  --block: #b3261e;
+  --block-soft: #fbe7e5;
+  --net: #7a5cc4;
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f161c; --panel: #17212a; --ink: #e4ecf1; --muted: #9aabb8; --line: #33434f;
+    --accent: #4fc0cf; --accent-soft: #15323a; --live: #5ccf86; --live-soft: #16301f;
+    --block: #f2857c; --block-soft: #3a1d1b; --net: #b49cf0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f161c; --panel: #17212a; --ink: #e4ecf1; --muted: #9aabb8; --line: #33434f;
+  --accent: #4fc0cf; --accent-soft: #15323a; --live: #5ccf86; --live-soft: #16301f;
+  --block: #f2857c; --block-soft: #3a1d1b; --net: #b49cf0; color-scheme: dark;
+}
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 56px;
+}
+.wrap { max-width: 1060px; margin: 0 auto; display: grid; gap: 40px; }
+header { display: grid; gap: 10px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--font-display); font-size: clamp(28px, 4vw, 40px); line-height: 1.1; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--font-display); font-size: 22px; margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 68ch; }
+.lead { color: var(--muted); font-size: 16px; }
+section { display: grid; gap: 14px; min-width: 0; }
+.diagram { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.diagram svg { display: block; min-width: 900px; width: 100%; height: auto; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.fact { border-top: 2px solid var(--accent); padding-top: 8px; display: grid; gap: 2px; }
+.fact b { font-family: var(--font-display); font-size: 22px; font-variant-numeric: tabular-nums; }
+.fact span { color: var(--muted); font-size: 13px; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+th { font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+td:first-child { font-weight: 600; white-space: nowrap; }
+code { font-family: var(--font-mono); font-size: 0.88em; background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
+.note { color: var(--muted); font-size: 13px; }
+
+/* SVG styling through the theme tokens */
+svg text { font-family: var(--font-body); fill: var(--ink); }
+svg .t-title { font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+svg .t-small { font-size: 12px; fill: var(--muted); }
+svg .t-mono { font-family: var(--font-mono); font-size: 11.5px; fill: var(--muted); }
+svg .t-label { font-family: var(--font-mono); font-size: 11px; fill: var(--accent); }
+svg .t-net { font-family: var(--font-mono); font-size: 12px; fill: var(--net); }
+svg .t-live { font-family: var(--font-mono); font-size: 11px; fill: var(--live); font-weight: 500; }
+svg .t-block { font-family: var(--font-mono); font-size: 11px; fill: var(--block); font-weight: 500; }
+svg .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+svg .box-accent { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+svg .box-live { fill: var(--live-soft); stroke: var(--live); stroke-width: 2; }
+svg .box-idle { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 5 4; }
+svg .box-block { fill: var(--block-soft); stroke: var(--block); stroke-width: 1.5; }
+svg .netbox { fill: none; stroke: var(--net); stroke-width: 1.5; stroke-dasharray: 7 5; }
+svg .wire { stroke: var(--accent); stroke-width: 2; fill: none; }
+svg .wire-muted { stroke: var(--muted); stroke-width: 1.5; fill: none; stroke-dasharray: 4 4; }
+svg .wire-live { stroke: var(--live); stroke-width: 2; fill: none; }
+svg .wire-block { stroke: var(--block); stroke-width: 2; fill: none; }
+svg .head { fill: var(--accent); }
+svg .head-muted { fill: var(--muted); }
+svg .head-live { fill: var(--live); }
+svg .head-block { fill: var(--block); }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Milestone 4 · serving · 25 Nov 2026</div>
+    <h1>Dramatizer serving architecture</h1>
+    <p class="lead">How a visitor reaches the voice-cloning site, what runs on the one GPU, and how a new version is checked before it takes over. Everything runs in Docker on a single Windows PC with an RTX 3080.</p>
+  </header>
+
+  <section aria-labelledby="serve-h">
+    <h2 id="serve-h">The request path</h2>
+    <p>A visitor on <code>app.dramatizer.dev</code> gets Cloudflare's trusted certificate. Cloudflare's tunnel reaches the front door inside Docker, and the front door passes the encrypted bytes on to whichever slot is live. Clients that pin the site's own certificate connect on port 5005 and see that certificate unchanged.</p>
+    <div class="diagram">
+      <svg viewBox="0 0 1000 600" role="img" aria-label="Request path: browser through Cloudflare and the tunnel container to the front door, which forwards to the live blue slot; the slot mounts its state, models, voices and renders.">
+        <defs>
+          <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head"/></marker>
+          <marker id="am" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-muted"/></marker>
+          <marker id="al" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-live"/></marker>
+        </defs>
+
+        <!-- Visitors -->
+        <rect x="16" y="56" width="170" height="78" rx="8" class="box"/>
+        <text x="30" y="82" class="t-title">Browser</text>
+        <text x="30" y="102" class="t-small">anyone, on the web</text>
+        <text x="30" y="120" class="t-mono">https://app.dramatizer.dev</text>
+
+        <rect x="16" y="226" width="170" height="78" rx="8" class="box"/>
+        <text x="30" y="252" class="t-title">Pinned clients</text>
+        <text x="30" y="272" class="t-small">team apps, playit tunnel</text>
+        <text x="30" y="290" class="t-mono">check fingerprint b00a5ab5…</text>
+
+        <!-- Cloudflare -->
+        <rect x="220" y="56" width="178" height="78" rx="8" class="box-accent"/>
+        <text x="234" y="82" class="t-title">Cloudflare edge</text>
+        <text x="234" y="102" class="t-small">trusted TLS certificate</text>
+        <text x="234" y="120" class="t-mono">DNS → named tunnel</text>
+
+        <!-- Docker network -->
+        <rect x="428" y="20" width="556" height="390" rx="12" class="netbox"/>
+        <text x="444" y="42" class="t-net">Docker network "dramatizer" · Docker Desktop (WSL 2)</text>
+
+        <rect x="446" y="56" width="176" height="78" rx="8" class="box"/>
+        <text x="460" y="82" class="t-title">dramatizer-tunnel</text>
+        <text x="460" y="102" class="t-small">cloudflared 2026.11.0</text>
+        <text x="460" y="120" class="t-mono">credentials mounted read-only</text>
+
+        <rect x="446" y="196" width="176" height="128" rx="8" class="box"/>
+        <text x="460" y="222" class="t-title">dramatizer-front-door</text>
+        <text x="460" y="242" class="t-small">raw TCP; TLS passes through</text>
+        <text x="460" y="262" class="t-mono">127.0.0.1:5005, :5105</text>
+        <text x="460" y="280" class="t-mono">reads, per connection:</text>
+        <text x="460" y="296" class="t-mono">history/live/</text>
+        <text x="460" y="311" class="t-mono">  front_door.json</text>
+
+        <!-- Slots -->
+        <rect x="668" y="56" width="298" height="200" rx="8" class="box-live"/>
+        <text x="684" y="82" class="t-title">dramatizer-blue</text>
+        <text x="950" y="82" class="t-live" text-anchor="end">LIVE · v5</text>
+        <text x="684" y="104" class="t-small">Flask API /api/v1 · TLS · 127.0.0.1:5106</text>
+        <text x="684" y="128" class="t-mono">▸ CosyVoice 3 (0.5B) · voice cloning, GPU</text>
+        <text x="684" y="148" class="t-mono">▸ Gemma 4 E4B, 4-bit · chatbot, /opt/llm</text>
+        <text x="684" y="168" class="t-mono">    loads after CosyVoice</text>
+        <text x="684" y="188" class="t-mono">▸ Whisper, MiniLM, SQUIM · checks, search</text>
+        <text x="684" y="208" class="t-mono">▸ GPU queue: max 4 jobs, then 503</text>
+        <text x="684" y="228" class="t-mono">▸ /ready  /version  /health</text>
+        <text x="684" y="246" class="t-small">RTX 3080, 10 GB: one slot at a time</text>
+
+        <rect x="668" y="284" width="298" height="86" rx="8" class="box-idle"/>
+        <text x="684" y="310" class="t-title">dramatizer-green</text>
+        <text x="950" y="310" class="t-label" text-anchor="end">STOPPED · v6</text>
+        <text x="684" y="332" class="t-small">the other slot: the next candidate, or</text>
+        <text x="684" y="350" class="t-small">the previous version kept for a rollback</text>
+        <text x="684" y="364" class="t-mono">127.0.0.1:5107</text>
+
+        <!-- Wires: request path -->
+        <path d="M186 95 H214" class="wire" marker-end="url(#a)"/>
+        <path d="M398 95 H440" class="wire" marker-end="url(#a)"/>
+        <path d="M534 134 V190" class="wire" marker-end="url(#a)"/>
+        <text x="542" y="168" class="t-label">:5105</text>
+        <path d="M186 265 H440" class="wire" marker-end="url(#a)"/>
+        <text x="300" y="257" class="t-label">:5005</text>
+        <path d="M622 240 H644 V150 H662" class="wire-live" marker-end="url(#al)"/>
+        <text x="628" y="172" class="t-live">by name</text>
+        <path d="M622 300 H644 V327 H662" class="wire-muted" marker-end="url(#am)"/>
+
+        <!-- Mounts -->
+        <text x="16" y="452" class="t-label">MOUNTED INTO EACH SLOT (nothing private is baked into the image)</text>
+        <g>
+          <rect x="16" y="466" width="155" height="104" rx="8" class="box"/>
+          <text x="28" y="490" class="t-title">dramatizer-state</text>
+          <text x="28" y="508" class="t-small">Docker volume</text>
+          <text x="28" y="528" class="t-mono">/app/history</text>
+          <text x="28" y="546" class="t-mono">database, accounts,</text>
+          <text x="28" y="562" class="t-mono">site certificate</text>
+
+          <rect x="181" y="466" width="155" height="104" rx="8" class="box"/>
+          <text x="193" y="490" class="t-title">Model store</text>
+          <text x="193" y="508" class="t-small">read-only, checked by hash</text>
+          <text x="193" y="528" class="t-mono">/models</text>
+          <text x="193" y="546" class="t-mono">D:/Dramatizer models</text>
+          <text x="193" y="562" class="t-mono">every model pinned</text>
+
+          <rect x="346" y="466" width="155" height="104" rx="8" class="box"/>
+          <text x="358" y="490" class="t-title">Voice pack</text>
+          <text x="358" y="508" class="t-small">read-only · 176 voices</text>
+          <text x="358" y="528" class="t-mono">/voices</text>
+          <text x="358" y="546" class="t-mono">HF dataset, rev 46a182c</text>
+          <text x="358" y="562" class="t-mono">test voices left out</text>
+
+          <rect x="511" y="466" width="155" height="104" rx="8" class="box"/>
+          <text x="523" y="490" class="t-title">Team voices</text>
+          <text x="523" y="508" class="t-small">recorded and uploaded</text>
+          <text x="523" y="528" class="t-mono">/team-voices</text>
+          <text x="523" y="546" class="t-mono">D:/voice data/Voices</text>
+
+          <rect x="676" y="466" width="140" height="104" rx="8" class="box"/>
+          <text x="688" y="490" class="t-title">Renders</text>
+          <text x="688" y="508" class="t-small">audio, charts</text>
+          <text x="688" y="528" class="t-mono">/output</text>
+          <text x="688" y="546" class="t-mono">D:/Dramatizer 2</text>
+          <text x="688" y="562" class="t-mono">  renders</text>
+
+          <rect x="826" y="466" width="158" height="104" rx="8" class="box"/>
+          <text x="838" y="490" class="t-title">Settings</text>
+          <text x="838" y="508" class="t-small">env files, no secrets</text>
+          <text x="838" y="528" class="t-mono">container.env</text>
+          <text x="838" y="546" class="t-mono">+ live.env</text>
+          <text x="838" y="562" class="t-mono">secrets: separate file</text>
+        </g>
+        <path d="M816 256 V410 H500 V458" class="wire-muted" marker-end="url(#am)"/>
+      </svg>
+    </div>
+  </section>
+
+  <section aria-labelledby="release-h">
+    <h2 id="release-h">The release path</h2>
+    <p>A version reaches visitors only after it has passed the tests on GitHub and five checks against the real running container. If a check fails, the front door never moves and the previous version starts again.</p>
+    <div class="diagram">
+      <svg viewBox="0 0 1000 380" role="img" aria-label="Release path: push, GitHub Actions, image, release record, candidate in the idle slot, smoke test; allowed switches the front door, blocked restarts the live version; rollback goes back.">
+        <defs>
+          <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head"/></marker>
+          <marker id="bl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-live"/></marker>
+          <marker id="bb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-block"/></marker>
+          <marker id="bm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-muted"/></marker>
+        </defs>
+
+        <rect x="16" y="40" width="150" height="112" rx="8" class="box"/>
+        <text x="28" y="64" class="t-label">PACKAGE</text>
+        <text x="28" y="86" class="t-title">GitHub Actions</text>
+        <text x="28" y="106" class="t-mono">lint · 277+ tests</text>
+        <text x="28" y="122" class="t-mono">pip-audit weekly</text>
+        <text x="28" y="140" class="t-small">red run: no image</text>
+
+        <rect x="196" y="40" width="150" height="112" rx="8" class="box"/>
+        <text x="208" y="64" class="t-label">PACKAGE</text>
+        <text x="208" y="86" class="t-title">Images</text>
+        <text x="208" y="106" class="t-mono">base 26.5 GB</text>
+        <text x="208" y="122" class="t-mono">+ app 9 MB</text>
+        <text x="208" y="140" class="t-small">named by digest</text>
+
+        <rect x="376" y="40" width="160" height="112" rx="8" class="box"/>
+        <text x="388" y="64" class="t-label">OBSERVE</text>
+        <text x="388" y="86" class="t-title">Release record</text>
+        <text x="388" y="106" class="t-mono">commit, image, pack,</text>
+        <text x="388" y="122" class="t-mono">models, settings hash</text>
+        <text x="388" y="140" class="t-small">deploy/release.py</text>
+
+        <rect x="566" y="40" width="170" height="112" rx="8" class="box"/>
+        <text x="578" y="64" class="t-label">PROMOTE</text>
+        <text x="578" y="86" class="t-title">Candidate</text>
+        <text x="578" y="106" class="t-mono">starts in the idle slot</text>
+        <text x="578" y="122" class="t-mono">live slot paused (GPU)</text>
+        <text x="578" y="140" class="t-small">deploy/live.ps1 release</text>
+
+        <rect x="766" y="40" width="218" height="112" rx="8" class="box-accent"/>
+        <text x="778" y="64" class="t-label">VERIFY · deploy/smoke.py</text>
+        <text x="778" y="86" class="t-mono">1 /ready within 5 min</text>
+        <text x="778" y="102" class="t-mono">2 /version = record</text>
+        <text x="778" y="118" class="t-mono">3 log in</text>
+        <text x="778" y="134" class="t-mono">4 render a line, WER ≤ 0.10</text>
+        <text x="778" y="150" class="t-mono">5 the chatbot answers</text>
+
+        <path d="M166 96 H190" class="wire" marker-end="url(#b)"/>
+        <path d="M346 96 H370" class="wire" marker-end="url(#b)"/>
+        <path d="M536 96 H560" class="wire" marker-end="url(#b)"/>
+        <path d="M736 96 H760" class="wire" marker-end="url(#b)"/>
+
+        <!-- outcomes -->
+        <rect x="566" y="214" width="200" height="92" rx="8" class="box-live"/>
+        <text x="580" y="238" class="t-live">ALLOWED</text>
+        <text x="580" y="260" class="t-title">Front door switches</text>
+        <text x="580" y="280" class="t-small">old slot stopped and kept</text>
+        <text x="580" y="296" class="t-mono">v6 live: 105 s</text>
+
+        <rect x="784" y="214" width="200" height="92" rx="8" class="box-block"/>
+        <text x="798" y="238" class="t-block">BLOCKED</text>
+        <text x="798" y="260" class="t-title">Nothing switches</text>
+        <text x="798" y="280" class="t-small">candidate stopped, live restarted</text>
+        <text x="798" y="296" class="t-mono">4 real blocks logged</text>
+
+        <path d="M860 152 V184 H666 V208" class="wire-live" marker-end="url(#bl)"/>
+        <path d="M884 152 V208" class="wire-block" marker-end="url(#bb)"/>
+
+        <rect x="196" y="214" width="340" height="92" rx="8" class="box"/>
+        <text x="208" y="238" class="t-label">ROLL BACK · deploy/live.ps1 rollback</text>
+        <text x="208" y="260" class="t-title">Start the previous slot, switch back</text>
+        <text x="208" y="280" class="t-small">waits for /ready, then moves the front door</text>
+        <text x="208" y="296" class="t-mono">live rollback to v5: 77 s</text>
+        <path d="M566 260 H542" class="wire-muted" marker-end="url(#bm)"/>
+
+        <text x="16" y="350" class="t-small">Every run writes a log with times: reports/milestone4/05-release/. Jobs waiting at a switch are lost (the queue is in memory), so switch when it is quiet.</text>
+      </svg>
+    </div>
+  </section>
+
+  <section aria-labelledby="numbers-h">
+    <h2 id="numbers-h">Measured</h2>
+    <div class="facts">
+      <div class="fact"><b>~75 s</b><span>cold start to /ready (CosyVoice loading)</span></div>
+      <div class="fact"><b>~100 s</b><span>a live release, site paused</span></div>
+      <div class="fact"><b>77 s</b><span>a live rollback</span></div>
+      <div class="fact"><b>2 people</b><span>rendering at once, p95 about 18 s</span></div>
+      <div class="fact"><b>4 jobs</b><span>queue limit, then a fast 503</span></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="parts-h">
+    <h2 id="parts-h">The parts</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Part</th><th>What it is</th><th>Where</th></tr></thead>
+        <tbody>
+          <tr><td>Tunnel</td><td>Cloudflare's <code>cloudflared</code>, connecting out to Cloudflare; no port is opened on the router</td><td><code>dramatizer-tunnel</code>, <code>docker/site.compose.yml</code></td></tr>
+          <tr><td>Front door</td><td>A small TCP forwarder; it never holds the TLS key, so clients keep checking the same certificate</td><td><code>dramatizer-front-door</code>, <code>deploy/front_door.py</code></td></tr>
+          <tr><td>Slots</td><td>Blue and green containers of the app image; one runs, the other is the next candidate or the way back</td><td><code>deploy/blue_green.py</code>, <code>deploy/live.ps1</code></td></tr>
+          <tr><td>API</td><td>Flask on HTTPS; renders, ratings, accounts, the GPU queue, the chatbot route</td><td><code>backend/api/server.py</code></td></tr>
+          <tr><td>Voice model</td><td>CosyVoice 3 clones a voice and speaks a line with its genome (stress, pauses, sighs, speed)</td><td>GPU, <code>/models</code></td></tr>
+          <tr><td>Chatbot</td><td>Gemma 4 E4B in 4-bit, in its own Python 3.11 environment; it looks facts up through the API. Until it is loaded, the records answer</td><td><code>/opt/llm</code>, <code>API calls/chatbot.py</code></td></tr>
+          <tr><td>Checks</td><td>The release record, <code>/version</code>, <code>/ready</code> and the five-step smoke test that gates every release</td><td><code>deploy/release.py</code>, <code>deploy/smoke.py</code></td></tr>
+          <tr><td>Data</td><td>The voice pack on a private Hugging Face dataset and the model store, each pinned by revision; no token inside the container</td><td><code>/voices</code>, <code>/models</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Owner: Ahmed Sadeq Hussein · built by Ahmed Hussein, Julius Norén, Rama Muharam and Tran Hieu Minh · contact huah21vn@gmail.com</p>
+  </section>
+</div>

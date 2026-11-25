@@ -1,0 +1,38 @@
+{
+  "release": "v4-staging",
+  "address": "https://127.0.0.1:5107",
+  "checked": "2026-11-24T17:53:52",
+  "allowed": false,
+  "checks": [
+    {
+      "check": "ready",
+      "result": "FAIL",
+      "seconds": 300.4,
+      "detail": "not ready after 300 s: {'ready': False, 'missing': ['voice_model'], 'checks': {'voice_model': 'loading', 'voices': '176 read', 'chatbot': 'starting'}}"
+    },
+    {
+      "check": "version",
+      "result": "skipped",
+      "seconds": 0,
+      "detail": "needs ready"
+    },
+    {
+      "check": "login",
+      "result": "skipped",
+      "seconds": 0,
+      "detail": "needs ready"
+    },
+    {
+      "check": "render",
+      "result": "skipped",
+      "seconds": 0,
+      "detail": "needs ready, login"
+    },
+    {
+      "check": "chatbot",
+      "result": "skipped",
+      "seconds": 0,
+      "detail": "needs ready, login"
+    }
+  ]
+}

@@ -42,8 +42,9 @@ def make(name, env_file, image=None, base=None, voice_pack_dir=None, models_dir=
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Write deploy/release.json for a release candidate.")
     parser.add_argument("name", help="the release's name, e.g. v8")
-    parser.add_argument("--env", default=str(ROOT / "deploy" / "container.env"),
-                        help="the env file it is started with (default deploy/container.env)")
+    parser.add_argument("--env", action="append",
+                        help="the env file it is started with (default deploy/container.env); give it again to add "
+                             "a file whose values win, e.g. --env deploy/container.env --env deploy/live.env")
     parser.add_argument("--image", help="the app image, by digest (ghcr.io/...@sha256:...)")
     parser.add_argument("--base", help="the base image, by digest")
     parser.add_argument("--voice-pack", help="the voice pack folder on this computer (mounted at /voices)")
@@ -56,6 +57,7 @@ def main(argv=None):
         # one image's content, which a tag does not
         if digest and "@sha256:" not in digest and not digest.startswith("sha256:"):
             raise SystemExit(f"Name images by digest (…@sha256:…) or local ID (sha256:…), never by a tag: {digest}")
+    args.env = args.env or [str(ROOT / "deploy" / "container.env")]
     release = make(args.name, args.env, args.image, args.base, args.voice_pack, args.models, args.commit)
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(release, indent=2) + "\n", encoding="utf-8")

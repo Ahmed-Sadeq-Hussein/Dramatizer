@@ -1,0 +1,132 @@
+{
+  "part": "gpu",
+  "when": "2026-11-25 14:32:57",
+  "before": {
+    "gpu_memory_mb": 9672,
+    "gpu_busy_pct": 0
+  },
+  "chatbot_load_s": 0.1,
+  "chatbot_state": "ready",
+  "render_alone": {
+    "short (6 words)": {
+      "runs": [
+        {
+          "total_s": 3.47,
+          "work_s": 3.2,
+          "audio_s": 1.84
+        },
+        {
+          "total_s": 3.5,
+          "work_s": 3.2,
+          "audio_s": 2.0
+        },
+        {
+          "total_s": 3.84,
+          "work_s": 3.8,
+          "audio_s": 2.84
+        }
+      ],
+      "work_s_p50": 3.2,
+      "audio_s": 1.84
+    },
+    "medium (17 words)": {
+      "runs": [
+        {
+          "total_s": 5.82,
+          "work_s": 5.6,
+          "audio_s": 5.56
+        },
+        {
+          "total_s": 6.04,
+          "work_s": 6.0,
+          "audio_s": 5.68
+        },
+        {
+          "total_s": 5.58,
+          "work_s": 5.5,
+          "audio_s": 5.4
+        }
+      ],
+      "work_s_p50": 5.6,
+      "audio_s": 5.56
+    },
+    "long (40 words)": {
+      "runs": [
+        {
+          "total_s": 12.95,
+          "work_s": 12.7,
+          "audio_s": 12.36
+        },
+        {
+          "total_s": 10.88,
+          "work_s": 10.7,
+          "audio_s": 12.6
+        },
+        {
+          "total_s": 10.58,
+          "work_s": 10.4,
+          "audio_s": 12.52
+        }
+      ],
+      "work_s_p50": 10.7,
+      "audio_s": 12.36
+    }
+  },
+  "during_render": {
+    "gpu_memory_mb": 9200,
+    "gpu_busy_pct": 0
+  },
+  "chatbot_alone": [
+    {
+      "seconds": 15.25,
+      "source": "model"
+    },
+    {
+      "seconds": 12.26,
+      "source": "model"
+    },
+    {
+      "seconds": 0.04,
+      "source": "glossary"
+    }
+  ],
+  "together": [
+    {
+      "render": {
+        "total_s": 11.34,
+        "work_s": 11.0,
+        "audio_s": 5.44
+      },
+      "ask": {
+        "seconds": 15.23,
+        "source": "model"
+      }
+    },
+    {
+      "render": {
+        "total_s": 10.69,
+        "work_s": 10.6,
+        "audio_s": 5.44
+      },
+      "ask": {
+        "seconds": 17.35,
+        "source": "model"
+      }
+    },
+    {
+      "render": {
+        "total_s": 5.79,
+        "work_s": 5.7,
+        "audio_s": 5.44
+      },
+      "ask": {
+        "seconds": 0.03,
+        "source": "glossary"
+      }
+    }
+  ],
+  "after": {
+    "gpu_memory_mb": 9553,
+    "gpu_busy_pct": 97
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "action": "release",
+  "release": "v6",
+  "started": "2026-11-24T18:13:24",
+  "steps": [
+    {
+      "at": "2026-11-24T18:13:24",
+      "seconds": 0.2,
+      "step": "candidate",
+      "slot": "green",
+      "port": 5107,
+      "container": "dramatizer-green",
+      "image": "sha256:4ccce7b006df408583a8040326a8299acc5bd1ba40f2fbe8cb807a556e3593f0",
+      "image_id": "sha256:4ccce7b006df408583a8040326a8299acc5bd1ba40f2fbe8cb807a556e3593f0",
+      "release": "v6",
+      "live_before": "v5"
+    },
+    {
+      "at": "2026-11-24T18:13:26",
+      "seconds": 2.2,
+      "step": "stopped the live version to free the GPU (the site pauses)",
+      "container": "dramatizer-blue"
+    },
+    {
+      "at": "2026-11-24T18:13:28",
+      "seconds": 4.0,
+      "step": "started the candidate",
+      "container": "dramatizer-green",
+      "env": "v6.env"
+    },
+    {
+      "at": "2026-11-24T18:15:09",
+      "seconds": 104.5,
+      "step": "smoke test",
+      "exit": 0,
+      "output": [
+        "ALLOWED: v6 (written to reports\\milestone4\\04-checks\\v6.json)"
+      ]
+    },
+    {
+      "at": "2026-11-24T18:15:09",
+      "seconds": 104.5,
+      "step": "switched the front door",
+      "live": "v6",
+      "port": 5107
+    }
+  ],
+  "result": "released",
+  "finished": "2026-11-24T18:15:09",
+  "seconds": 104.7
+}

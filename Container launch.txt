@@ -1,0 +1,106 @@
+CONTAINER LAUNCH - how to start Dramatizer from its Docker containers
+=====================================================================
+
+Run every command below in PowerShell, from the project folder:
+    cd "C:\Users\music\Documents\Work\Development of AI projects\Dramatizer 2"
+
+How it fits together (everything runs in Docker, on the Docker network "dramatizer")
+------------------------------------------------------------------------------------
+    https://app.dramatizer.dev -> dramatizer-tunnel (Cloudflare) -+
+                                                                  +-> dramatizer-front-door -> the live slot
+    this PC, playit, clients   -> 127.0.0.1:5005 / 5105 ----------+       dramatizer-blue  (also on 127.0.0.1:5106)
+                                                                          dramatizer-green (also on 127.0.0.1:5107)
+
+- dramatizer-blue / dramatizer-green: the application itself (pages, renders, chatbot). Only ONE runs at a
+  time: the GPU (10 GB) holds one copy of CosyVoice + the chatbot.
+- dramatizer-front-door: forwards ports 5005 and 5105 to whichever slot is live. Which one is written in
+  history/live/front_door.json; it reads that on every connection, so a switch needs no restart.
+- dramatizer-tunnel: puts the site on https://app.dramatizer.dev (with a real, trusted certificate).
+- The front door and the tunnel are defined in docker/site.compose.yml; the slots are made by releases.
+- All of them restart on their own after a reboot, once Docker Desktop is running (turn on "Start Docker
+  Desktop when you sign in" in Docker Desktop's settings to make that automatic).
+- The site's data (accounts, ratings, history, certificate) is in the Docker volume "dramatizer-state".
+  Renders go to D:/Dramatizer 2 renders.
+- Do NOT start "python main_backend.py api" on this computer any more: it uses the old history/ folder,
+  and the two copies would drift apart. Do not start "python main_backend.py tunnel" either: the tunnel
+  container already uses that tunnel, and two copies would share the traffic.
+
+
+1. START THE SITE
+================
+    1. Start Docker Desktop and wait until it says "Engine running".
+    2. .\deploy\site.ps1 up
+       It starts the live slot, the front door and the tunnel, and waits until the site is ready
+       (about 75 s from cold; the chatbot about a minute later).
+    3. Open https://app.dramatizer.dev
+       (or https://127.0.0.1:5005 on this PC: type the https://, and accept the certificate warning,
+       because that address uses the site's own certificate.)
+
+    Without the script, in Docker Desktop: press Start on the live slot (dramatizer-blue unless a release
+    changed it), then on dramatizer-front-door and dramatizer-tunnel.
+
+    Check it:  .\deploy\site.ps1 status
+
+
+2. STOP THE SITE
+================
+    .\deploy\site.ps1 down
+    Stopping does not delete anything: the data stays in the volume dramatizer-state.
+
+
+3. RELEASE A NEW VERSION (blue/green, checked before it goes live)
+=================================================================
+Step 1. Build the app image from the current code (seconds; the base image is reused):
+    $c = git rev-parse HEAD
+    docker build -q -f docker/app.Dockerfile --build-arg BASE_IMAGE=ghcr.io/ahmed-sadeq-hussein/dramatizer-base:2026-11-24-llm --build-arg GIT_COMMIT=$c -t dramatizer:v7 .
+    It prints the image ID (sha256:...). Use that ID below, never a tag.
+
+Step 2. Write the release record (what the release is meant to run):
+    E:\envs\dramatizer\python.exe deploy\release.py v7 --image sha256:<ID> --base sha256:33e2da9749b3f4442f4028a7d8526f48acb97b85ea9c63c308970b5e055c8292 --env deploy/container.env --env deploy/live.env --voice-pack "D:/Dramatizer voice pack/46a182c41bc13df2754560273a9224d53b6f8e26" --models "D:/Dramatizer models" --out reports/milestone4/05-release/records/v7.json
+
+Step 3. Release it:
+    .\deploy\live.ps1 release sha256:<ID> --release reports/milestone4/05-release/records/v7.json
+
+    What happens: the live version is stopped to free the GPU (the site pauses ~2 min), the new
+    version starts in the other slot, and deploy/smoke.py checks it (ready, versions match the
+    record, log in, render a line with WER <= 0.10, the chatbot answers).
+      ALLOWED  -> the front door switches to the new version; the old container is kept, stopped.
+      BLOCKED  -> the new version is stopped and the old one is started again. Nothing switches.
+    Every run is logged in reports/milestone4/05-release/.
+
+    Release when nobody is rendering: jobs still waiting at the switch are lost.
+
+
+4. ROLL BACK to the previous version
+====================================
+    .\deploy\live.ps1 rollback
+    Starts the previous container, waits until it is ready (~80 s), switches the front door back,
+    and stops the newer one.
+
+
+5. STAGING (a separate test copy; it never touches the live site)
+=================================================================
+    Same commands with .\deploy\staging.ps1 instead of .\deploy\live.ps1.
+    Its own volume (dramatizer-state-staging), front door on port 5108, renders in
+    D:/Dramatizer 2 renders/staging. Do not run staging and the live site at the same time:
+    they share the GPU.
+
+
+When something goes wrong
+=========================
+- "failed to connect to the docker API ... dockerDesktopLinuxEngine"
+      Docker Desktop is not running. Start it and wait for "Engine running".
+- https://app.dramatizer.dev shows Cloudflare error 530 or 1033
+      The tunnel container is not running:  .\deploy\site.ps1 up   (or Start dramatizer-tunnel).
+- https://app.dramatizer.dev shows error 502, or 127.0.0.1:5005 refuses to connect
+      The front door or the live slot is not running:  .\deploy\site.ps1 status, then  .\deploy\site.ps1 up
+- "This site can't be reached" on 127.0.0.1:5005 although everything runs
+      Type https:// in front: the site does not answer plain http.
+- /ready stays false
+      Still loading (up to ~2 min). Look at the log:  docker logs --tail 50 dramatizer-blue
+- A release says BLOCKED
+      Read the failed check in reports/milestone4/04-checks/<release>.json. A version
+      mismatch means the record and the container used different settings: make the record
+      with the same --env files that live.ps1 uses (container.env, then live.env).
+- Logs:  docker logs --tail 50 dramatizer-front-door      docker logs --tail 50 dramatizer-tunnel
+- See all containers:  docker ps -a      Images:  docker images      Volumes:  docker volume ls

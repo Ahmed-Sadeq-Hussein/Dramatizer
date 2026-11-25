@@ -18,7 +18,9 @@ sys.path.insert(0, str(ROOT / "deploy"))
 
 import blue_green  # noqa: E402
 import front_door  # noqa: E402
+import release  # noqa: E402
 import smoke  # noqa: E402
+from backend import release_info  # noqa: E402
 
 
 class FakeDocker:
@@ -50,6 +52,7 @@ class BlueGreenTest(unittest.TestCase):
         self.dir = Path(tempfile.mkdtemp())
         self.docker = FakeDocker()
         self.smoke_exit = 0
+        self.free_gpu = False
         patches = [mock.patch.object(blue_green, "docker", self.docker),
                    mock.patch.object(blue_green, "REPORTS", self.dir / "reports"),
                    mock.patch.object(blue_green.subprocess, "run", self.fake_run),
@@ -65,9 +68,10 @@ class BlueGreenTest(unittest.TestCase):
     def args(self, name="v1"):
         return argparse.Namespace(prefix="t", state=str(self.dir / "state.json"), blue_port=5106, green_port=5107,
                                   volume="vol", output="out", models="models", voice_pack="pack", secrets_env="",
+                                  team_voices="", free_gpu=self.free_gpu, network="net",
                                   fingerprint="f" * 64, password_file="pw", image=f"img:{name}",
                                   release="release.json", name=name,
-                                  env=str(ROOT / "deploy" / "container.env"))
+                                  env=[str(ROOT / "deploy" / "container.env")])
 
     def state(self):
         return json.loads((self.dir / "state.json").read_text())
@@ -100,10 +104,48 @@ class BlueGreenTest(unittest.TestCase):
         self.assertEqual(self.state()["live"]["release"], "v1")
         self.assertEqual(self.docker.containers, {"t-blue": "running", "t-green": "stopped"})
 
+    def test_the_container_runs_with_the_settings_release_py_hashed(self):
+        # The live site's two env files: the frozen copy must hash like the release record, or /version differs
+        files = [str(ROOT / "deploy" / "container.env"), str(ROOT / "deploy" / "live.env")]
+        args = self.args("v1")
+        args.env, args.team_voices = files, "D:/voice data/Voices"
+        self.assertEqual(blue_green.release(args), 0)
+        frozen = self.dir / "releases" / "v1.env"
+        self.assertEqual(release_info.config_sha256(release_info.read_env_file(frozen)),
+                         release.make("v1", files, commit="c")["config_sha256"])
+        self.assertEqual(release_info.read_env_file(frozen)["VOICES_DIR"], "/team-voices")
+        run = next(c for c in self.docker.calls if c[0] == "run")
+        self.assertNotIn("-e", run)                                # no setting outside the hashed files
+
+    def test_slots_join_the_network_and_restart_after_a_reboot(self):
+        blue_green.release(self.args("v1"))
+        run = next(c for c in self.docker.calls if c[0] == "run")
+        self.assertEqual(run[run.index("--network") + 1], "net")
+        self.assertEqual(run[run.index("--restart") + 1], "unless-stopped")
+        self.assertIn(("network", "create", "net"), self.docker.calls)
+
     def test_rollback_with_nothing_before_fails(self):
         blue_green.release(self.args("v1"))
         self.assertEqual(blue_green.rollback(self.args()), 1)
         self.assertEqual(self.state()["live"]["release"], "v1")
+
+
+    def test_free_gpu_stops_the_live_version_first_and_restarts_it_when_blocked(self):
+        blue_green.release(self.args("v1"))
+        self.free_gpu, self.smoke_exit = True, 1
+        self.assertEqual(blue_green.release(self.args("bad")), 1)
+        stops = [c[1] for c in self.docker.calls if c[0] == "stop"]
+        self.assertEqual(stops, ["t-blue", "t-green"])            # live first, then the blocked candidate
+        self.assertEqual(self.docker.containers["t-blue"], "running")
+        self.assertEqual(self.state()["live"]["release"], "v1")
+
+    def test_free_gpu_release_and_rollback(self):
+        self.free_gpu = True
+        blue_green.release(self.args("v1"))
+        self.assertEqual(blue_green.release(self.args("v2")), 0)
+        self.assertEqual(self.docker.containers, {"t-blue": "stopped", "t-green": "running"})
+        self.assertEqual(blue_green.rollback(self.args()), 0)
+        self.assertEqual(self.docker.containers, {"t-blue": "running", "t-green": "stopped"})
 
 
 class FrontDoorTest(unittest.TestCase):
@@ -132,6 +174,14 @@ class FrontDoorTest(unittest.TestCase):
             return reply
 
         self.assertEqual(asyncio.run(scenario()), b"from backend: hello")
+
+    def test_in_docker_it_forwards_to_the_live_container_by_name(self):
+        state = Path(tempfile.mkdtemp()) / "state.json"
+        state.write_text(json.dumps({"live": {"port": 5106, "container": "dramatizer-blue"}}))
+        self.assertEqual(front_door.live_target(state, by_name=True), ("dramatizer-blue", 5005))
+        self.assertEqual(front_door.live_target(state), ("127.0.0.1", 5106))
+        state.write_text(json.dumps({"live": None}))
+        self.assertIsNone(front_door.live_target(state, by_name=True))
 
 
 class PasswordFileTest(unittest.TestCase):

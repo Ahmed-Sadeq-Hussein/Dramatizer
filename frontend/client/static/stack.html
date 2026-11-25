@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dramatizer stack</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/stack.css">
+<link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+</head>
+<body class="stack-alone">
+<header>
+  <div class="brand"><img class="logo" src="/static/logo.svg" alt="" width="28" height="28"> Dramatizer <span class="tag">stack</span></div>
+  <a href="/">Open the Dramatizer</a>
+</header>
+<main>
+<!-- The Stack tab in index.html shows this <article> (frontend/client/static/app.js, loadStack). Kept general on
+     purpose: no exact patch versions, internal ports or container names (Vunrabilities.txt, finding 14). -->
+<article class="stack-page" id="stack-page">
+  <h2>The stack</h2>
+  <p class="lead">What happens between your click and the voice you hear: each layer a request passes through, what
+    it is built with, and how much it handled in the stress test of 25 November 2026.</p>
+
+  <div class="stack-flow">
+    <div class="stack-layer"><div class="stack-card">
+      <h3>Your browser <span class="where">your device</span></h3>
+      <p>One page, plain HTML, CSS and JavaScript, no framework and nothing loaded from other sites. It talks to the
+        server only through the Dramatizer's JSON API.</p>
+      <ul class="stack-parts"><li>HTML / CSS / JavaScript</li><li>Web Audio (recording a voice)</li><li>JSON API, version 1</li></ul>
+    </div></div>
+
+    <div class="stack-layer"><div class="stack-card">
+      <h3>Cloudflare <span class="where">the internet</span></h3>
+      <p>app.dramatizer.dev points to Cloudflare. It holds the public certificate, absorbs floods, and sends the traffic
+        down an outgoing tunnel, so the home router has no open port.</p>
+      <ul class="stack-parts"><li>Cloudflare DNS and TLS</li><li>Cloudflare Tunnel (cloudflared, in a container)</li></ul>
+    </div></div>
+
+    <div class="stack-layer"><div class="stack-card">
+      <h3>Front door <span class="where">container</span></h3>
+      <p>A small forwarder that always sends traffic to whichever version is live. Releasing or rolling back changes
+        one line in its state file; it never holds the site's keys and never reads the traffic.</p>
+      <ul class="stack-parts"><li>Python 3.12, asyncio</li><li>blue / green switch</li></ul>
+      <p class="measured">Stress test: <strong>~260 new connections a second</strong> on two CPUs, no errors with 1024 at once.</p>
+    </div></div>
+
+    <div class="stack-layer"><div class="stack-card">
+      <h3>Web server and API <span class="where">app container</span></h3>
+      <p>The Dramatizer itself: accounts, the user agreement, the job queue, voices, genomes, ratings, results and the
+        chatbot's tools. HTTPS all the way to here.</p>
+      <ul class="stack-parts"><li>Python 3.10</li><li>Flask 3</li><li>Werkzeug, threaded</li><li>PBKDF2 passwords, hashed session tokens</li><li>MCP server (the same calls for AI tools)</li></ul>
+      <p class="measured">Stress test: <strong>~550 simple requests a second</strong>, ~160–200 for logged-in lists;
+        logins <strong>~16 a second</strong> (7 before the fix that checks passwords outside the database lock).</p>
+    </div></div>
+
+    <div class="stack-layer"><div class="stack-card gpu">
+      <h3>Voice and language models <span class="where">GPU</span></h3>
+      <p>CosyVoice 3 clones the voice from a short reference and speaks the line; the genome (stress, pauses, sighs,
+        speed) shapes how it is said. Gemma answers "Ask the Dramatizer" with tools that look up the real records.</p>
+      <ul class="stack-parts"><li>CosyVoice 3 (0.5B)</li><li>Gemma 4 E4B, 4-bit</li><li>PyTorch, CUDA 12</li><li>NVIDIA RTX 3080, 10 GB</li></ul>
+      <p class="measured">Stress test: <strong>the bottleneck</strong>. About 1 s of GPU per second of speech, so
+        ~10 medium lines a minute; renders are 1.9× slower while the chatbot answers. Both models fill 9.7 of 10 GB.</p>
+    </div></div>
+
+    <div class="stack-layer"><div class="stack-card">
+      <h3>Measuring <span class="where">app container</span></h3>
+      <p>What the Lab, the genome searches and the release checks measure: does the speech say the words, does it
+        sound like the voice, and is it good audio.</p>
+      <ul class="stack-parts"><li>Whisper (word error rate)</li><li>speaker embeddings (similarity)</li><li>quality scores</li><li>BM25 search over the records (chatbot)</li></ul>
+      <p class="measured">Stress test: reading a 30-second upload takes <strong>3–10 ms</strong>; oversized files are refused before decoding.</p>
+    </div></div>
+
+    <div class="stack-layer"><div class="stack-card">
+      <h3>Storage <span class="where">Docker volume and disk</span></h3>
+      <p>Accounts, sessions, ratings and the audit log live in one database; audio, renders and charts are files.
+        Models and the voice pack are mounted read-only.</p>
+      <ul class="stack-parts"><li>SQLite (WAL)</li><li>Docker volumes</li><li>read-only model and voice mounts</li></ul>
+    </div></div>
+  </div>
+
+  <div class="stack-side">
+    <section>
+      <h3>Where it runs</h3>
+      <ul>
+        <li>One home PC: Windows 11, 16 CPU threads, RTX 3080</li>
+        <li>Docker Desktop on WSL 2, NVIDIA container runtime</li>
+        <li>Every part in its own container, restarted on failure</li>
+      </ul>
+    </section>
+    <section>
+      <h3>How a release goes live</h3>
+      <ul>
+        <li>GitHub Actions runs the tests and checks the image holds no secrets</li>
+        <li>A large base image (CUDA, models' libraries) and a small app image on top</li>
+        <li>The new version starts beside the live one and must pass a smoke test: login, a render scored by Whisper, the chatbot</li>
+        <li>Then the front door switches; rolling back is the same switch</li>
+      </ul>
+    </section>
+    <section>
+      <h3>Scaling next</h3>
+      <ul>
+        <li>The GPU limits everything: the chatbot off the render GPU, caching repeated lines</li>
+        <li>A shared job queue, then one render worker per GPU</li>
+        <li>A production web server when traffic needs it</li>
+      </ul>
+    </section>
+  </div>
+  <p class="stack-note">Built by Ahmed Sadeq Hussein and contributors. Numbers from <code>deploy/stress.py</code>, run on a copy of the site, never the live one.</p>
+</article>
+</main>
+</body>
+</html>

@@ -106,8 +106,17 @@ class Slots:
                "-v", f"{a.output}:/output",
                "-v", f"{a.models}:/models:ro",
                "-v", f"{a.voice_pack}:/voices:ro"]
+        if a.team_voices:                                   # the team's recorded and uploaded voices (read-write)
+            cmd += ["-v", f"{a.team_voices}:/team-voices"]    # VOICES_DIR=/team-voices is set in deploy/live.env
         if a.secrets_env and Path(a.secrets_env).is_file():
             cmd[7:7] = ["--env-file", a.secrets_env]
+        if a.network:
+            # On the Docker network the front door container reaches the live slot by its name. The port on
+            # 127.0.0.1 stays, for the smoke test and for a front door run outside Docker.
+            docker("network", "create", a.network, check=False)          # fails harmlessly when it exists
+            cmd += ["--network", a.network]
+        # After a reboot Docker starts again the slot that was running (the live one), not the stopped ones
+        cmd += ["--restart", "unless-stopped"]
         docker(*cmd, image)
 
     def wait_ready(self, port):
@@ -137,10 +146,18 @@ def release(args):
     if exists(candidate["container"]):
         docker("rm", "-f", candidate["container"])
         log.step("removed the slot's old container", container=candidate["container"])
+    paused = False
+    if args.free_gpu and live and exists(live["container"]):
+        # One 10 GB GPU cannot hold the live version (CosyVoice and Gemma) and a candidate: the live one stops while
+        # the candidate is checked, and starts again if the check fails. The site pauses for about 2 minutes.
+        docker("stop", live["container"])
+        paused = True
+        log.step("stopped the live version to free the GPU (the site pauses)", container=live["container"])
     # The candidate keeps the settings it was checked with: a copy of its env file, by release name
     frozen = slots.state_file.parent / "releases" / f"{args.name}.env"
     frozen.parent.mkdir(parents=True, exist_ok=True)
-    frozen.write_text(Path(args.env).read_text(encoding="utf-8"), encoding="utf-8")
+    # Several --env files are joined in order: a later line wins, in docker as in release.py's settings hash
+    frozen.write_text("\n".join(Path(f).read_text(encoding="utf-8") for f in args.env), encoding="utf-8")
     slots.run(slot, args.image, frozen)
     log.step("started the candidate", container=candidate["container"], env=frozen.name)
 
@@ -152,12 +169,16 @@ def release(args):
     if smoke.returncode != 0:
         docker("stop", candidate["container"])
         log.step("BLOCKED: stopped the candidate; the front door did not move", live=live and live["release"])
+        if paused:
+            docker("start", live["container"])
+            ready = slots.wait_ready(live["port"])
+            log.step("started the live version again", container=live["container"], ready=ready)
         log.save("blocked")
         return 1
 
     slots.save({"live": candidate, "previous": live, "switched": now()})
     log.step("switched the front door", live=candidate["release"], port=candidate["port"])
-    if live and exists(live["container"]):
+    if live and exists(live["container"]) and not paused:
         docker("stop", live["container"])
         log.step("stopped the old version (kept for a rollback)", container=live["container"])
     log.save("released")
@@ -174,11 +195,17 @@ def rollback(args):
         log.save("failed")
         return 1
     log.step("rolling back", from_release=live and live["release"], to_release=previous["release"])
+    if args.free_gpu and live and exists(live["container"]):
+        docker("stop", live["container"])
+        log.step("stopped the live version to free the GPU (the site pauses)", container=live["container"])
     docker("start", previous["container"])
     log.step("started the previous version", container=previous["container"])
     if not slots.wait_ready(previous["port"]):
         docker("stop", previous["container"])
         log.step("the previous version did not get ready; the front door did not move")
+        if args.free_gpu and live and exists(live["container"]):
+            docker("start", live["container"])
+            log.step("started the live version again", container=live["container"])
         log.save("failed")
         return 1
     log.step("ready", port=previous["port"])
@@ -199,13 +226,19 @@ def status(args):
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Release and roll back with two slots behind the front door.")
     parser.add_argument("--prefix", default="dramatizer", help="container names: <prefix>-blue, <prefix>-green")
-    parser.add_argument("--state", default=str(ROOT / "history" / "front_door.json"))
+    parser.add_argument("--state", default=str(ROOT / "history" / "live" / "front_door.json"),
+                        help="which slot is live; its folder is the only one the front door container sees")
+    parser.add_argument("--network", default="dramatizer",
+                        help="the Docker network the slots and the front door container share ('' for none)")
     parser.add_argument("--blue-port", type=int, default=5106)
     parser.add_argument("--green-port", type=int, default=5107)
     parser.add_argument("--volume", default="dramatizer-state")
     parser.add_argument("--output", default="D:/Dramatizer 2 renders")
     parser.add_argument("--models", default="D:/Dramatizer models")
     parser.add_argument("--voice-pack", default=os.environ.get("VOICE_PACK_HOST_DIR", ""))
+    parser.add_argument("--team-voices", default="", help="the team's voices folder (VOICES_DIR), mounted read-write")
+    parser.add_argument("--free-gpu", action="store_true",
+                        help="stop the live version while the candidate is checked (one GPU, chatbot on)")
     parser.add_argument("--secrets-env", default="D:/Dramatizer secrets/secrets.env")
     parser.add_argument("--fingerprint", default=os.environ.get("DRAMATIZER_FINGERPRINT", ""))
     parser.add_argument("--password-file", default="D:/Dramatizer secrets/smoke-test.txt")
@@ -214,12 +247,14 @@ def main(argv=None):
     rel.add_argument("image")
     rel.add_argument("--release", default=str(ROOT / "deploy" / "release.json"))
     rel.add_argument("--name", help="default: the release.json's name")
-    rel.add_argument("--env", default=str(ROOT / "deploy" / "container.env"),
-                     help="the settings to start it with (the same file release.py hashed)")
+    rel.add_argument("--env", action="append",
+                     help="the settings to start it with: the same files, in the same order, release.py hashed "
+                          "(default deploy/container.env)")
     sub.add_parser("rollback")
     sub.add_parser("status")
     args = parser.parse_args(argv)
     if args.command == "release":
+        args.env = args.env or [str(ROOT / "deploy" / "container.env")]
         args.name = args.name or json.loads(Path(args.release).read_text(encoding="utf-8")).get("release")
         if not args.voice_pack or not args.fingerprint:
             raise SystemExit("Give --voice-pack (the host folder mounted at /voices) and --fingerprint.")

@@ -1,0 +1,36 @@
+{
+  "part": "decode",
+  "when": "2026-11-25 14:25:04",
+  "rows": [
+    {
+      "format": ".wav",
+      "file_kb": 1382,
+      "decode_ms_p50": 3.1,
+      "peak_memory_mb": 8.5
+    },
+    {
+      "format": ".flac",
+      "file_kb": 263,
+      "decode_ms_p50": 7.2,
+      "peak_memory_mb": 8.5
+    },
+    {
+      "format": ".ogg",
+      "file_kb": 37,
+      "decode_ms_p50": 9.2,
+      "peak_memory_mb": 8.5
+    },
+    {
+      "format": ".mp3",
+      "file_kb": 37,
+      "decode_ms_p50": 10.0,
+      "peak_memory_mb": 8.5
+    },
+    {
+      "format": "2-hour FLAC bomb",
+      "file_kb": 355,
+      "result": "refused",
+      "ms": 0.3
+    }
+  ]
+}

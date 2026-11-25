@@ -176,10 +176,26 @@ def _decode(data, filename):
         raise UploadRefused("The file is empty.")
     if len(data) > MAX_BYTES:
         raise UploadRefused(f"The file is larger than {MAX_BYTES // (1024 * 1024)} MB.")
+    # FLAC and OGG pack simple audio (silence, a tone) so tightly that a few MB can hold hours, gigabytes once
+    # decoded: so the length is read from the header first, and decoding never goes past MAX_SECONDS whatever the
+    # header claims (Vunrabilities.txt, finding 4)
     try:
-        samples, rate = sf.read(io.BytesIO(data), dtype="float32", always_2d=True)
+        about = sf.info(io.BytesIO(data))
+        rate = int(about.samplerate)
+        if not rate:
+            raise ValueError("no sample rate")
+        if about.frames > 0 and about.frames / rate > MAX_SECONDS:
+            raise UploadRefused(f"The recording is {about.frames / rate:.1f} s long: it must be {MIN_SECONDS:g} to "
+                                f"{MAX_SECONDS:g} s.")
+        samples, rate = sf.read(io.BytesIO(data), frames=int(MAX_SECONDS * rate) + 1, dtype="float32",
+                                always_2d=True)
+    except UploadRefused:
+        raise
     except Exception:
         raise UploadRefused("That file could not be read as audio.")
+    if len(samples) > MAX_SECONDS * rate:              # the header said less than it holds
+        raise UploadRefused(f"The recording is longer than {MAX_SECONDS:g} s: it must be {MIN_SECONDS:g} to "
+                            f"{MAX_SECONDS:g} s.")
     seconds = len(samples) / rate if rate else 0
     if not MIN_SECONDS <= seconds <= MAX_SECONDS:
         raise UploadRefused(f"The recording is {seconds:.1f} s long: it must be {MIN_SECONDS:g} to {MAX_SECONDS:g} s.")

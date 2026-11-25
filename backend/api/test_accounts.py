@@ -105,10 +105,59 @@ class Logging_in(Temporary):
         for _ in range(accounts.MAX_FAILURES):
             with self.assertRaises(accounts.LoginRefused):
                 accounts.authenticate("julius", "wrong password!!", now=now)
-        with self.assertRaisesRegex(accounts.LoginRefused, "locked"):
+        with self.assertRaises(accounts.LoginRefused) as locked:
             accounts.authenticate("julius", password, now=now)
+        with self.assertRaises(accounts.LoginRefused) as unknown:
+            accounts.authenticate("nobody", password, now=now)
+        self.assertEqual(str(locked.exception), str(unknown.exception))   # a lock does not show the name exists
+        self.assertIn("locked", str(locked.exception))                  # but people still learn why it may fail
         later = now + timedelta(minutes=accounts.LOCK_MINUTES + 1)
         self.assertEqual(accounts.authenticate("julius", password, now=later).username, "julius")
+
+    def test_password_checks_run_side_by_side(self):
+        # The slow hash must not run inside the database's write lock, or every login on the server waits in one
+        # line (reports/milestone4/08-stress). Two checks have to be inside check_password at the same moment.
+        import threading
+
+        _, password = accounts.new_account("julius", "Julius")
+        accounts.new_account("rama", "Rama")
+        both_inside = threading.Barrier(2, timeout=5)
+        real_check = accounts.check_password
+
+        def check(given, stored):
+            both_inside.wait()                     # BrokenBarrierError if the other one cannot get in
+            return real_check(given, stored)
+
+        results = {}
+
+        def log_in(name, given):
+            try:
+                results[name] = accounts.authenticate(name, given).username
+            except Exception as error:
+                results[name] = error
+
+        with mock.patch.object(accounts, "check_password", check):
+            threads = [threading.Thread(target=log_in, args=("julius", password)),
+                       threading.Thread(target=log_in, args=("rama", "wrong password!!"))]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+        self.assertEqual(results["julius"], "julius")
+        self.assertIsInstance(results["rama"], accounts.LoginRefused)
+        self.assertEqual(accounts.load()["rama"].failed_logins, 1)        # the failure is still counted
+
+    def test_a_password_changed_during_the_check_is_not_accepted(self):
+        _, old = accounts.new_account("julius", "Julius")
+        real_check = accounts.check_password
+
+        def check(given, stored):
+            ok = real_check(given, stored)
+            accounts.set_password("julius", "a brand new password 123")     # changed while the old one was checked
+            return ok
+
+        with mock.patch.object(accounts, "check_password", check), self.assertRaises(accounts.LoginRefused):
+            accounts.authenticate("julius", old)
 
     def test_disabled_account_cannot_log_in(self):
         _, password = accounts.new_account("julius", "Julius")
@@ -846,6 +895,8 @@ class Api(Temporary):
                                    json={"question": "Who made the Dramatizer?"}).get_json()
             self.assertEqual(who["source"], "about")
             self.assertIn("Tran Hieu Minh", who["answer"])
+            self.assertIn("owned by Ahmed Sadeq Hussein", who["answer"])           # "who made it" names the owner too
+            self.assertIn("huah21vn@gmail.com", who["answer"])
             self.assertEqual(self.client.post("/api/v1/assistant/ask", headers=auth, json={"question": " "}).status_code, 400)
 
     def test_ask_about_the_data_is_answered_without_a_model(self):
@@ -993,6 +1044,32 @@ class Api(Temporary):
                 self.assertEqual(a["route"], "off_topic", other)
                 self.assertTrue(a["answer"].startswith(self.server.DECLINED))
             self.assertEqual(looked_up, [])                                     # neither reached the records
+
+    def test_the_owner_and_how_to_contact_them(self):
+        from backend.api import assistant, small_talk
+
+        class Off:
+            def status(self):
+                return {"state": "off", "model": None, "problem": None}
+
+        auth = {"Authorization": "Bearer " + self.login().get_json()["token"]}
+        with mock.patch.object(assistant, "ASSISTANT", Off()):
+            for question in ("Who owns this website?", "Who is the owner of the project?", "whose project is this?"):
+                a = self.client.post("/api/v1/assistant/ask", headers=auth, json={"question": question}).get_json()
+                self.assertEqual(a["source"], "small_talk", question)
+                self.assertIn("Ahmed Sadeq Hussein", a["answer"], question)
+                self.assertIn(small_talk.CONTACT_EMAIL, a["answer"], question)
+            for question in ("How can I contact the owner?", "What is your email?", "How do I get in touch with the "
+                             "creators?", "how do i reach the team"):
+                a = self.client.post("/api/v1/assistant/ask", headers=auth, json={"question": question}).get_json()
+                self.assertEqual(a["source"], "small_talk", question)
+                self.assertIn(small_talk.CONTACT_EMAIL, a["answer"], question)
+        for question in ("Who rated genome 12?", "How do I change my password?", "Which genomes scored highest?"):
+            self.assertIsNone(small_talk.owner_or_contact(question), question)
+        # The chatbot gives the same email and LinkedIn as "Contact us" on the page
+        page = (Path(__file__).resolve().parents[2] / "frontend" / "client" / "static" / "index.html").read_text(encoding="utf-8")
+        self.assertIn(f"mailto:{small_talk.CONTACT_EMAIL}", page)
+        self.assertIn(small_talk.LINKEDIN, page)
 
     def test_what_a_term_means_comes_from_the_glossary_even_without_the_model(self):
         from backend.api import assistant

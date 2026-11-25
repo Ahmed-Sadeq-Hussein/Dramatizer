@@ -1,0 +1,53 @@
+{
+  "release": "v5",
+  "address": "https://127.0.0.1:5106",
+  "checked": "2026-11-24T18:10:00",
+  "allowed": true,
+  "checks": [
+    {
+      "check": "ready",
+      "result": "pass",
+      "seconds": 72.9,
+      "detail": {
+        "voice_model": "loaded",
+        "voices": "176 read",
+        "chatbot": "starting"
+      }
+    },
+    {
+      "check": "version",
+      "result": "pass",
+      "seconds": 0.0,
+      "detail": {
+        "commit": "38f2a780876319ff3a29ad8b8a6cf835eb04dbe3",
+        "config_sha256": "87d6faa0b9efa043c99ad95c92183ba707f2587c7cb88f1fb9c28d2b96bc95c6"
+      }
+    },
+    {
+      "check": "login",
+      "result": "pass",
+      "seconds": 0.2,
+      "detail": "smoke-test"
+    },
+    {
+      "check": "render",
+      "result": "pass",
+      "seconds": 18.7,
+      "detail": {
+        "render_seconds": 8.5,
+        "audio_seconds": 5.4,
+        "wer": 0.0
+      }
+    },
+    {
+      "check": "chatbot",
+      "result": "pass",
+      "seconds": 3.7,
+      "detail": {
+        "source": "records",
+        "answer_seconds": 3.7,
+        "has_a_number": true
+      }
+    }
+  ]
+}

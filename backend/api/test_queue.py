@@ -137,5 +137,17 @@ class Queue(unittest.TestCase):
             self.assertFalse([k for k in shown if k.startswith("_")])  # internal times are not sent
 
 
+class Preload(unittest.TestCase):
+    """Milestone 4: the chatbot's model loads only after the voice model, never at the same time."""
+
+    def test_voice_model_first_then_the_chatbot(self):
+        order = []
+        assistant = mock.Mock(start=lambda: order.append("chatbot"))
+        with mock.patch.object(server, "preload_voice_model", lambda: order.append("voice")):
+            server.preload_models(assistant)
+            server.preload_models(None)
+        self.assertEqual(order, ["voice", "chatbot", "voice"])
+
+
 if __name__ == "__main__":
     unittest.main()

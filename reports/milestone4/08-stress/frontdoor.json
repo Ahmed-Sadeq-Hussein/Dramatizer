@@ -1,0 +1,52 @@
+{
+  "part": "frontdoor",
+  "when": "2026-11-25 13:27:15",
+  "connections": [
+    {
+      "concurrent": 1,
+      "requests": 1210,
+      "errors": 0,
+      "per_second": 242.0,
+      "p50_ms": 3.9,
+      "p95_ms": 4.3,
+      "max_ms": 59.5
+    },
+    {
+      "concurrent": 16,
+      "requests": 1312,
+      "errors": 0,
+      "per_second": 259.4,
+      "p50_ms": 59.2,
+      "p95_ms": 78.6,
+      "max_ms": 95.5
+    },
+    {
+      "concurrent": 64,
+      "requests": 1344,
+      "errors": 0,
+      "per_second": 258.4,
+      "p50_ms": 241.3,
+      "p95_ms": 258.1,
+      "max_ms": 266.7
+    },
+    {
+      "concurrent": 256,
+      "requests": 1536,
+      "errors": 0,
+      "per_second": 263.0,
+      "p50_ms": 956.9,
+      "p95_ms": 985.3,
+      "max_ms": 990.2
+    },
+    {
+      "concurrent": 1024,
+      "requests": 2048,
+      "errors": 0,
+      "per_second": 259.1,
+      "p50_ms": 3876.3,
+      "p95_ms": 3979.0,
+      "max_ms": 3985.1
+    }
+  ],
+  "stream_mb_per_s": 568.1
+}

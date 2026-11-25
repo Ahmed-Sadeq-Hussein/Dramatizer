@@ -147,3 +147,6 @@ desktop.ini
 # The paper and its drafts (outline, Word copies for Google Drive): kept out of git while unpublished
 paper/
 *.docx
+
+# The security review: private until the issues are fixed
+Vunrabilities.txt

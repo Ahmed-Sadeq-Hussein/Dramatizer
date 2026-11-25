@@ -27,3 +27,12 @@ What the runs showed:
   it ignored the stop signal). Containers now run with `--init`, and stop in under a second.
 - **v3 differs from v2 only by its commit** (a helper script outside the image). The point was the release and
   rollback mechanics, not a code change.
+
+## Later the same day
+
+| Time | Action | Candidate | Result | Why |
+|---|---|---|---|---|
+| 17:55 | release | v4-staging (5d01b49), chatbot in the image | **blocked** | `/ready` took over 300 s. CosyVoice and Gemma (15 GB, read over the Windows share) loaded at the same time and filled the 15.6 GB WSL memory. Fixed in 38f2a78: Gemma now loads after CosyVoice. |
+| 18:01 | release | v5-staging (38f2a78) | **released** | All 5 checks passed. Gemma was loaded 65 to 86 s after ready and answered from the model in about 17 s. |
+
+The live site's releases and rollback (18:05 to 18:16) are in [`../README.md`](../README.md#the-live-site).

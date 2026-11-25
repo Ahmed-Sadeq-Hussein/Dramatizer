@@ -1,0 +1,63 @@
+{
+  "action": "release",
+  "release": "v4-staging",
+  "started": "2026-11-24T17:48:05",
+  "steps": [
+    {
+      "at": "2026-11-24T17:48:24",
+      "seconds": 19.2,
+      "step": "candidate",
+      "slot": "green",
+      "port": 5107,
+      "container": "staging-green",
+      "image": "sha256:c8d0585978677b81688e14d8c9ff7107030804e0055832e6e697219565db5415",
+      "image_id": "sha256:c8d0585978677b81688e14d8c9ff7107030804e0055832e6e697219565db5415",
+      "release": "v4-staging",
+      "live_before": "v2"
+    },
+    {
+      "at": "2026-11-24T17:48:31",
+      "seconds": 26.4,
+      "step": "removed the slot's old container",
+      "container": "staging-green"
+    },
+    {
+      "at": "2026-11-24T17:48:32",
+      "seconds": 26.8,
+      "step": "stopped the live version to free the GPU (the site pauses)",
+      "container": "staging-blue"
+    },
+    {
+      "at": "2026-11-24T17:48:51",
+      "seconds": 46.4,
+      "step": "started the candidate",
+      "container": "staging-green",
+      "env": "v4-staging.env"
+    },
+    {
+      "at": "2026-11-24T17:53:52",
+      "seconds": 347.1,
+      "step": "smoke test",
+      "exit": 1,
+      "output": [
+        "BLOCKED: v4-staging (written to reports\\milestone4\\04-checks\\v4-staging.json)"
+      ]
+    },
+    {
+      "at": "2026-11-24T17:53:55",
+      "seconds": 350.3,
+      "step": "BLOCKED: stopped the candidate; the front door did not move",
+      "live": "v2"
+    },
+    {
+      "at": "2026-11-24T17:55:14",
+      "seconds": 429.0,
+      "step": "started the live version again",
+      "container": "staging-blue",
+      "ready": true
+    }
+  ],
+  "result": "blocked",
+  "finished": "2026-11-24T17:55:14",
+  "seconds": 429.0
+}

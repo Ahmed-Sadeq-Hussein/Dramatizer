@@ -1,0 +1,48 @@
+{
+  "action": "rollback",
+  "release": "v5",
+  "started": "2026-11-24T18:15:16",
+  "steps": [
+    {
+      "at": "2026-11-24T18:15:16",
+      "seconds": 0.2,
+      "step": "rolling back",
+      "from_release": "v6",
+      "to_release": "v5"
+    },
+    {
+      "at": "2026-11-24T18:15:17",
+      "seconds": 1.7,
+      "step": "stopped the live version to free the GPU (the site pauses)",
+      "container": "dramatizer-green"
+    },
+    {
+      "at": "2026-11-24T18:15:18",
+      "seconds": 2.3,
+      "step": "started the previous version",
+      "container": "dramatizer-blue"
+    },
+    {
+      "at": "2026-11-24T18:16:32",
+      "seconds": 76.4,
+      "step": "ready",
+      "port": 5106
+    },
+    {
+      "at": "2026-11-24T18:16:32",
+      "seconds": 76.4,
+      "step": "switched the front door",
+      "live": "v5",
+      "port": 5106
+    },
+    {
+      "at": "2026-11-24T18:16:33",
+      "seconds": 76.8,
+      "step": "stopped the rolled-back version",
+      "container": "dramatizer-green"
+    }
+  ],
+  "result": "rolled back",
+  "finished": "2026-11-24T18:16:33",
+  "seconds": 76.8
+}

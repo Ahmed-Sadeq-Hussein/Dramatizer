@@ -480,9 +480,12 @@ def authenticate(username, password, path=None, now=None):
     """
     The Account if the password is right; otherwise LoginRefused. Every refusal
     of a username or password says the same thing, so it does not tell a
-    guesser whether the username exists.
+    guesser whether the username exists: a locked account too, which says
+    the same and takes as long (a different "locked until" reply told an
+    attacker which names are real; Vunrabilities.txt, finding 10).
     """
-    wrong = LoginRefused("Wrong username or password.")
+    wrong = LoginRefused(f"Wrong username or password. After {MAX_FAILURES} failed tries an account is "
+                         f"locked for {LOCK_MINUTES} minutes.")
     now = now or _now()
     try:
         username = clean_username(username)
@@ -492,16 +495,25 @@ def authenticate(username, password, path=None, now=None):
     if not isinstance(password, str) or len(password) > MAX_PASSWORD:
         raise wrong
 
+    # The slow part (600,000 rounds) runs on a read, outside the write lock: inside it, the whole server checked
+    # one password at a time (~7 logins a second on 16 CPUs; reports/milestone4/08-stress). Reads do not wait
+    # for writers (WAL), so checks now run in parallel; the lock is taken only to record the result, and what
+    # may have changed meanwhile (a lock, a new password) is checked again there.
+    seen = load(path).get(username)
+    if seen is None or seen.locked(now):
+        check_password(password, _DUMMY_HASH)          # as long as a real check, so the timing says nothing either
+        raise wrong
+    right = check_password(password, seen.password)
+
     refused = None
     with storage.connect(path, write=True):
         accounts = load(path)
         account = accounts.get(username)
-        if account is None:
-            check_password(password, _DUMMY_HASH)
+        if account is None or account.locked(now):
             raise wrong
-        if account.locked(now):
-            raise LoginRefused(f"Too many wrong passwords: this account is locked until {account.locked_until[11:16]}.")
-        if not check_password(password, account.password):
+        if right and account.password != seen.password:
+            raise wrong                    # the password was changed during the check: try again with the new one
+        if not right:
             account.failed_logins += 1
             if account.failed_logins >= MAX_FAILURES:
                 account.locked_until = _stamp(now + timedelta(minutes=LOCK_MINUTES))

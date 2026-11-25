@@ -687,6 +687,13 @@ def preload_voice_model():
         _preload.update(state="failed", problem=f"{type(error).__name__}: {error}")
 
 
+def preload_models(assistant=None):
+    """The voice model first; then, when given, the chatbot's model (whether or not the voice model loaded)."""
+    preload_voice_model()
+    if assistant is not None:
+        assistant.start()
+
+
 @app.post(f"{API}/login")
 def login():
     data = body()
@@ -2525,8 +2532,17 @@ def main(port=PORT):
     context = tls_context()
     threading.Thread(target=worker, name="gpu jobs", daemon=True).start()
     threading.Thread(target=library, name="read voices", daemon=True).start()
+    from backend.api.assistant import ASSISTANT
+    ASSISTANT.configure(f"https://127.0.0.1:{port}", fingerprint())     # where "Ask the Dramatizer"'s model calls back
+    atexit.register(ASSISTANT.stop)
+    chatbot = ASSISTANT._optional("CHATBOT_PRELOAD").strip().lower() not in ("0", "no", "false", "off")
     if model.setting("PRELOAD_VOICE_MODEL", "1").lower() not in ("0", "no", "false", "off"):
-        threading.Thread(target=preload_voice_model, name="load the voice model", daemon=True).start()
+        # One after the other: loading Gemma (15 GB) while CosyVoice loads starved CosyVoice for over 5 minutes in the
+        # container (Milestone 4). The chatbot is not needed for /ready, so it loads second.
+        threading.Thread(target=preload_models, args=(ASSISTANT if chatbot else None,), name="load the models",
+                         daemon=True).start()
+    elif chatbot:
+        ASSISTANT.start()          # load the model now, so the first question does not wait for it (it calls back later)
     print(f"""
 Dramatizer API on https://127.0.0.1:{port}{API}
   Certificate fingerprint (give it to the people you share with; their client checks it):
@@ -2535,11 +2551,6 @@ Dramatizer API on https://127.0.0.1:{port}{API}
   playit.gg: a TCP tunnel to local address 127.0.0.1, port {port}. Only tunnel this port.
   Stop with Ctrl+C.
 """, flush=True)
-    from backend.api.assistant import ASSISTANT
-    ASSISTANT.configure(f"https://127.0.0.1:{port}", fingerprint())     # where "Ask the Dramatizer"'s model calls back
-    atexit.register(ASSISTANT.stop)
-    if ASSISTANT._optional("CHATBOT_PRELOAD").strip().lower() not in ("0", "no", "false", "off"):
-        ASSISTANT.start()          # load the model now, so the first question does not wait for it (it calls back later)
     app.run(host=HOST, port=port, threaded=True, ssl_context=context, request_handler=ClosesIdleConnections)
 
 

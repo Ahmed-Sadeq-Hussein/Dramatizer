@@ -1,0 +1,57 @@
+{
+  "action": "release",
+  "release": "v5-staging",
+  "started": "2026-11-24T17:59:56",
+  "steps": [
+    {
+      "at": "2026-11-24T17:59:56",
+      "seconds": 0.2,
+      "step": "candidate",
+      "slot": "green",
+      "port": 5107,
+      "container": "staging-green",
+      "image": "sha256:4a8c3b14f13a0bfe3c387022e290fa0b212cc577e545efffbffad607a786f524",
+      "image_id": "sha256:4a8c3b14f13a0bfe3c387022e290fa0b212cc577e545efffbffad607a786f524",
+      "release": "v5-staging",
+      "live_before": "v2"
+    },
+    {
+      "at": "2026-11-24T17:59:57",
+      "seconds": 0.5,
+      "step": "removed the slot's old container",
+      "container": "staging-green"
+    },
+    {
+      "at": "2026-11-24T17:59:57",
+      "seconds": 0.8,
+      "step": "stopped the live version to free the GPU (the site pauses)",
+      "container": "staging-blue"
+    },
+    {
+      "at": "2026-11-24T17:59:58",
+      "seconds": 1.7,
+      "step": "started the candidate",
+      "container": "staging-green",
+      "env": "v5-staging.env"
+    },
+    {
+      "at": "2026-11-24T18:01:34",
+      "seconds": 97.4,
+      "step": "smoke test",
+      "exit": 0,
+      "output": [
+        "ALLOWED: v5-staging (written to reports\\milestone4\\04-checks\\v5-staging.json)"
+      ]
+    },
+    {
+      "at": "2026-11-24T18:01:34",
+      "seconds": 97.4,
+      "step": "switched the front door",
+      "live": "v5-staging",
+      "port": 5107
+    }
+  ],
+  "result": "released",
+  "finished": "2026-11-24T18:01:34",
+  "seconds": 97.6
+}

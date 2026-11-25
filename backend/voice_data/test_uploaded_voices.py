@@ -81,6 +81,46 @@ class ScriptCheck(unittest.TestCase):
         self.assertIn("could not be checked", str(caught.exception))
 
 
+class Decode(unittest.TestCase):
+    """An upload's length is checked before it is decoded (Vunrabilities.txt, finding 4)."""
+
+    @staticmethod
+    def flac(seconds, rate=16000):
+        buffer = io.BytesIO()
+        sf.write(buffer, np.zeros(int(rate * seconds), dtype="float32") + 0.2, rate, format="FLAC")
+        return buffer.getvalue()
+
+    def test_a_good_recording_decodes(self):
+        mono, rate, seconds = uv._decode(recording(4.0), "voice.wav")
+        self.assertEqual((rate, round(seconds, 1)), (16000, 4.0))
+
+    def test_hours_packed_into_a_small_flac_are_refused_from_the_header(self):
+        data = self.flac(2 * 3600)                     # two hours of a constant: well under the 8 MB cap
+        self.assertLess(len(data), uv.MAX_BYTES)
+        with mock.patch.object(uv.sf, "read", side_effect=AssertionError("decoded")):
+            with self.assertRaisesRegex(uv.UploadRefused, "must be 3 to 30 s"):
+                uv._decode(data, "voice.flac")
+
+    def test_decoding_never_goes_past_the_limit_even_if_the_header_lies(self):
+        data = self.flac(60)
+        real_info = uv.sf.info
+
+        def lying_info(file):
+            about = real_info(file)
+            about.frames = 16000 * 10                  # claims 10 s
+            return about
+
+        read = mock.Mock(wraps=uv.sf.read)
+        with mock.patch.object(uv.sf, "info", lying_info), mock.patch.object(uv.sf, "read", read):
+            with self.assertRaisesRegex(uv.UploadRefused, "longer than 30 s"):
+                uv._decode(data, "voice.flac")
+        self.assertEqual(read.call_args.kwargs["frames"], int(uv.MAX_SECONDS * 16000) + 1)
+
+    def test_not_audio_is_refused(self):
+        with self.assertRaisesRegex(uv.UploadRefused, "could not be read"):
+            uv._decode(b"not audio at all" * 100, "voice.wav")
+
+
 class Save(unittest.TestCase):
     def setUp(self):
         self.base = Path(tempfile.mkdtemp())

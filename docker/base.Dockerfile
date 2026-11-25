@@ -49,3 +49,16 @@ COPY --from=build /opt/CosyVoice /opt/CosyVoice
 LABEL org.opencontainers.image.source="https://github.com/Ahmed-Sadeq-Hussein/Dramatizer" \
       org.opencontainers.image.description="Dramatizer 2 base: CUDA 12.1, Python 3.10, requirements.txt, CosyVoice" \
       dramatizer.cosyvoice.commit="${COSYVOICE_COMMIT}"
+
+# The chatbot's own environment (Gemma 4 needs newer torch and transformers than CosyVoice allows): Python 3.11 in
+# /opt/llm, the versions in docker/requirements-llm.txt. Last, so the layers above stay cached when it changes.
+# The server starts it as CHATBOT_PYTHON=/opt/llm/bin/python (deploy/container.env).
+COPY docker/requirements-llm.txt /tmp/requirements-llm.txt
+RUN apt-get update && apt-get install -y --no-install-recommends software-properties-common gpg-agent \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends python3.11 python3.11-venv \
+    && apt-get purge -y software-properties-common gpg-agent && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/* \
+    && python3.11 -m venv /opt/llm \
+    && /opt/llm/bin/pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cu126 torch==2.7.1 \
+    && grep -v "^torch==" /tmp/requirements-llm.txt | /opt/llm/bin/pip install --no-cache-dir -r /dev/stdin

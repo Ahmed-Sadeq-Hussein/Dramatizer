@@ -100,6 +100,7 @@ const MODES = {
   measure: { tabs: ["measure"], note: "Measure renders and voices side by side: word error rate, speaker similarity and quality." },
   research: { tabs: ["genomes", "speak", "results", "graphs"], note: "Genome searches, their rankings, the measured results and the graphs.",
               needs: "search" },
+  stack: { tabs: ["stack"], note: "What the Dramatizer is built from, layer by layer, and where it reaches its limits." },
 };
 const MODE_KEY = "dramatizer-mode";
 let mode = null;
@@ -157,6 +158,24 @@ function showTab(name) {
   if (name === "studio") Studio.open();
   if (name === "measure" && typeof Measure !== "undefined") Measure.open();
   if (name === "ask" && typeof Ask !== "undefined") { Ask.init(); setTimeout(() => $("ask-q").focus(), 0); }
+  if (name === "stack") loadStack();
+}
+
+// The Stack tab shows the <article> of /static/stack.html (one copy of the text, also readable on its own)
+let stackLoaded = false;
+async function loadStack() {
+  if (stackLoaded) return;
+  try {
+    const reply = await fetch("/static/stack.html", { credentials: "same-origin" });
+    if (!reply.ok) throw new Error(reply.status);
+    const page = new DOMParser().parseFromString(await reply.text(), "text/html");
+    const article = page.getElementById("stack-page");
+    if (!article) throw new Error("no stack-page");
+    $("stack-root").replaceChildren(document.importNode(article, true));
+    stackLoaded = true;
+  } catch {
+    $("stack-root").innerHTML = '<p class="muted">The stack page could not be loaded. <a href="/static/stack.html">Open it on its own</a>.</p>';
+  }
 }
 document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
 
@@ -229,11 +248,26 @@ function showLogin() {
 // The user agreement (GET /agreement): accepted when registering, and at login by accounts that have not
 // accepted its current version (the host refuses them everything else until they do)
 let agreement = null;
+// A section's text: paragraphs, and lines starting with "- " as a bulleted list
+function agreementText(text) {
+  const out = [];
+  let list = null;
+  for (const line of String(text).split("\n")) {
+    if (line.startsWith("- ")) {
+      if (!list) out.push(list = el("ul", {}));
+      list.append(el("li", {}, line.slice(2)));
+    } else if (line.trim()) {
+      list = null;
+      out.push(el("p", {}, line));
+    }
+  }
+  return out;
+}
 async function showAgreement(box) {
   try {
     agreement = agreement || await call("/agreement");
     box.replaceChildren(el("h3", {}, `${agreement.title} · version ${agreement.version}`),
-      ...agreement.sections.flatMap((s) => [el("h4", {}, s.heading), el("p", {}, s.text)]));
+      ...agreement.sections.flatMap((s) => [el("h4", {}, s.heading), ...agreementText(s.text)]));
   } catch (error) { box.replaceChildren(el("p", { class: "muted" }, error.message)); }
 }
 

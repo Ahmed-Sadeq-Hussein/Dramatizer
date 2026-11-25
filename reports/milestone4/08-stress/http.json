@@ -1,0 +1,178 @@
+{
+  "part": "http",
+  "when": "2026-11-25 14:29:11",
+  "routes": {
+    "health": [
+      {
+        "concurrent": 1,
+        "requests": 340,
+        "errors": 0,
+        "per_second": 42.4,
+        "p50_ms": 30.4,
+        "p95_ms": 34.9,
+        "max_ms": 39.9,
+        "status_codes": {
+          "200": 340
+        }
+      },
+      {
+        "concurrent": 8,
+        "requests": 3119,
+        "errors": 0,
+        "per_second": 388.9,
+        "p50_ms": 17.7,
+        "p95_ms": 38.5,
+        "max_ms": 47.7,
+        "status_codes": {
+          "200": 3119
+        }
+      },
+      {
+        "concurrent": 32,
+        "requests": 4441,
+        "errors": 0,
+        "per_second": 551.3,
+        "p50_ms": 57.7,
+        "p95_ms": 63.1,
+        "max_ms": 71.7,
+        "status_codes": {
+          "200": 4441
+        }
+      },
+      {
+        "concurrent": 128,
+        "requests": 4529,
+        "errors": 0,
+        "per_second": 551.1,
+        "p50_ms": 229.2,
+        "p95_ms": 246.9,
+        "max_ms": 260.1,
+        "status_codes": {
+          "200": 4529
+        }
+      }
+    ],
+    "page": [
+      {
+        "concurrent": 1,
+        "requests": 333,
+        "errors": 0,
+        "per_second": 41.6,
+        "p50_ms": 30.6,
+        "p95_ms": 34.8,
+        "max_ms": 41.5,
+        "status_codes": {
+          "200": 333
+        }
+      },
+      {
+        "concurrent": 8,
+        "requests": 2528,
+        "errors": 0,
+        "per_second": 314.9,
+        "p50_ms": 23.9,
+        "p95_ms": 42.6,
+        "max_ms": 54.6,
+        "status_codes": {
+          "200": 2528
+        }
+      },
+      {
+        "concurrent": 32,
+        "requests": 2916,
+        "errors": 0,
+        "per_second": 361.1,
+        "p50_ms": 88.0,
+        "p95_ms": 96.0,
+        "max_ms": 115.1,
+        "status_codes": {
+          "200": 2916
+        }
+      },
+      {
+        "concurrent": 128,
+        "requests": 3015,
+        "errors": 0,
+        "per_second": 361.4,
+        "p50_ms": 351.2,
+        "p95_ms": 373.3,
+        "max_ms": 391.0,
+        "status_codes": {
+          "200": 3015
+        }
+      }
+    ],
+    "voices list (logged in)": [
+      {
+        "concurrent": 1,
+        "requests": 332,
+        "errors": 0,
+        "per_second": 41.4,
+        "p50_ms": 29.9,
+        "p95_ms": 32.8,
+        "max_ms": 41.8,
+        "status_codes": {
+          "200": 332
+        }
+      },
+      {
+        "concurrent": 8,
+        "requests": 1588,
+        "errors": 0,
+        "per_second": 197.6,
+        "p50_ms": 42.2,
+        "p95_ms": 67.0,
+        "max_ms": 82.2,
+        "status_codes": {
+          "200": 1588
+        }
+      },
+      {
+        "concurrent": 32,
+        "requests": 1273,
+        "errors": 0,
+        "per_second": 156.2,
+        "p50_ms": 203.9,
+        "p95_ms": 225.6,
+        "max_ms": 255.6,
+        "status_codes": {
+          "200": 1273
+        }
+      },
+      {
+        "concurrent": 128,
+        "requests": 1361,
+        "errors": 0,
+        "per_second": 155.7,
+        "p50_ms": 819.6,
+        "p95_ms": 842.4,
+        "max_ms": 866.0,
+        "status_codes": {
+          "200": 1361
+        }
+      }
+    ]
+  },
+  "idle_connections": [
+    {
+      "idle_connections": 50,
+      "health_ms": 25.1,
+      "status": 200
+    },
+    {
+      "idle_connections": 200,
+      "health_ms": 37.2,
+      "status": 200
+    },
+    {
+      "idle_connections": 500,
+      "health_ms": 14.6,
+      "status": 200
+    },
+    {
+      "idle_connections": 1000,
+      "health_ms": 24.5,
+      "status": 200
+    }
+  ]
+}

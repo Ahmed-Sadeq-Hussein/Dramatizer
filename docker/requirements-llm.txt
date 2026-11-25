@@ -1,0 +1,14 @@
+# docker/requirements-llm.txt | The chatbot's own environment in the image (/opt/llm, Python 3.11): Gemma 4 needs
+# newer torch and transformers than CosyVoice allows, so it cannot share /opt/venv. The same versions as the host's
+# D:/envs/llm, where the chatbot was measured (Milestone 4, step 7). torch comes from PyTorch's cu126 index.
+torch==2.7.1
+transformers==5.20.2
+accelerate==1.15.0
+bitsandbytes==0.50.2
+safetensors==0.8.0
+tokenizers==0.23.3
+huggingface_hub==2.4.0
+numpy==2.4.6
+python-dotenv==1.2.4
+# the chat template is rendered with Jinja2 (not pulled in by transformers itself)
+Jinja2==3.1.6

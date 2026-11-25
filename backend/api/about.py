@@ -24,10 +24,21 @@ ABOUT = {
                                      "measured results, and under Graphs the six questions' charts as last made."},
     ],
     "contributors": ["Ahmed Hussein", "Julius Norén", "Rama Muharam", "Tran Hieu Minh"],
+    # The owner of the project and the website, and how to reach them: the same email and LinkedIn as "Contact us"
+    # at the foot of every page (frontend/client/static/index.html; a test keeps the two the same)
+    "owner": "Ahmed Sadeq Hussein",
+    "contact": {"email": "huah21vn@gmail.com", "linkedin": "https://www.linkedin.com/in/ahmed-hussein-192484329/"},
 }
 
 
 def as_text():
     """The same, as plain text for a language model."""
     steps = "\n".join(f"- {s['step']}: {s['text']}" for s in ABOUT["how"])
-    return f"{ABOUT['what']}\n\nHow to use it:\n{steps}\n\nContributors: {', '.join(ABOUT['contributors'])}."
+    return (f"{ABOUT['what']}\n\nHow to use it:\n{steps}\n\n{owner_text()}\n\n"
+            f"Contributors: {', '.join(ABOUT['contributors'])}.")
+
+
+def owner_text():
+    """Who owns the project and the website, and how to contact the owner or the creators."""
+    return (f"The Dramatizer project and this website are owned by {ABOUT['owner']}. To contact the owner or the "
+            f"creators, email {ABOUT['contact']['email']} (also under \"Contact us\" at the bottom of every page).")

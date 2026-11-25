@@ -1,0 +1,44 @@
+# docker/site.compose.yml | The two small containers in front of the live site (start with .\deploy\site.ps1 up).
+#
+#   dramatizer-front-door  ports 5005 and 5105 on 127.0.0.1 -> the live slot (dramatizer-blue or -green), by name
+#   dramatizer-tunnel      Cloudflare's tunnel: https://app.dramatizer.dev -> the front door
+#
+# The slots themselves are started by deploy/blue_green.py (deploy/live.ps1), not here, because a release decides
+# which one runs. All of them share the Docker network "dramatizer". Both containers restart on their own after a
+# reboot (once Docker Desktop is running).
+#
+# Nothing secret is in this file. The tunnel's credentials file (in %USERPROFILE%\.cloudflared, written by
+# `python main_backend.py tunnel --setup`) is mounted read-only; TUNNEL_ID is set by deploy/site.ps1.
+name: dramatizer-site
+
+services:
+  front-door:
+    image: python:3.12.8-slim
+    container_name: dramatizer-front-door
+    command: ["python", "-u", "/app/front_door.py", "--bind", "0.0.0.0", "--listen", "5005", "--listen", "5105",
+              "--state", "/state/front_door.json", "--by-name"]
+    volumes:
+      - ../deploy/front_door.py:/app/front_door.py:ro
+      - ../history/live:/state:ro            # only the live state folder, never the rest of history/
+    ports:
+      - "127.0.0.1:5005:5005"
+      - "127.0.0.1:5105:5105"
+    networks: [dramatizer]
+    user: "65534:65534"                      # nobody: it only reads one file and forwards bytes
+    read_only: true
+    restart: unless-stopped
+
+  tunnel:
+    image: cloudflare/cloudflared:2026.11.0
+    container_name: dramatizer-tunnel
+    command: ["tunnel", "--no-autoupdate", "--config", "/etc/cloudflared/config.yml", "run"]
+    volumes:
+      - ${USERPROFILE}/.cloudflared/docker.yml:/etc/cloudflared/config.yml:ro
+      - ${USERPROFILE}/.cloudflared/${TUNNEL_ID:?run deploy/site.ps1, which sets TUNNEL_ID}.json:/etc/cloudflared/credentials.json:ro
+    networks: [dramatizer]
+    depends_on: [front-door]
+    restart: unless-stopped
+
+networks:
+  dramatizer:
+    external: true                           # made by deploy/site.ps1 or deploy/blue_green.py

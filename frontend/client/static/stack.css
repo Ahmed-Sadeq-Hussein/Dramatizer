@@ -1,0 +1,41 @@
+/* stack.css | The "Stack" page: what the Dramatizer is built from, layer by layer. Used by stack.html on its own and
+   by the Stack tab in index.html (which shows the same <article>). Colours come from style.css's tokens. */
+
+.stack-page { display: grid; gap: 18px; padding-top: 4px; }
+.stack-page .lead { margin: 0; color: var(--muted); max-width: 70ch; }
+
+.stack-flow { display: grid; gap: 0; counter-reset: layer; }
+.stack-layer { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 0 12px; position: relative; }
+.stack-layer::before { counter-increment: layer; content: counter(layer); grid-row: 1 / span 2; align-self: start;
+  width: 30px; height: 30px; margin: 14px 0 0 7px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 0.85rem; z-index: 1; }
+.stack-layer::after { content: ""; position: absolute; left: 21px; top: 44px; bottom: -14px; width: 2px; background: var(--rule); }
+.stack-layer:last-child::after { display: none; }
+.stack-card { padding: 12px 16px; margin: 6px 0; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); min-width: 0; }
+.stack-card h3 { margin: 0 0 2px; font-size: 1rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.stack-card h3 .where { font-size: 0.75rem; font-weight: 600; color: var(--muted); border: 1px solid var(--rule);
+  border-radius: 999px; padding: 0 8px; }
+.stack-card p { margin: 4px 0; }
+.stack-parts { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; padding: 0; list-style: none; }
+.stack-parts li { font-size: 0.82rem; padding: 2px 9px; border-radius: 6px; background: var(--bg); border: 1px solid var(--rule); }
+.stack-card .measured { font-size: 0.82rem; color: var(--muted); border-top: 1px dashed var(--rule); padding-top: 6px; margin-top: 8px; }
+.stack-card .measured strong { color: var(--ink); }
+.stack-card.gpu { border-left: 3px solid var(--bad); }
+.stack-card.gpu .measured strong { color: var(--bad); }
+
+.stack-side { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.stack-side section { padding: 12px 16px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); min-width: 0; }
+.stack-side h3 { margin: 0 0 6px; font-size: 0.95rem; }
+.stack-side ul { margin: 0; padding-left: 18px; }
+.stack-side li { margin: 3px 0; }
+.stack-note { font-size: 0.82rem; color: var(--muted); margin: 0; }
+
+/* stack.html opened on its own (not inside the app) */
+.stack-alone header { max-width: 900px; margin: 0 auto; padding: 12px 16px; display: flex; justify-content: space-between;
+  align-items: center; gap: 12px; }
+.stack-alone header a { color: var(--accent); }
+@media (max-width: 520px) {
+  .stack-layer { grid-template-columns: 34px minmax(0, 1fr); gap: 0 8px; }
+  .stack-layer::before { width: 26px; height: 26px; margin-left: 4px; }
+  .stack-layer::after { left: 16px; }
+}
